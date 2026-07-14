@@ -9,8 +9,11 @@ import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
 import DxfWizard from '@/components/DxfWizard';
 import ProfileChart from '@/components/ProfileChart';
+import StudyPanel from '@/components/StudyPanel';
 import { fetchProfile } from '@/lib/api';
-import type { GeorefResponse, LatLng, ProfileResponse } from '@/lib/types';
+import type {
+  CoverageResponse, GeorefResponse, LatLng, ProfileResponse,
+} from '@/lib/types';
 
 // Leaflet accesses `window` at import time — client-only.
 const MapView = dynamic(() => import('@/components/MapView'), {
@@ -30,6 +33,12 @@ export default function Home() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [georef, setGeoref] = useState<GeorefResponse | null>(null);
   const [showOverlay, setShowOverlay] = useState(true);
+
+  // Radio study state (technology preset + optional model/env overrides).
+  const [technology, setTechnology] = useState<string | null>(null);
+  const [model, setModel] = useState<string | null>(null);
+  const [environment, setEnvironment] = useState<string | null>(null);
+  const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -55,12 +64,13 @@ export default function Home() {
       lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
       dxfId: georef?.dxf_id ?? null,
       txHeight, rxHeight, freqMhz,
+      technology, model, environment,
     })
       .then((p) => { if (!cancelled) setProfile(p); })
       .catch((e) => { if (!cancelled) setProfileError((e as Error).message); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [tx, rx, txHeight, rxHeight, freqMhz, georef]);
+  }, [tx, rx, txHeight, rxHeight, freqMhz, georef, technology, model, environment]);
 
   const validation = georef?.validation;
   const transform = georef?.transform;
@@ -164,6 +174,15 @@ export default function Home() {
             )}
           </div>
 
+          <StudyPanel
+            tx={tx} dxfId={georef?.dxf_id ?? null} txHeight={txHeight}
+            technology={technology} onTechnologyChange={setTechnology}
+            model={model} onModelChange={setModel}
+            environment={environment} onEnvironmentChange={setEnvironment}
+            study={profile?.study ?? null}
+            coverage={coverage} onCoverage={setCoverage}
+          />
+
           {validation?.warning && (
             <div className="warning-box">
               <b>⚠ Terrain validation warning</b><br />
@@ -204,6 +223,7 @@ export default function Home() {
             <MapView
               tx={tx} rx={rx} placing={placing} onPlace={handlePlace}
               georef={georef} showOverlay={showOverlay}
+              coverage={coverage}
             />
           </div>
           {(profile || loading) && (

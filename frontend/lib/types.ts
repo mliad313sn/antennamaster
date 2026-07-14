@@ -74,12 +74,64 @@ export interface ProfilePoint {
   fresnel_lower: number;
   source: Provenance;
   dxf_weight: number;
+  rx_power_dbm?: number; // present when a technology study is requested
+}
+
+/** Radio technology preset (GSM/UMTS/LTE/NR/PMR/broadcast/WLAN/IoT/PtP). */
+export interface Technology {
+  key: string;
+  label: string;
+  generation: string;
+  freq_mhz: number;
+  model: string;
+  environment: string;
+  tx_power_dbm: number;
+  tx_gain_dbi: number;
+  rx_gain_dbi: number;
+  losses_db: number;
+  rx_sensitivity_dbm: number;
+  h_bs_m: number;
+  h_ut_m: number;
+}
+
+export interface ModelInfo {
+  key: string;
+  label: string;
+  f_range_mhz: [number, number];
+  environments: string[];
+  description: string;
+}
+
+export interface StudyResult {
+  technology: Technology;
+  path_loss_db: number;
+  diffraction_loss_db: number;
+  rx_power_dbm: number;
+  margin_db: number;
+  served: boolean;
+  warnings: string[];
+}
+
+export interface CoverageResponse {
+  coverage_id: string;
+  png_url: string;
+  bounds: [[number, number], [number, number]];
+  legend: { margin_db: number; color: string; label: string }[];
+  stats: {
+    served_area_fraction: number;
+    radius_m: number;
+    tx_elevation_m: number;
+    max_rx_power_dbm: number;
+  };
+  technology: Technology;
+  warnings: string[];
 }
 
 export interface ProfileResponse {
   samples: number;
   dxf_id: string | null;
   distance_m: number;
+  study: StudyResult | null;
   points: ProfilePoint[];
   rf: {
     line_of_sight_clear: boolean;

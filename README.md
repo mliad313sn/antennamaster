@@ -1,12 +1,34 @@
-# AntennaMaster — Terrain & Georeferencing Module
+# AntennaMaster — RF Coverage Simulator
 
-Online radio antenna coverage simulator terrain stack: fuses **global SRTM 30 m
-base elevation** with **local high-resolution DXF relief** into a single,
-seamless terrain model used by the RF physics (Fresnel zones, knife-edge
-diffraction, k = 4/3 effective-earth curvature).
+Online radio coverage simulator for **any radio study — GSM/2G, UMTS/3G,
+LTE/4G, 5G NR (down to mmWave), PMR/TETRA, FM/DVB-T broadcast, Wi-Fi,
+LoRaWAN IoT and microwave PtP** — built on a terrain stack that fuses
+**global SRTM 30 m base elevation** with **local high-resolution DXF relief**
+into a single, seamless model used by the RF physics (Fresnel zones,
+Deygout multi-knife-edge diffraction, k = 4/3 effective-earth curvature).
 
 The DXF is a *local override*: the app works globally with SRTM alone, and a
 georeferenced DXF patches high-res detail over the base within its footprint.
+
+See `docs/ASSESSMENT.md` for the low-level audit and the feature benchmark
+against SPLAT!, Radio Mobile, CloudRF and commercial suites.
+
+## Radio studies
+
+* **Propagation models**: free space (ITU-R P.525), Okumura-Hata,
+  COST-231 Hata, 3GPP TR 38.901 RMa/UMa/UMi (LOS/NLOS, valid to 100 GHz) —
+  all floor-bounded by FSPL, with validity-range warnings. Terrain-aware
+  **Deygout** diffraction (k=4/3 curved fused profile) is added on top.
+* **Technology presets** (all overridable): GSM 900/1800 · UMTS 900/2100 ·
+  LTE 800/1800/2600 · 5G NR n28/n78/n257 (28 GHz mmWave) · TETRA · PMR446 ·
+  FM · DVB-T · Wi-Fi 2.4/5.8 · LoRaWAN 868 · 18 GHz PtP · custom.
+* **Point-to-point link budget**: per-sample RX power along the profile,
+  path loss + diffraction split, margin vs receiver sensitivity.
+* **Area coverage**: polar-sweep simulation from the TX (omni or 3GPP
+  parametric sector antenna), margin-classed raster overlay with legend and
+  served-area statistics.
+* **Map providers**: OSM, OpenTopoMap, Carto Light/Dark, Esri Imagery/Topo
+  out of the box, plus any custom XYZ tile template.
 
 ## Architecture
 
@@ -85,5 +107,9 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/dxf/{id}/layers` | layer inventory for the layer-selection UI |
 | `POST /api/dxf/{id}/georeference` | apply a georeferencing mode, build the grid, validate vs SRTM; returns transform + residuals, footprint polygon, overlay bounds, validation warning |
 | `GET /api/dxf/{id}/overlay.png` | semi-transparent hillshade of the DXF terrain (RGBA; transparent outside footprint) |
-| `GET /api/terrain/profile` | geodesic TX→RX fused profile with per-sample provenance (`srtm`/`blend`/`dxf`), curved elevations (k applied), LOS, first-Fresnel lower edge and link analysis |
+| `GET /api/terrain/profile` | geodesic TX→RX fused profile with per-sample provenance (`srtm`/`blend`/`dxf`), curved elevations (k applied), LOS, first-Fresnel lower edge and link analysis; add `technology=` for a full link-budget study (per-sample RX power, Deygout loss, margin) |
 | `GET /api/terrain/elevation` | fused single-point elevation |
+| `GET /api/rf/technologies` | all radio-study presets (2G→5G, PMR, broadcast, WLAN, IoT, PtP) |
+| `GET /api/rf/models` | propagation models with validity ranges |
+| `POST /api/rf/coverage` | area coverage simulation from a TX site (radius, sector antenna, resolution, DXF fusion); returns raster URL + legend + stats |
+| `GET /api/rf/coverage/{id}.png` | coverage raster overlay (RGBA, transparent where unserved) |

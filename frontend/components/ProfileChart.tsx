@@ -26,6 +26,7 @@ interface ChartRow {
   los: number;
   fresnel: number;
   source: string;
+  rxPower?: number;
 }
 
 /** Split terrain into srtm/dxf series; duplicate boundary samples into both
@@ -44,6 +45,7 @@ function toRows(points: ProfilePoint[]): ChartRow[] {
       los: p.los,
       fresnel: p.fresnel_lower,
       source: p.source,
+      rxPower: p.rx_power_dbm,
     };
   });
 }
@@ -70,6 +72,9 @@ function ProfileTooltip({ active, payload, label }: {
       </div>
       <div style={{ color: 'var(--ink-secondary)' }}>LOS: {row.los.toFixed(1)} m</div>
       <div style={{ color: 'var(--ink-secondary)' }}>F1 lower: {row.fresnel.toFixed(1)} m</div>
+      {row.rxPower !== undefined && (
+        <div style={{ color: 'var(--ink-secondary)' }}>RX power: <b>{row.rxPower.toFixed(1)} dBm</b></div>
+      )}
     </div>
   );
 }

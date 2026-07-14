@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api.routes_dxf import router as dxf_router
+from .api.routes_rf import router as rf_router
 from .api.routes_terrain import router as terrain_router
 
 app = FastAPI(
@@ -32,6 +33,7 @@ app.add_middleware(
 
 app.include_router(dxf_router)
 app.include_router(terrain_router)
+app.include_router(rf_router)
 
 
 @app.get("/api/health")

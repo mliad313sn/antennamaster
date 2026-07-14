@@ -10,10 +10,49 @@
 import L from 'leaflet';
 import { useEffect, useMemo } from 'react';
 import {
-  ImageOverlay, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer,
-  useMap, useMapEvents,
+  ImageOverlay, LayersControl, MapContainer, Marker, Polygon, Polyline, Popup,
+  TileLayer, useMap, useMapEvents,
 } from 'react-leaflet';
-import type { GeorefResponse, LatLng } from '@/lib/types';
+import type { CoverageResponse, GeorefResponse, LatLng } from '@/lib/types';
+
+/**
+ * Base-map providers.  Any XYZ tile service works — a custom URL template can
+ * be supplied by the user (stored in localStorage) for private/WMTS-style
+ * servers, so the app is not tied to a single map vendor.
+ */
+export const BASE_LAYERS: { name: string; url: string; attribution: string; maxZoom?: number }[] = [
+  {
+    name: 'OpenStreetMap',
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  {
+    name: 'OpenTopoMap (relief)',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors, SRTM | © <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+    maxZoom: 17,
+  },
+  {
+    name: 'Carto Light',
+    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  },
+  {
+    name: 'Carto Dark',
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    attribution: '&copy; OpenStreetMap contributors &copy; <a href="https://carto.com/">CARTO</a>',
+  },
+  {
+    name: 'Esri World Imagery (satellite)',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics',
+  },
+  {
+    name: 'Esri World Topo',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    attribution: 'Tiles &copy; Esri — Source: Esri, HERE, Garmin, USGS',
+  },
+];
 
 // Leaflet's default marker images break under bundlers; use inline SVG pins.
 function pin(color: string): L.DivIcon {
@@ -53,14 +92,24 @@ export interface MapViewProps {
   onPlace: (p: LatLng) => void;
   georef: GeorefResponse | null;
   showOverlay: boolean;
+  coverage: CoverageResponse | null;
+  customTileUrl?: string;
 }
 
-export default function MapView({ tx, rx, placing, onPlace, georef, showOverlay }: MapViewProps) {
+export default function MapView({
+  tx, rx, placing, onPlace, georef, showOverlay, coverage, customTileUrl,
+}: MapViewProps) {
   const overlayBounds = useMemo(() => {
     if (!georef) return null;
     const [[s, w], [n, e]] = georef.overlay_bounds;
     return L.latLngBounds([s, w], [n, e]);
   }, [georef]);
+
+  const coverageBounds = useMemo(() => {
+    if (!coverage) return null;
+    const [[s, w], [n, e]] = coverage.bounds;
+    return L.latLngBounds([s, w], [n, e]);
+  }, [coverage]);
 
   return (
     <>
@@ -70,12 +119,31 @@ export default function MapView({ tx, rx, placing, onPlace, georef, showOverlay 
         </div>
       )}
       <MapContainer center={[47.0, 15.0]} zoom={11} scrollWheelZoom>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <LayersControl position="topright">
+          {BASE_LAYERS.map((l, i) => (
+            <LayersControl.BaseLayer key={l.name} name={l.name} checked={i === 0}>
+              <TileLayer url={l.url} attribution={l.attribution}
+                maxZoom={l.maxZoom ?? 19} />
+            </LayersControl.BaseLayer>
+          ))}
+          {customTileUrl && (
+            <LayersControl.BaseLayer name="Custom provider">
+              <TileLayer url={customTileUrl} attribution="Custom tile provider" />
+            </LayersControl.BaseLayer>
+          )}
+        </LayersControl>
         <ClickHandler onClick={onPlace} />
         <FitToFootprint bounds={overlayBounds} />
+
+        {/* RF coverage raster (signal-strength classes; transparent = unserved). */}
+        {coverage && coverageBounds && (
+          <ImageOverlay
+            url={coverage.png_url}
+            bounds={coverageBounds}
+            opacity={1 /* alpha baked into the PNG */}
+            zIndex={380}
+          />
+        )}
 
         {/* Semi-transparent hillshade of the georeferenced DXF terrain. */}
         {georef && overlayBounds && showOverlay && (
