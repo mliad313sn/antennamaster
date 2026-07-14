@@ -118,10 +118,13 @@ export interface CoverageResponse {
   bounds: [[number, number], [number, number]];
   legend: { margin_db: number; color: string; label: string }[];
   stats: {
-    served_area_fraction: number;
+    served_area_fraction: number | null;  // null for multi-site composites
     radius_m: number;
     tx_elevation_m: number;
     max_rx_power_dbm: number;
+    // multi-site composites only: per-site best-server shares
+    sites?: { name: string; color: string; best_server_share: number;
+              max_rx_power_dbm: number }[];
   };
   technology: Technology;
   warnings: string[];
@@ -195,4 +198,22 @@ export interface TteResponse {
   rx_power_dbm: number;
   margin_db: number;
   served: boolean;
+}
+
+// ------------------------------------------------ antennas & multi-site
+export interface AntennaInfo {
+  antenna_id: string;
+  name: string;
+  gain_dbi: number;
+  h_beamwidth_deg: number;
+  v_beamwidth_deg: number;
+  electrical_tilt_deg?: number;
+}
+
+export interface SiteEntry {
+  lat: number;
+  lon: number;
+  name: string;
+  antenna_azimuth_deg?: number | null;
+  downtilt_deg?: number;
 }

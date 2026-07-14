@@ -125,6 +125,9 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/dxf/{id}/overlay.png` | semi-transparent hillshade of the DXF terrain (RGBA; transparent outside footprint) |
 | `GET /api/terrain/profile` | geodesic TX→RX fused profile with per-sample provenance (`srtm`/`blend`/`dxf`), curved elevations (k applied), LOS, first-Fresnel lower edge and link analysis; add `technology=` for a full link-budget study (per-sample RX power, Deygout loss, margin) |
 | `GET /api/terrain/elevation` | fused single-point elevation |
+| `POST /api/rf/antenna` | upload an MSI Planet measured antenna pattern (dBd→dBi, tilt, H/V cuts) |
+| `GET /api/rf/antennas` | uploaded patterns with gains and -3 dB beamwidths |
+| `POST /api/rf/coverage/multi` | best-server composite over up to 8 sites (per-site colors + shares) |
 | `GET /api/rf/technologies` | all radio-study presets (2G→5G, PMR, broadcast, WLAN, IoT, PtP) |
 | `GET /api/rf/models` | propagation models with validity ranges |
 | `POST /api/rf/coverage` | area coverage simulation from a TX site (radius, sector antenna, resolution, DXF fusion); returns raster URL + legend + stats |

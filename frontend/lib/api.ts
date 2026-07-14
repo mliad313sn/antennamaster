@@ -1,8 +1,8 @@
 /** Thin fetch wrappers for the terrain backend (proxied through /api). */
 import type {
-  CoverageResponse, GeorefRequest, GeorefResponse, IndoorCoverageResponse,
-  Material, ModelInfo, ProfileResponse, Technology, TteResponse,
-  TunnelResponse, UndergroundPresets, UploadResponse,
+  AntennaInfo, CoverageResponse, GeorefRequest, GeorefResponse,
+  IndoorCoverageResponse, Material, ModelInfo, ProfileResponse, Technology,
+  TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
 } from './types';
 
 async function jsonOrThrow<T>(resp: Response): Promise<T> {
@@ -72,6 +72,7 @@ export async function simulateCoverage(params: {
   dxfId: string | null;
   freqMhz?: number; model?: string | null; environment?: string | null;
   antennaAzimuthDeg?: number | null; antennaBeamwidthDeg?: number;
+  antennaId?: string | null;
   downtiltDeg?: number; shadowMarginDb?: number;
   hBsM?: number;
   // Real site link-budget overrides (the preset is only a starting point):
@@ -90,6 +91,7 @@ export async function simulateCoverage(params: {
       environment: params.environment ?? undefined,
       antenna_azimuth_deg: params.antennaAzimuthDeg ?? undefined,
       antenna_beamwidth_deg: params.antennaBeamwidthDeg,
+      antenna_id: params.antennaId ?? undefined,
       downtilt_deg: params.downtiltDeg,
       shadow_margin_db: params.shadowMarginDb,
       h_bs_m: params.hBsM,
@@ -199,4 +201,47 @@ export async function fetchTteStudy(params: {
     rx_sensitivity_dbm: String(params.rxSensitivityDbm),
   });
   return jsonOrThrow(await fetch(`/api/indoor/tte?${q}`));
+}
+
+// ------------------------------------------------ antennas & multi-site
+export async function uploadAntenna(file: File): Promise<AntennaInfo> {
+  const form = new FormData();
+  form.append('file', file);
+  return jsonOrThrow(await fetch('/api/rf/antenna', { method: 'POST', body: form }));
+}
+
+export async function fetchAntennas(): Promise<AntennaInfo[]> {
+  const body = await jsonOrThrow<{ antennas: AntennaInfo[] }>(
+    await fetch('/api/rf/antennas'));
+  return body.antennas;
+}
+
+export async function simulateMultiCoverage(params: {
+  sites: { lat: number; lon: number; name?: string;
+           antenna_azimuth_deg?: number | null; downtilt_deg?: number }[];
+  technology: string; radiusKm: number; dxfId: string | null;
+  antennaId?: string | null; model?: string | null; environment?: string | null;
+  shadowMarginDb?: number; hBsM?: number;
+  txPowerDbm?: number; rxSensitivityDbm?: number;
+}): Promise<CoverageResponse> {
+  return jsonOrThrow(await fetch('/api/rf/coverage/multi', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sites: params.sites.map((s) => ({
+        lat: s.lat, lon: s.lon, name: s.name,
+        antenna_azimuth_deg: s.antenna_azimuth_deg ?? undefined,
+        downtilt_deg: s.downtilt_deg ?? 0,
+      })),
+      technology: params.technology, radius_km: params.radiusKm,
+      dxf_id: params.dxfId ?? undefined,
+      antenna_id: params.antennaId ?? undefined,
+      model: params.model ?? undefined,
+      environment: params.environment ?? undefined,
+      shadow_margin_db: params.shadowMarginDb,
+      h_bs_m: params.hBsM,
+      tx_power_dbm: params.txPowerDbm,
+      rx_sensitivity_dbm: params.rxSensitivityDbm,
+    }),
+  }));
 }

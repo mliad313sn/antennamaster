@@ -57,18 +57,21 @@ class CoverageEngine:
         self.fusion = fusion
 
     # ------------------------------------------------------------ simulate
-    def simulate(self, lat: float, lon: float, tech: dict,
-                 radius_m: float = 10_000.0,
-                 n_radials: int = 180, n_steps: int = 100,
-                 antenna_azimuth_deg: float | None = None,
-                 antenna_beamwidth_deg: float = 65.0,
-                 downtilt_deg: float = 0.0,
-                 vertical_beamwidth_deg: float = 10.0,
-                 shadow_margin_db: float = 0.0,
-                 grid: DxfTerrainGrid | None = None,
-                 georef: BaseGeoref | None = None,
-                 k: float = K_FACTOR_DEFAULT,
-                 raster_px: int = 512) -> CoverageResult:
+    def compute_polar(self, lat: float, lon: float, tech: dict,
+                      radius_m: float = 10_000.0,
+                      n_radials: int = 180, n_steps: int = 100,
+                      antenna_azimuth_deg: float | None = None,
+                      antenna_beamwidth_deg: float = 65.0,
+                      downtilt_deg: float = 0.0,
+                      vertical_beamwidth_deg: float = 10.0,
+                      antenna_pattern: dict | None = None,
+                      shadow_margin_db: float = 0.0,
+                      grid: DxfTerrainGrid | None = None,
+                      georef: BaseGeoref | None = None,
+                      k: float = K_FACTOR_DEFAULT) -> dict:
+        """Run the physics and return the polar field (no rasterization).
+
+        Returns {az, dist, rx_power, margin, tx_elev, warnings}."""
         freq = float(tech["freq_mhz"])
         h_bs, h_ut = float(tech["h_bs_m"]), float(tech["h_ut_m"])
 
@@ -114,22 +117,34 @@ class CoverageEngine:
                                     h_bs, h_ut, tech.get("environment", "urban"))
         pl = pl.reshape(n_radials, n_steps)
 
-        # Horizontal sector pattern (3GPP parabolic, 25 dB front-to-back).
-        ant_gain = np.zeros((n_radials, 1))
-        if antenna_azimuth_deg is not None:
-            delta = (az - antenna_azimuth_deg + 180.0) % 360.0 - 180.0
-            ant_gain = -np.minimum(
-                12.0 * (delta / antenna_beamwidth_deg) ** 2, 25.0)[:, None]
+        # Elevation angle of every sample as seen from the TX antenna
+        # (negative = below the horizon) - used by both pattern paths.
+        dh = (elev + h_ut) - (tx_elev + h_bs)                   # (R, S) meters
+        elev_angle = np.degrees(np.arctan2(dh, dist_g))         # (R, S)
 
-        # Vertical pattern with mechanical/electrical downtilt: elevation
-        # angle of each sample as seen from the TX antenna (negative = below
-        # horizon), 3GPP parabolic in the vertical plane, 20 dB floor.
-        if downtilt_deg != 0.0 or antenna_azimuth_deg is not None:
-            dh = (elev + h_ut) - (tx_elev + h_bs)               # (R, S) meters
-            elev_angle = np.degrees(np.arctan2(dh, dist_g))     # (R, S)
-            v_delta = elev_angle - (-downtilt_deg)              # boresight below horizon
-            ant_gain = ant_gain - np.minimum(
-                12.0 * (v_delta / max(vertical_beamwidth_deg, 1.0)) ** 2, 20.0)
+        if antenna_pattern is not None:
+            # Measured MSI pattern: sum-of-cuts H(az offset) + V(elev offset)
+            # about a boresight tilted down by mechanical + electrical tilt.
+            from ..rf.antenna import pattern_attenuation
+            boresight = -(downtilt_deg
+                          + float(antenna_pattern.get("electrical_tilt_deg", 0.0)))
+            az_off = (az - (antenna_azimuth_deg or 0.0))[:, None]  # (R, 1)
+            elev_off = boresight - elev_angle                      # (R, S)
+            ant_gain = -pattern_attenuation(antenna_pattern,
+                                            np.broadcast_to(az_off, elev_off.shape),
+                                            elev_off)
+        else:
+            # Parametric 3GPP model: horizontal parabolic sector (25 dB
+            # front-to-back) + vertical parabola with downtilt (20 dB floor).
+            ant_gain = np.zeros((n_radials, 1))
+            if antenna_azimuth_deg is not None:
+                delta = (az - antenna_azimuth_deg + 180.0) % 360.0 - 180.0
+                ant_gain = -np.minimum(
+                    12.0 * (delta / antenna_beamwidth_deg) ** 2, 25.0)[:, None]
+            if downtilt_deg != 0.0 or antenna_azimuth_deg is not None:
+                v_delta = elev_angle - (-downtilt_deg)
+                ant_gain = ant_gain - np.minimum(
+                    12.0 * (v_delta / max(vertical_beamwidth_deg, 1.0)) ** 2, 20.0)
 
         rx_power = (tech["tx_power_dbm"] + tech["tx_gain_dbi"] + tech["rx_gain_dbi"]
                     - tech["losses_db"] + ant_gain - pl - diff_loss)
@@ -138,14 +153,42 @@ class CoverageEngine:
         # not the 50% median a bare link budget gives.
         margin = rx_power - tech["rx_sensitivity_dbm"] - shadow_margin_db
 
-        # ---- 5) rasterize the polar field to a lat/lon RGBA overlay -------
-        png, bounds = self._rasterize(lat, lon, az, dist, margin, radius_m, raster_px)
+        return {"az": az, "dist": dist, "dist_g": dist_g,
+                "rx_power": rx_power, "margin": margin,
+                "tx_elev": tx_elev, "warnings": warnings}
+
+    def simulate(self, lat: float, lon: float, tech: dict,
+                 radius_m: float = 10_000.0,
+                 n_radials: int = 180, n_steps: int = 100,
+                 antenna_azimuth_deg: float | None = None,
+                 antenna_beamwidth_deg: float = 65.0,
+                 downtilt_deg: float = 0.0,
+                 vertical_beamwidth_deg: float = 10.0,
+                 antenna_pattern: dict | None = None,
+                 shadow_margin_db: float = 0.0,
+                 grid: DxfTerrainGrid | None = None,
+                 georef: BaseGeoref | None = None,
+                 k: float = K_FACTOR_DEFAULT,
+                 raster_px: int = 512) -> CoverageResult:
+        polar = self.compute_polar(
+            lat, lon, tech, radius_m=radius_m,
+            n_radials=n_radials, n_steps=n_steps,
+            antenna_azimuth_deg=antenna_azimuth_deg,
+            antenna_beamwidth_deg=antenna_beamwidth_deg,
+            downtilt_deg=downtilt_deg,
+            vertical_beamwidth_deg=vertical_beamwidth_deg,
+            antenna_pattern=antenna_pattern,
+            shadow_margin_db=shadow_margin_db,
+            grid=grid, georef=georef, k=k)
+
+        png, bounds = self._rasterize(lat, lon, polar["az"], polar["dist"],
+                                      polar["margin"], radius_m, raster_px)
 
         # Area-weight the served statistic: a polar cell's ground area grows
         # linearly with distance, so an unweighted mean over-counts the
         # (nearly always served) samples close to the mast.
-        w_area = dist_g / dist_g.sum()
-        served_frac = float(np.sum((margin >= 0.0) * w_area))
+        w_area = polar["dist_g"] / polar["dist_g"].sum()
+        served_frac = float(np.sum((polar["margin"] >= 0.0) * w_area))
         return CoverageResult(
             coverage_id=uuid.uuid4().hex[:12],
             png=png, bounds=bounds,
@@ -155,10 +198,10 @@ class CoverageEngine:
                 "served_area_fraction": round(served_frac, 4),
                 "radius_m": radius_m,
                 "n_radials": n_radials, "n_steps": n_steps,
-                "tx_elevation_m": tx_elev,
-                "max_rx_power_dbm": round(float(rx_power.max()), 1),
+                "tx_elevation_m": polar["tx_elev"],
+                "max_rx_power_dbm": round(float(polar["rx_power"].max()), 1),
             },
-            warnings=warnings,
+            warnings=polar["warnings"],
         )
 
     # ------------------------------------------------------------ raster
@@ -200,3 +243,86 @@ class CoverageEngine:
         buf = io.BytesIO()
         Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
         return buf.getvalue(), [[south, west], [north, east]]
+
+
+# Best-server site colors: the categorical palette order (CVD-safe).
+SITE_COLORS = [
+    (42, 120, 214), (27, 175, 122), (237, 161, 0), (0, 131, 0),
+    (74, 58, 167), (227, 73, 72), (232, 123, 164), (235, 104, 52),
+]
+
+
+def composite_best_server(sites: list[dict], raster_px: int = 768,
+                          ) -> tuple[bytes, list[list[float]], list[dict]]:
+    """Composite several sites' polar fields into one best-server raster.
+
+    ``sites``: [{lat, lon, radius_m, name, polar}] where ``polar`` is the
+    dict from CoverageEngine.compute_polar.  Every raster pixel is painted
+    in the color of the site delivering the strongest RX power there,
+    provided that site's fade-margin test passes (else transparent).
+
+    Returns (png, [[south, west], [north, east]], per_site_stats).
+    """
+    # Union bounding box of all coverage discs.
+    boxes = []
+    for s in sites:
+        lat_r = np.degrees(s["radius_m"] / EARTH_RADIUS_M)
+        lon_r = lat_r / max(np.cos(np.radians(s["lat"])), 0.05)
+        boxes.append((s["lat"] - lat_r, s["lon"] - lon_r,
+                      s["lat"] + lat_r, s["lon"] + lon_r))
+    south = min(b[0] for b in boxes)
+    west = min(b[1] for b in boxes)
+    north = max(b[2] for b in boxes)
+    east = max(b[3] for b in boxes)
+
+    aspect = (north - south) / max(east - west, 1e-9)
+    if aspect <= 1:
+        w, h = raster_px, max(int(raster_px * aspect), 32)
+    else:
+        h, w = raster_px, max(int(raster_px / aspect), 32)
+    lat_g = np.linspace(north, south, h)
+    lon_g = np.linspace(west, east, w)
+    mlon, mlat = np.meshgrid(lon_g, lat_g)
+
+    best_rx = np.full((h, w), -np.inf)
+    best_margin = np.full((h, w), -np.inf)
+    best_idx = np.full((h, w), -1, dtype=int)
+
+    for i, s in enumerate(sites):
+        polar = s["polar"]
+        az, dist = polar["az"], polar["dist"]
+        m_e = (mlon - s["lon"]) * np.cos(np.radians(s["lat"])) \
+            * (np.pi / 180.0) * EARTH_RADIUS_M
+        m_n = (mlat - s["lat"]) * (np.pi / 180.0) * EARTH_RADIUS_M
+        pix_d = np.hypot(m_e, m_n)
+        pix_az = (np.degrees(np.arctan2(m_e, m_n)) + 360.0) % 360.0
+        ai = np.round(pix_az / (360.0 / len(az))).astype(int) % len(az)
+        d_step = dist[1] - dist[0] if len(dist) > 1 else dist[0]
+        di = np.clip(np.round((pix_d - dist[0]) / d_step).astype(int),
+                     0, len(dist) - 1)
+        inside = pix_d <= s["radius_m"]
+        rx = np.where(inside, polar["rx_power"][ai, di], -np.inf)
+        better = rx > best_rx
+        best_rx = np.where(better, rx, best_rx)
+        best_margin = np.where(better, polar["margin"][ai, di], best_margin)
+        best_idx = np.where(better, i, best_idx)
+
+    served = np.isfinite(best_rx) & (best_margin >= 0.0)
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    stats: list[dict] = []
+    total_served = max(int(served.sum()), 1)
+    for i, s in enumerate(sites):
+        mask = served & (best_idx == i)
+        color = SITE_COLORS[i % len(SITE_COLORS)]
+        rgba[mask, 0], rgba[mask, 1], rgba[mask, 2] = color
+        rgba[mask, 3] = 150
+        stats.append({
+            "name": s.get("name") or f"Site {i + 1}",
+            "color": "#%02x%02x%02x" % color,
+            "best_server_share": round(float(mask.sum()) / total_served, 4),
+            "max_rx_power_dbm": round(float(s["polar"]["rx_power"].max()), 1),
+        })
+
+    buf = io.BytesIO()
+    Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
+    return buf.getvalue(), [[south, west], [north, east]], stats

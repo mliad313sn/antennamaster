@@ -8,9 +8,13 @@
  * of the current profile.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { fetchModels, fetchTechnologies, simulateCoverage } from '@/lib/api';
+import {
+  fetchAntennas, fetchModels, fetchTechnologies, simulateCoverage,
+  simulateMultiCoverage, uploadAntenna,
+} from '@/lib/api';
 import type {
-  CoverageResponse, LatLng, ModelInfo, StudyResult, Technology,
+  AntennaInfo, CoverageResponse, LatLng, ModelInfo, SiteEntry, StudyResult,
+  Technology,
 } from '@/lib/types';
 
 export interface StudyPanelProps {
@@ -47,6 +51,12 @@ export default function StudyPanel(props: StudyPanelProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Measured antenna patterns (MSI Planet uploads).
+  const [antennas, setAntennas] = useState<AntennaInfo[]>([]);
+  const [antennaId, setAntennaId] = useState<string | null>(null);
+  // Multi-site best-server study.
+  const [sites, setSites] = useState<SiteEntry[]>([]);
+
   const numOr = (s: string) => {
     const v = parseFloat(s);
     return Number.isFinite(v) ? v : undefined;
@@ -55,7 +65,32 @@ export default function StudyPanel(props: StudyPanelProps) {
   useEffect(() => {
     fetchTechnologies().then(setTechs).catch(() => setTechs([]));
     fetchModels().then(setModels).catch(() => setModels([]));
+    fetchAntennas().then(setAntennas).catch(() => setAntennas([]));
   }, []);
+
+  async function handleAntennaFile(file: File) {
+    setError(null);
+    try {
+      const info = await uploadAntenna(file);
+      setAntennas((prev) => [...prev, info]);
+      setAntennaId(info.antenna_id);
+    } catch (e) { setError((e as Error).message); }
+  }
+
+  async function runMultiCoverage() {
+    if (!props.technology || sites.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      props.onCoverage(await simulateMultiCoverage({
+        sites, technology: props.technology, radiusKm,
+        dxfId: props.dxfId, antennaId,
+        model: props.model, environment: props.environment,
+        shadowMarginDb: shadowMargin, hBsM: props.txHeight || undefined,
+        txPowerDbm: numOr(ovrPower), rxSensitivityDbm: numOr(ovrSens),
+      }));
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
 
   const selectedTech = useMemo(
     () => techs.find((t) => t.key === props.technology) ?? null,
@@ -84,9 +119,10 @@ export default function StudyPanel(props: StudyPanelProps) {
         technology: props.technology, radiusKm,
         dxfId: props.dxfId,
         model: props.model, environment: props.environment,
-        antennaAzimuthDeg: sector ? azimuth : null,
+        antennaAzimuthDeg: (sector || antennaId) ? azimuth : null,
         antennaBeamwidthDeg: beamwidth,
         downtiltDeg: downtilt,
+        antennaId,
         shadowMarginDb: shadowMargin,
         hBsM: props.txHeight || undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
@@ -208,6 +244,22 @@ export default function StudyPanel(props: StudyPanelProps) {
                 </div>
               </div>
             )}
+            {/* Measured antenna pattern (MSI Planet). Overrides the
+                parametric sector when selected. */}
+            <div>
+              <label>Antenna pattern (MSI Planet)</label>
+              <select value={antennaId ?? ''} onChange={(e) => setAntennaId(e.target.value || null)}>
+                <option value="">— parametric (omni / sector) —</option>
+                {antennas.map((a) => (
+                  <option key={a.antenna_id} value={a.antenna_id}>
+                    {a.name} — {a.gain_dbi.toFixed(1)} dBi, {a.h_beamwidth_deg}°/{a.v_beamwidth_deg}°
+                  </option>
+                ))}
+              </select>
+              <input type="file" accept=".msi,.pln,.ant,.txt" style={{ marginTop: 4 }}
+                aria-label="Upload MSI antenna pattern"
+                onChange={(e) => e.target.files?.[0] && handleAntennaFile(e.target.files[0])} />
+            </div>
             <div className="row">
               <div>
                 <label>Downtilt (°)</label>
@@ -262,12 +314,56 @@ export default function StudyPanel(props: StudyPanelProps) {
               disabled={!props.tx || busy} onClick={runCoverage}>
               {busy ? 'Simulating…' : props.tx ? 'Simulate coverage from TX' : 'Place TX first'}
             </button>
+            {/* ------------------- multi-site best-server study ---------- */}
+            <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
+              <button style={{ width: '100%' }} disabled={!props.tx}
+                onClick={() => props.tx && setSites((prev) => [...prev, {
+                  lat: props.tx!.lat, lon: props.tx!.lng,
+                  name: `Site ${prev.length + 1}`,
+                  antenna_azimuth_deg: sector ? azimuth : null,
+                  downtilt_deg: downtilt,
+                }])}>
+                + Add current TX as site ({sites.length}/8)
+              </button>
+              {sites.map((s, i) => (
+                <div key={i} className="stat-line">
+                  <span className="k">{s.name}</span>
+                  <span className="v">
+                    {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
+                    <button style={{ marginLeft: 6, padding: '0 6px' }}
+                      aria-label={`Remove ${s.name}`}
+                      onClick={() => setSites((prev) => prev.filter((_, j) => j !== i))}>
+                      −
+                    </button>
+                  </span>
+                </div>
+              ))}
+              {sites.length >= 2 && (
+                <button className="primary" style={{ width: '100%', marginTop: 4 }}
+                  disabled={busy} onClick={runMultiCoverage}>
+                  {busy ? 'Simulating…' : `Best-server map (${sites.length} sites)`}
+                </button>
+              )}
+            </div>
+
             {props.coverage && (
               <>
-                <div className="stat-line" style={{ marginTop: 8 }}>
-                  <span className="k">Served area</span>
-                  <span className="v">{(props.coverage.stats.served_area_fraction * 100).toFixed(0)}%</span>
-                </div>
+                {props.coverage.stats.served_area_fraction !== null && (
+                  <div className="stat-line" style={{ marginTop: 8 }}>
+                    <span className="k">Served area</span>
+                    <span className="v">{(props.coverage.stats.served_area_fraction * 100).toFixed(0)}%</span>
+                  </div>
+                )}
+                {props.coverage.stats.sites?.map((s) => (
+                  <div key={s.name} className="stat-line">
+                    <span className="k">
+                      <span style={{ display: 'inline-block', width: 10, height: 10,
+                                     borderRadius: 3, background: s.color, marginRight: 5 }} />
+                      {s.name}
+                    </span>
+                    <span className="v">{(s.best_server_share * 100).toFixed(0)}% best server</span>
+                  </div>
+                ))}
                 <div className="stat-line">
                   <span className="k">TX ground</span>
                   <span className="v">{props.coverage.stats.tx_elevation_m.toFixed(0)} m ASL</span>

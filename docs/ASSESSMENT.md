@@ -143,7 +143,7 @@ findings converged strongly; the table shows each finding and its status.
 | Custom tile provider dead code (2) | ✅ sidebar input, persisted, feeds the layer switcher |
 | No responsive layout (2) | ✅ ≤800 px stacks sidebar/map/chart |
 | Modals lack Escape/aria (UX) | ✅ Escape-to-close + aria-labels on both modals |
-| Dark mode (UX) | ⏳ roadmap |
+| Dark mode (UX) | ✅ full dark token set, OS-following with header toggle |
 
 ### Agility
 
@@ -168,15 +168,18 @@ findings converged strongly; the table shows each finding and its status.
 | Served-area KPI polar-biased optimistic (planner) | ✅ area-weighted by radius |
 | No readiness probe; liveness only (architect) | ✅ `/api/ready` (data-dir writable + DEM cache state) |
 | No logging config (architect) | ✅ basicConfig at startup (route-level tracebacks land in server logs) |
-| On-disk DEM cache unbounded (architect) | ⏳ roadmap (results store prunes; DEM tiles still accumulate) |
+| On-disk DEM cache unbounded (architect) | ✅ mtime-LRU eviction to AM_DEM_CACHE_MB budget (default 2 GB), swept every 100 downloads |
 | Heavy sims block the threadpool under many concurrent users (architect) | ⏳ roadmap (background job queue) |
 
 ## 5. Roadmap (not yet implemented, ordered by value)
 
 1. **ITM / Longley-Rice** propagation option (parity with SPLAT!/RM verdicts).
-2. **Antenna pattern file import** (MSI Planet / .ant) replacing the
-   parametric sector when available.
-3. **Multi-site coverage** with best-server / SINR composite rasters.
+2. ~~Antenna pattern file import~~ ✅ **done (v5)**: MSI Planet upload
+   (`POST /api/rf/antenna`), dBd→dBi conversion, electrical tilt, sum-of-cuts
+   H+V application in the coverage engine, selectable in the study panel.
+3. ~~Multi-site coverage~~ ✅ **done (v5)**: `POST /api/rf/coverage/multi`
+   composites up to 8 sites into a best-server raster (CVD-safe categorical
+   site colors, per-site best-server share stats, union-bbox KMZ/PNG export).
 4. **Clutter** (ESA WorldCover) as a per-pixel additional loss table.
 5. ITU-R P.1546 for broadcast studies; P.530 rain fade for PtP microwave.
 6. Indoor/outdoor penetration-loss presets (O2I from TR 38.901).

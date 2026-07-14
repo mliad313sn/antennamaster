@@ -62,6 +62,10 @@ K_FACTOR_DEFAULT = 4.0 / 3.0
 # Upload cap for DXF files, bytes.                         [AM_MAX_DXF_MB]
 MAX_DXF_BYTES = _env_int("AM_MAX_DXF_MB", 100) * 1024 * 1024
 
+# On-disk DEM tile cache budget, MB (oldest tiles evicted beyond this).
+#                                                          [AM_DEM_CACHE_MB]
+DEM_CACHE_BUDGET_MB = _env_int("AM_DEM_CACHE_MB", 2048)
+
 # Comma-separated CORS origins; '*' (default) for open dev setups.
 #                                                          [AM_CORS_ORIGINS]
 CORS_ORIGINS = [o.strip() for o in os.environ.get("AM_CORS_ORIGINS", "*").split(",")]

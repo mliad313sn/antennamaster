@@ -65,7 +65,20 @@ export default function Home() {
   const [flyTarget, setFlyTarget] = useState<FlyTarget | null>(null);
   const [customTileUrl, setCustomTileUrl] = useState('');
   const [restored, setRestored] = useState(false);
+  const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
   const flySeq = useRef(1);
+
+  // Theme: 'auto' follows the OS; explicit choice stamps <html data-theme>.
+  useEffect(() => {
+    const saved = localStorage.getItem('am_theme');
+    if (saved === 'light' || saved === 'dark') setTheme(saved);
+  }, []);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'auto') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', theme);
+    try { localStorage.setItem('am_theme', theme); } catch { /* ignore */ }
+  }, [theme]);
 
   // ------------------------------------------------ session persistence
   useEffect(() => {
@@ -204,6 +217,13 @@ export default function Home() {
             onKeyDown={(e) => e.key === 'Enter' && runSearch()}
           />
           <button onClick={runSearch}>Go</button>
+          <button
+            aria-label="Toggle color theme"
+            title={`Theme: ${theme}`}
+            onClick={() => setTheme(theme === 'auto' ? 'dark' : theme === 'dark' ? 'light' : 'auto')}
+          >
+            {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌗'}
+          </button>
         </div>
       </header>
 

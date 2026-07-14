@@ -1,24 +1,98 @@
-/* Global styles + design tokens (chart chrome from the reference palette). */
+/* Global styles + design tokens (chart chrome from the reference palette).
+   Dark mode: OS preference by default, overridable via the header toggle
+   which stamps data-theme="light|dark" on <html>. */
 :root {
   color-scheme: light;
   --surface-1: #fcfcfb;
+  --surface-2: #f1f0ec;      /* hover / pressed */
   --page: #f9f9f7;
+  --input-bg: #ffffff;
   --ink-primary: #0b0b0b;
   --ink-secondary: #52514e;
   --ink-muted: #898781;
   --hairline: #e1e0d9;
   --baseline: #c3c2b7;
   --border: rgba(11, 11, 11, 0.10);
+  --accent-soft: #e3edfa;    /* selected tabs, badges */
+  --accent-soft-ink: #1c5cab;
 
   /* Provenance palette (validated): blue = SRTM, orange = DXF */
   --srtm: #2a78d6;
   --dxf: #eb6834;
+  --dxf-soft: #fdeae2;
+  --dxf-soft-ink: #b8481c;
 
   --status-warning: #b45309;
   --status-warning-bg: #fef3c7;
+  --status-warning-border: #f2d9a0;
   --status-good: #006300;
   --status-critical: #d03b3b;
+  --status-critical-bg: #fdecec;
+  --status-critical-border: #f3c1c1;
   --accent: #2a78d6;
+  --accent-strong: #256abf;
+}
+
+/* Dark tokens: same hues re-stepped for the dark surface (palette dark
+   column), applied when the OS asks for dark and the user hasn't forced
+   light, or when the user forces dark. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { color-scheme: dark; }
+  :root:not([data-theme='light']) {
+    --surface-1: #1a1a19;
+    --surface-2: #262624;
+    --page: #0d0d0d;
+    --input-bg: #111110;
+    --ink-primary: #ffffff;
+    --ink-secondary: #c3c2b7;
+    --ink-muted: #898781;
+    --hairline: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --accent-soft: #14304f;
+    --accent-soft-ink: #86b6ef;
+    --srtm: #3987e5;
+    --dxf: #d95926;
+    --dxf-soft: #3a1e12;
+    --dxf-soft-ink: #f09a72;
+    --status-warning: #fab219;
+    --status-warning-bg: #2b2210;
+    --status-warning-border: #574413;
+    --status-good: #0ca30c;
+    --status-critical: #e66767;
+    --status-critical-bg: #2e1414;
+    --status-critical-border: #5c2626;
+    --accent: #3987e5;
+    --accent-strong: #5598e7;
+  }
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --surface-2: #262624;
+  --page: #0d0d0d;
+  --input-bg: #111110;
+  --ink-primary: #ffffff;
+  --ink-secondary: #c3c2b7;
+  --ink-muted: #898781;
+  --hairline: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --accent-soft: #14304f;
+  --accent-soft-ink: #86b6ef;
+  --srtm: #3987e5;
+  --dxf: #d95926;
+  --dxf-soft: #3a1e12;
+  --dxf-soft-ink: #f09a72;
+  --status-warning: #fab219;
+  --status-warning-bg: #2b2210;
+  --status-warning-border: #574413;
+  --status-good: #0ca30c;
+  --status-critical: #e66767;
+  --status-critical-bg: #2e1414;
+  --status-critical-border: #5c2626;
+  --accent: #3987e5;
+  --accent-strong: #5598e7;
 }
 
 * { box-sizing: border-box; }
@@ -42,21 +116,21 @@ button {
   color: var(--ink-primary);
   padding: 6px 12px;
 }
-button:hover:not(:disabled) { background: #f1f0ec; }
+button:hover:not(:disabled) { background: var(--surface-2); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
 }
-button.primary:hover:not(:disabled) { background: #256abf; }
+button.primary:hover:not(:disabled) { background: var(--accent-strong); }
 
 input, select {
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--baseline);
   border-radius: 6px;
-  background: #fff;
+  background: var(--input-bg);
   color: var(--ink-primary);
   width: 100%;
 }
@@ -78,7 +152,7 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   color: var(--accent); text-decoration: none; padding: 4px 8px;
   border: 1px solid var(--hairline); border-radius: 6px;
 }
-.download-link:hover { background: #e3edfa; }
+.download-link:hover { background: var(--accent-soft); }
 
 .app-main { display: flex; flex: 1; min-height: 0; }
 .sidebar {
@@ -102,12 +176,12 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   display: inline-block; padding: 2px 8px; border-radius: 10px;
   font-size: 11px; font-weight: 600;
 }
-.badge.srtm { background: #e3edfa; color: #1c5cab; }
-.badge.dxf { background: #fdeae2; color: #b8481c; }
+.badge.srtm { background: var(--accent-soft); color: var(--accent-soft-ink); }
+.badge.dxf { background: var(--dxf-soft); color: var(--dxf-soft-ink); }
 
 .warning-box {
   background: var(--status-warning-bg); color: var(--status-warning);
-  border: 1px solid #f2d9a0; border-radius: 8px; padding: 10px;
+  border: 1px solid var(--status-warning-border); border-radius: 8px; padding: 10px;
   font-size: 12px; line-height: 1.45;
 }
 .stat-line { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
@@ -140,7 +214,7 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   border-radius: 6px; background: var(--page); color: var(--ink-muted);
 }
 .steps .step.active { background: var(--accent); color: #fff; font-weight: 600; }
-.steps .step.done { background: #e3edfa; color: #1c5cab; }
+.steps .step.done { background: var(--accent-soft); color: var(--accent-soft-ink); }
 
 .layer-row {
   display: flex; align-items: center; gap: 10px; padding: 8px 10px;
@@ -156,11 +230,11 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .mode-tabs button { flex: 1; font-size: 12px; padding: 8px 6px; }
 .mode-tabs button.active {
   border-color: var(--accent); color: var(--accent); font-weight: 650;
-  background: #e3edfa;
+  background: var(--accent-soft);
 }
 .hint { color: var(--ink-muted); font-size: 11px; line-height: 1.4; margin: 6px 0 10px; }
 .error-box {
-  background: #fdecec; color: var(--status-critical); border: 1px solid #f3c1c1;
+  background: var(--status-critical-bg); color: var(--status-critical); border: 1px solid var(--status-critical-border);
   border-radius: 8px; padding: 10px; font-size: 12px; margin-top: 10px;
 }
 .cp-grid { display: grid; grid-template-columns: repeat(4, 1fr) 32px; gap: 6px; align-items: end; margin-bottom: 6px; }

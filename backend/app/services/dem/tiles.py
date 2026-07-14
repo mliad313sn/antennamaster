@@ -20,7 +20,8 @@ import httpx
 import numpy as np
 from PIL import Image
 
-from ...config import DEM_CACHE_DIR, DEM_ZOOM, TERRARIUM_URL
+from ...config import (DEM_CACHE_BUDGET_MB, DEM_CACHE_DIR, DEM_ZOOM,
+                       TERRARIUM_URL)
 
 TILE_SIZE = 256
 
@@ -51,6 +52,7 @@ class TerrariumTileStore:
         # ~= 500 MB worst case per process instead of unbounded growth.
         self._mem: "OrderedDict[tuple[int, int, int], np.ndarray]" = OrderedDict()
         self._mem_cap = 2000
+        self._downloads = 0
         self._lock = threading.Lock()
         self._client = httpx.Client(timeout=30.0, follow_redirects=True)
 
@@ -70,7 +72,28 @@ class TerrariumTileStore:
         tmp = path.with_suffix(".part")
         tmp.write_bytes(resp.content)
         tmp.replace(path)
+        # Every 100 downloads, sweep the disk cache back under its budget so
+        # long-running installs cannot fill the data volume.
+        self._downloads += 1
+        if self._downloads % 100 == 0:
+            self.evict_disk_cache()
         return resp.content
+
+    def evict_disk_cache(self, budget_mb: int = DEM_CACHE_BUDGET_MB) -> int:
+        """Delete oldest tiles (by mtime) until the cache fits the budget.
+        Returns the number of tiles removed."""
+        tiles = sorted(self.cache_dir.glob("*/*/*.png"),
+                       key=lambda p: p.stat().st_mtime)
+        total = sum(p.stat().st_size for p in tiles)
+        removed = 0
+        budget = budget_mb * 1024 * 1024
+        for p in tiles:
+            if total <= budget:
+                break
+            total -= p.stat().st_size
+            p.unlink(missing_ok=True)
+            removed += 1
+        return removed
 
     def get_tile(self, z: int, x: int, y: int) -> np.ndarray:
         """Return the decoded elevation array (256x256 float32, meters)."""
