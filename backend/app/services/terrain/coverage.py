@@ -108,15 +108,30 @@ class CoverageEngine:
 
         e_tx = tx_elev + h_bs
         diff_loss = np.zeros((n_radials, n_steps))
-        for r in range(n_radials):
-            e_rx = elev[r] + h_ut                               # (S,) endpoint at i
-            los = e_tx + (e_rx[:, None] - e_tx) * (d_j / d_i)   # (S, S)
-            h_obs = elev[r][None, :] + bulge - los
-            v = np.where(seg_valid, h_obs * sqrt_term, -np.inf)
-            diff_loss[r] = ke_loss_array(v.max(axis=1))         # worst edge per step
-            if progress_cb is not None and r % 8 == 0:
+        # Chunked 3D broadcasting in float32: this block is memory-bandwidth
+        # bound (~n_radials x S^2 element traffic), so halving the element
+        # size nearly halves wall time; dB-level results are insensitive to
+        # float32 rounding.  Chunk size caps temps at ~2 x C x S^2 x 4 bytes.
+        elev32 = elev.astype(np.float32)
+        ratio32 = np.where(seg_valid, d_j / d_i, 0.0).astype(np.float32)
+        bulge32 = np.where(seg_valid, bulge, 0.0).astype(np.float32)
+        sqrt32 = np.where(seg_valid, sqrt_term, 0.0).astype(np.float32)
+        neg_inf_mask = np.where(seg_valid, np.float32(0.0), np.float32(-np.inf))
+        chunk = max(1, min(24, int(96e6 / max(n_steps * n_steps * 4, 1))))
+        for c0 in range(0, n_radials, chunk):
+            c1 = min(c0 + chunk, n_radials)
+            e_rx = elev32[c0:c1] + np.float32(h_ut)             # (C, S)
+            # v of edge j on the TX->step-i sub-path, all radials in chunk:
+            # (e_j + bulge - los_ij) * sqrt_term, -inf outside valid edges.
+            h_obs = (elev32[c0:c1, None, :] + bulge32
+                     - np.float32(e_tx)
+                     - (e_rx[:, :, None] - np.float32(e_tx)) * ratio32)
+            h_obs *= sqrt32
+            h_obs += neg_inf_mask
+            diff_loss[c0:c1] = ke_loss_array(h_obs.max(axis=2))
+            if progress_cb is not None:
                 # Diffraction dominates runtime; report 10%..95% across it.
-                progress_cb(0.10 + 0.85 * (r + 1) / n_radials)
+                progress_cb(0.10 + 0.85 * c1 / n_radials)
 
         # ---- 4) empirical path loss + link budget -------------------------
         pl, warnings = path_loss_db(tech["model"], dist_g.ravel(), freq,

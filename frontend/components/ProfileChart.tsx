@@ -34,7 +34,7 @@ interface ChartRow {
  *  (which decide the RF verdict) are never smoothed away. */
 const MAX_CHART_POINTS = 512;
 
-function downsample(points: ProfilePoint[]): ProfilePoint[] {
+export function downsample(points: ProfilePoint[]): ProfilePoint[] {
   if (points.length <= MAX_CHART_POINTS) return points;
   const bucket = Math.ceil(points.length / MAX_CHART_POINTS);
   const out: ProfilePoint[] = [points[0]];

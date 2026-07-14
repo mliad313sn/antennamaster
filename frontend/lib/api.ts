@@ -62,12 +62,12 @@ export async function fetchProfile(params: {
 export async function fetchTechnologies(): Promise<Technology[]> {
   const body = await jsonOrThrow<{ technologies: Technology[] }>(
     await fetch('/api/rf/technologies'));
-  return body.technologies;
+  return body.technologies ?? [];
 }
 
 export async function fetchModels(): Promise<ModelInfo[]> {
   const body = await jsonOrThrow<{ models: ModelInfo[] }>(await fetch('/api/rf/models'));
-  return body.models;
+  return body.models ?? [];
 }
 
 export async function simulateCoverage(params: {
@@ -140,7 +140,7 @@ export function profileCsvUrl(params: {
 export async function fetchMaterials(): Promise<Material[]> {
   const body = await jsonOrThrow<{ materials: Material[] }>(
     await fetch('/api/indoor/materials'));
-  return body.materials;
+  return body.materials ?? [];
 }
 
 export async function fetchUndergroundPresets(): Promise<UndergroundPresets> {
@@ -219,7 +219,7 @@ export async function uploadAntenna(file: File): Promise<AntennaInfo> {
 export async function fetchAntennas(): Promise<AntennaInfo[]> {
   const body = await jsonOrThrow<{ antennas: AntennaInfo[] }>(
     await fetch('/api/rf/antennas'));
-  return body.antennas;
+  return body.antennas ?? [];
 }
 
 export async function simulateMultiCoverage(params: {
