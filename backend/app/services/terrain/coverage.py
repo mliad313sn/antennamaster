@@ -70,7 +70,8 @@ class CoverageEngine:
                       rain_rate_mm_h: float = 0.0,
                       grid: DxfTerrainGrid | None = None,
                       georef: BaseGeoref | None = None,
-                      k: float = K_FACTOR_DEFAULT) -> dict:
+                      k: float = K_FACTOR_DEFAULT,
+                      progress_cb=None) -> dict:
         """Run the physics and return the polar field (no rasterization).
 
         Returns {az, dist, rx_power, margin, tx_elev, warnings}."""
@@ -113,6 +114,9 @@ class CoverageEngine:
             h_obs = elev[r][None, :] + bulge - los
             v = np.where(seg_valid, h_obs * sqrt_term, -np.inf)
             diff_loss[r] = ke_loss_array(v.max(axis=1))         # worst edge per step
+            if progress_cb is not None and r % 8 == 0:
+                # Diffraction dominates runtime; report 10%..95% across it.
+                progress_cb(0.10 + 0.85 * (r + 1) / n_radials)
 
         # ---- 4) empirical path loss + link budget -------------------------
         pl, warnings = path_loss_db(tech["model"], dist_g.ravel(), freq,
@@ -192,7 +196,8 @@ class CoverageEngine:
                  grid: DxfTerrainGrid | None = None,
                  georef: BaseGeoref | None = None,
                  k: float = K_FACTOR_DEFAULT,
-                 raster_px: int = 512) -> CoverageResult:
+                 raster_px: int = 512,
+                 progress_cb=None) -> CoverageResult:
         polar = self.compute_polar(
             lat, lon, tech, radius_m=radius_m,
             n_radials=n_radials, n_steps=n_steps,
@@ -204,7 +209,8 @@ class CoverageEngine:
             shadow_margin_db=shadow_margin_db,
             foliage_depth_m=foliage_depth_m,
             rain_rate_mm_h=rain_rate_mm_h,
-            grid=grid, georef=georef, k=k)
+            grid=grid, georef=georef, k=k,
+            progress_cb=progress_cb)
 
         png, bounds = self._rasterize(lat, lon, polar["az"], polar["dist"],
                                       polar["margin"], radius_m, raster_px)

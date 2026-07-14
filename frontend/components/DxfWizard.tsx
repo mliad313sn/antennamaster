@@ -51,6 +51,9 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
   }, [onClose]);
 
   // ------------------------------------------------------------- handlers
+  const [hint, setHint] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
   async function handleFile(file: File) {
     setBusy(true);
     setError(null);
@@ -61,6 +64,15 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
       setSelected(new Set(
         resp.layers.filter((l) => l.looks_like_terrain).map((l) => l.name),
       ));
+      // Frictionless onboarding: apply the backend's mode/unit guesses.
+      const h = resp.georef_hints;
+      if (h) {
+        setMode(h.suggested_mode);
+        if (h.suggested_unit_scale) setUnitScale(h.suggested_unit_scale);
+        setHint(`Auto-detected: ${h.suggested_mode.replace('_', ' ')} mode, `
+          + `units in ${h.suggested_unit === 'ft' ? 'feet' : 'meters'} — ${h.reason}. `
+          + 'Adjust below if wrong.');
+      }
       setStep(1);
     } catch (e) {
       setError((e as Error).message);
@@ -143,8 +155,24 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                 3D faces, meshes or spot-height text). It will be fused as a
                 high-resolution patch over the global SRTM base terrain.
               </p>
+              <div
+                className={`dropzone ${dragOver ? 'over' : ''}`}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) handleFile(f);
+                }}
+                role="button" tabIndex={0} aria-label="Upload DXF file"
+              >
+                <b>Drop your DXF here</b><br />
+                <span style={{ fontSize: 12 }}>or click to browse — CRS and units are auto-detected</span>
+              </div>
               <input
-                ref={fileRef} type="file" accept=".dxf"
+                ref={fileRef} type="file" accept=".dxf" style={{ display: 'none' }}
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
               />
               {busy && <p className="hint">Parsing DXF…</p>}
@@ -179,6 +207,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
 
           {step === 2 && (
             <div>
+              {hint && <div className="warning-box" style={{ marginBottom: 10 }}>💡 {hint}</div>}
               <div className="mode-tabs">
                 <button className={mode === 'known_crs' ? 'active' : ''} onClick={() => setMode('known_crs')}>
                   Known CRS

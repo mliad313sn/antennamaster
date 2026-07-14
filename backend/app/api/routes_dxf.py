@@ -3,11 +3,13 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ..config import MAX_DXF_BYTES
+from ..services.saas.tiers import require_feature
+from .routes_auth import current_user
 from ..services.dxf import parser
 from ..services.dxf.georef import build_georef
 from ..services.dxf.gridder import build_grid
@@ -63,7 +65,39 @@ async def upload_dxf(file: UploadFile = File(...)) -> dict:
 
     session.layers = parser.list_layers(doc)
     return {"dxf_id": session.dxf_id, "filename": session.filename,
-            "layers": session.layers}
+            "layers": session.layers,
+            "georef_hints": _georef_hints(doc)}
+
+
+def _georef_hints(doc) -> dict:
+    """Frictionless onboarding: guess the likely georeferencing mode and
+    unit from raw coordinate magnitudes so the wizard can pre-select
+    sensible defaults instead of making the user diagnose them."""
+    pts = parser.extract_points(doc, None)
+    if pts.shape[0] < 3:
+        return {"suggested_mode": "origin_bearing", "suggested_unit": "m",
+                "reason": "too few points to analyze"}
+    x, y, z = pts[:, 0], pts[:, 1], pts[:, 2]
+    hints: dict = {}
+    # Projected-CRS signature: UTM-like eastings/northings.
+    if (100_000 <= abs(float(x.mean())) <= 900_000
+            and 1_000_000 <= abs(float(y.mean())) <= 10_000_000):
+        hints["suggested_mode"] = "known_crs"
+        hints["reason"] = ("coordinate magnitudes look like projected "
+                          "easting/northing (UTM-like) - pick the site's EPSG code")
+    else:
+        hints["suggested_mode"] = "origin_bearing"
+        hints["reason"] = "small local coordinates - anchor an origin point"
+    # Unit heuristic from plausible terrain elevations: Z above ~4,500 with
+    # nothing above 30,000 smells like feet (14,764 ft = 4,500 m).
+    z_valid = z[(z > 0) & (z < 30_000)]
+    if z_valid.size and float(z_valid.mean()) > 4_500:
+        hints["suggested_unit"] = "ft"
+        hints["suggested_unit_scale"] = 0.3048
+    else:
+        hints["suggested_unit"] = "m"
+        hints["suggested_unit_scale"] = 1.0
+    return hints
 
 
 @router.get("/{dxf_id}/layers")
@@ -77,9 +111,11 @@ def get_layers(dxf_id: str) -> dict:
 
 
 @router.post("/{dxf_id}/georeference")
-def georeference(dxf_id: str, req: GeorefRequest) -> dict:
+def georeference(dxf_id: str, req: GeorefRequest,
+                 user: dict | None = Depends(current_user)) -> dict:
     """Apply one of the three georeferencing modes, build the terrain grid,
     and run the SRTM cross-validation."""
+    require_feature(user, "dxf_fusion")   # Pro-tier capability in SaaS mode
     session = _session_or_404(dxf_id)
 
     # 1) Build the coordinate transform for the requested mode.

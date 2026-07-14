@@ -263,3 +263,73 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   border-radius: 8px; padding: 6px 14px; font-size: 12px; color: var(--ink-secondary);
   box-shadow: 0 4px 14px rgba(0,0,0,0.12);
 }
+
+/* ------------------------------- SaaS dashboards ------------------------ */
+.dash-shell { min-height: 100vh; background: var(--page); }
+.dash-main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
+.dash-main h1 { font-size: 20px; margin: 4px 0 2px; }
+.dash-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px; margin-top: 12px;
+}
+.nav-link {
+  font-size: 13px; color: var(--ink-secondary); text-decoration: none;
+  padding: 4px 10px; border-radius: 6px;
+}
+.nav-link:hover { background: var(--surface-2); }
+.nav-link.on { background: var(--accent-soft); color: var(--accent-soft-ink); font-weight: 650; }
+
+.kpi-row { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
+.kpi {
+  flex: 1; min-width: 90px; background: var(--page);
+  border: 1px solid var(--hairline); border-radius: 8px;
+  padding: 8px 10px; text-align: center;
+}
+.kpi-v { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.kpi-k { font-size: 10px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* Tactical (field) mode: oversized targets for gloves + sunlight. */
+.tactical h1 { font-size: 24px; }
+.tactical-btn { font-size: 16px; padding: 14px 18px; font-weight: 650; }
+.tactical-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.tactical-readout { margin-top: 12px; }
+.tactical .kpi-v { font-size: 20px; }
+
+/* Async job progress bar. */
+.progress {
+  height: 8px; background: var(--surface-2); border-radius: 4px;
+  overflow: hidden; margin-top: 6px;
+}
+.progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+
+/* Glossary tooltips. */
+.help-tip {
+  position: relative; display: inline-block; margin-left: 4px;
+  color: var(--accent); cursor: help; font-size: 11px;
+}
+.help-pop {
+  display: none; position: absolute; bottom: 130%; left: -10px; z-index: 3000;
+  width: 240px; background: var(--surface-1); color: var(--ink-primary);
+  border: 1px solid var(--hairline); border-radius: 8px; padding: 8px 10px;
+  font-size: 11px; line-height: 1.45; box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+}
+.help-tip:hover .help-pop, .help-tip:focus .help-pop { display: block; }
+
+/* Drag-and-drop upload zone. */
+.dropzone {
+  border: 2px dashed var(--baseline); border-radius: 10px; padding: 26px 14px;
+  text-align: center; color: var(--ink-secondary); cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.dropzone.over { border-color: var(--accent); background: var(--accent-soft); }
+
+/* Header user chip */
+.user-chip {
+  display: flex; align-items: center; gap: 6px; font-size: 12px;
+  color: var(--ink-secondary);
+}
+.user-chip .tier-badge {
+  background: var(--accent-soft); color: var(--accent-soft-ink);
+  padding: 1px 7px; border-radius: 9px; font-size: 10px; font-weight: 700;
+  text-transform: uppercase;
+}

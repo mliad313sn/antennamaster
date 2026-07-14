@@ -12,6 +12,7 @@ import {
   fetchAntennas, fetchModels, fetchTechnologies, simulateCoverage,
   simulateMultiCoverage, uploadAntenna,
 } from '@/lib/api';
+import Help from '@/components/Help';
 import type {
   AntennaInfo, CoverageResponse, LatLng, ModelInfo, SiteEntry, StudyResult,
   Technology,
@@ -206,7 +207,7 @@ export default function StudyPanel(props: StudyPanelProps) {
           {props.study && (
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <div className="stat-line"><span className="k">Path loss ({props.study.technology.model})</span><span className="v">{props.study.path_loss_db.toFixed(1)} dB</span></div>
-              <div className="stat-line"><span className="k">Diffraction (Deygout)</span><span className="v">{props.study.diffraction_loss_db.toFixed(1)} dB</span></div>
+              <div className="stat-line"><span className="k">Diffraction (Deygout)<Help term="deygout" /></span><span className="v">{props.study.diffraction_loss_db.toFixed(1)} dB</span></div>
               {(props.study.foliage_loss_db ?? 0) > 0 && (
                 <div className="stat-line"><span className="k">Foliage (Weissberger)</span><span className="v">{props.study.foliage_loss_db!.toFixed(1)} dB</span></div>
               )}
@@ -220,7 +221,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <div className="stat-line"><span className="k">MIMO gain</span><span className="v">+{props.study.mimo_gain_db!.toFixed(1)} dB</span></div>
               )}
               {props.study.sensitivity_dbm !== undefined && (
-                <div className="stat-line"><span className="k">Sensitivity (kTB+NF+SINR)</span><span className="v">{props.study.sensitivity_dbm.toFixed(1)} dBm</span></div>
+                <div className="stat-line"><span className="k">Sensitivity (kTB+NF+SINR)<Help term="sensitivity" /></span><span className="v">{props.study.sensitivity_dbm.toFixed(1)} dBm</span></div>
               )}
               <div className="stat-line"><span className="k">RX power</span><span className="v">{props.study.rx_power_dbm.toFixed(1)} dBm</span></div>
               <div className="stat-line">
@@ -284,12 +285,12 @@ export default function StudyPanel(props: StudyPanelProps) {
             </div>
             <div className="row">
               <div>
-                <label>Downtilt (°)</label>
+                <label>Downtilt (°)<Help term="downtilt" /></label>
                 <input type="number" min={-10} max={20} value={downtilt}
                   onChange={(e) => setDowntilt(parseFloat(e.target.value) || 0)} />
               </div>
               <div>
-                <label>Fade margin (dB)</label>
+                <label>Fade margin (dB)<Help term="fade_margin" /></label>
                 <input type="number" min={0} max={30} value={shadowMargin}
                   title="Log-normal shadowing margin: ~5.5 dB ≈ 90% area, ~8 dB ≈ 95%"
                   onChange={(e) => setShadowMargin(parseFloat(e.target.value) || 0)} />

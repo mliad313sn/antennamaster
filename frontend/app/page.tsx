@@ -13,12 +13,18 @@
  * - profile recomputes are debounced; number fields tolerate being emptied
  */
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import AuthPanel from '@/components/AuthPanel';
 import DxfWizard from '@/components/DxfWizard';
+import Help from '@/components/Help';
 import IndoorStudio from '@/components/IndoorStudio';
 import ProfileChart from '@/components/ProfileChart';
 import StudyPanel from '@/components/StudyPanel';
 import { fetchDxfState, fetchProfile, profileCsvUrl } from '@/lib/api';
+import {
+  authHeaders, createProject, fetchMe, setToken, type User,
+} from '@/lib/saas';
 import type { FlyTarget } from '@/components/MapView';
 import type {
   CoverageResponse, GeorefResponse, LatLng, ProfileResponse,
@@ -68,7 +74,40 @@ export default function Home() {
   const [customTileUrl, setCustomTileUrl] = useState('');
   const [restored, setRestored] = useState(false);
   const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
+  const [user, setUser] = useState<User | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const flySeq = useRef(1);
+
+  // Account state + deep-linked project loading (?project=<id>).
+  useEffect(() => {
+    fetchMe().then(setUser).catch(() => {});
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get('project');
+    if (pid) {
+      fetch(`/api/projects/${pid}`, { headers: authHeaders() })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((body) => {
+          if (body?.project?.data) {
+            localStorage.setItem(STORE_KEY, JSON.stringify(body.project.data));
+            window.location.replace('/');   // reload cleanly with the session
+          }
+        }).catch(() => {});
+    }
+  }, []);
+
+  async function saveAsProject() {
+    if (!user) { setAuthOpen(true); return; }
+    const name = window.prompt('Project name:',
+      `Study ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+    try {
+      const raw = localStorage.getItem(STORE_KEY);
+      await createProject(name, raw ? JSON.parse(raw) : {});
+      setSaveMsg(`Saved “${name}” — manage it in the Command Center.`);
+      setTimeout(() => setSaveMsg(null), 5000);
+    } catch (e) { setSaveMsg((e as Error).message); }
+  }
 
   // Theme: 'auto' follows the OS; explicit choice stamps <html data-theme>.
   useEffect(() => {
@@ -211,7 +250,12 @@ export default function Home() {
     <div className="app-shell">
       <header className="app-header">
         <h1>AntennaMaster</h1>
-        <span className="sub">RF coverage simulator — outdoor, indoor &amp; underground</span>
+        <nav style={{ display: 'flex', gap: 6 }}>
+          <Link href="/" className="nav-link on">Planner</Link>
+          <Link href="/dashboard" className="nav-link">Command Center</Link>
+          <Link href="/field" className="nav-link">Tactical</Link>
+          <Link href="/pitch" className="nav-link">Pitch</Link>
+        </nav>
         <div className="header-search">
           <input
             placeholder="Search place or “lat, lon”…"
@@ -228,8 +272,24 @@ export default function Home() {
           >
             {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌗'}
           </button>
+          <button onClick={saveAsProject} title="Save this study as a project">
+            💾 Save
+          </button>
+          {user ? (
+            <span className="user-chip">
+              {user.name || user.email}
+              <span className="tier-badge">{user.tier}</span>
+              <button onClick={() => { setToken(null); setUser(null); }}>Sign out</button>
+            </span>
+          ) : (
+            <button className="primary" onClick={() => setAuthOpen(true)}>Sign in</button>
+          )}
         </div>
       </header>
+      {saveMsg && (
+        <div style={{ padding: '4px 16px', fontSize: 12, background: 'var(--accent-soft)',
+                      color: 'var(--accent-soft-ink)' }}>{saveMsg}</div>
+      )}
 
       <div className="app-main">
         <aside className="sidebar">
@@ -294,7 +354,7 @@ export default function Home() {
               </div>
             </div>
             <div>
-              <label>Frequency (MHz) — terrain analysis</label>
+              <label>Frequency (MHz) — terrain analysis<Help term="fspl" /></label>
               <input type="number" min={1} value={freqMhz}
                 onChange={(e) => setFreqMhz(e.target.value)} />
             </div>
@@ -389,14 +449,14 @@ export default function Home() {
                 </span>
               </div>
               <div className="stat-line"><span className="k">Knife-edge loss</span><span className="v">{profile.rf.knife_edge_loss_db.toFixed(1)} dB</span></div>
-              <div className="stat-line"><span className="k">F1 clearance</span><span className="v">{(profile.rf.fresnel_clearance_ratio * 100).toFixed(0)}%</span></div>
+              <div className="stat-line"><span className="k">F1 clearance<Help term="fresnel" /></span><span className="v">{(profile.rf.fresnel_clearance_ratio * 100).toFixed(0)}%</span></div>
               {worst && (
                 <div className="stat-line">
                   <span className="k">Worst obstruction</span>
                   <span className="v">{(worst.d / 1000).toFixed(2)} km (ν={profile.rf.worst_obstruction_v.toFixed(2)})</span>
                 </div>
               )}
-              <div className="stat-line"><span className="k">k-factor</span><span className="v">{profile.rf.k_factor.toFixed(2)}</span></div>
+              <div className="stat-line"><span className="k">k-factor<Help term="kfactor" /></span><span className="v">{profile.rf.k_factor.toFixed(2)}</span></div>
               <a
                 className="download-link"
                 href={profileCsvUrl({
@@ -458,6 +518,7 @@ export default function Home() {
         />
       )}
       {indoorOpen && <IndoorStudio onClose={() => setIndoorOpen(false)} />}
+      {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} onUser={setUser} />}
     </div>
   );
 }

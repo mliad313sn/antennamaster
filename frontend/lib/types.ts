@@ -14,6 +14,12 @@ export interface UploadResponse {
   dxf_id: string;
   filename: string;
   layers: LayerInfo[];
+  georef_hints?: {
+    suggested_mode: GeorefMode;
+    suggested_unit: 'm' | 'ft';
+    suggested_unit_scale?: number;
+    reason: string;
+  };
 }
 
 export interface ControlPointPair {

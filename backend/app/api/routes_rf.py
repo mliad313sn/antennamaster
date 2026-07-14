@@ -1,7 +1,7 @@
 """RF study endpoints: technology presets, propagation models, area coverage."""
 from __future__ import annotations
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -10,7 +10,9 @@ from ..services.dxf.store import get_dxf_store
 from ..services.rf import antenna as antenna_store
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
+from ..services.saas.tiers import check_preset_allowed, require_feature
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
+from .routes_auth import current_user
 from .routes_terrain import get_fusion_service
 
 router = APIRouter(prefix="/api/rf", tags=["rf"])
@@ -81,8 +83,15 @@ def _resolve_tech(req: CoverageRequest) -> dict:
 
 
 @router.post("/coverage")
-def simulate_coverage(req: CoverageRequest) -> dict:
+def simulate_coverage(req: CoverageRequest,
+                      user: dict | None = Depends(current_user)) -> dict:
     """Run an area coverage simulation from a TX site over the fused terrain."""
+    check_preset_allowed(user, req.technology)
+    return run_coverage(req)
+
+
+def run_coverage(req: CoverageRequest, progress_cb=None) -> dict:
+    """Shared implementation for the sync endpoint and background jobs."""
     tech = _resolve_tech(req)
 
     grid = georef = None
@@ -119,6 +128,7 @@ def simulate_coverage(req: CoverageRequest) -> dict:
             k=req.k_factor,
             grid=grid, georef=georef,
             raster_px=req.raster_px,
+            progress_cb=progress_cb,
         )
     except Exception as exc:  # DEM fetch failure -> 502, not a stacktrace
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
@@ -234,10 +244,13 @@ class MultiCoverageRequest(BaseModel):
 
 
 @router.post("/coverage/multi")
-def simulate_multi_coverage(req: MultiCoverageRequest) -> dict:
+def simulate_multi_coverage(req: MultiCoverageRequest,
+                            user: dict | None = Depends(current_user)) -> dict:
     """Best-server composite over up to 8 sites: each raster pixel takes the
     color of the site delivering the strongest served signal there - the
     cluster view planners use to check hand-over zones and holes."""
+    require_feature(user, "multi_site")
+    check_preset_allowed(user, req.technology)
     try:
         tech = get_technology(req.technology)
     except ValueError as exc:

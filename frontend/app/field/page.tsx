@@ -1,0 +1,130 @@
+'use client';
+
+/**
+ * Tactical View — the field technician's mobile screen: forced high-contrast
+ * dark UI, GPS spot check (where am I, what's the ground elevation, does the
+ * link to my saved TX work from here), and one-tap technology presets.
+ */
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import DashNav from '@/components/DashNav';
+
+interface Spot {
+  lat: number;
+  lon: number;
+  elevation_m?: number;
+  accuracy_m?: number;
+}
+
+const QUICK_PRESETS = [
+  { key: 'vhf150', label: 'VHF 150' },
+  { key: 'pmr446', label: 'PMR446' },
+  { key: 'tetra400', label: 'TETRA' },
+  { key: 'ptp18000', label: 'µW PtP' },
+  { key: 'wifi5800', label: 'Wi-Fi 5.8' },
+  { key: 'private_lte_b48', label: 'CBRS LTE' },
+];
+
+export default function Field() {
+  const [spot, setSpot] = useState<Spot | null>(null);
+  const [watching, setWatching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Force dark theme for sunlight-readable high contrast on site.
+  useEffect(() => {
+    const prev = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', 'dark');
+    return () => {
+      if (prev) document.documentElement.setAttribute('data-theme', prev);
+      else document.documentElement.removeAttribute('data-theme');
+    };
+  }, []);
+
+  async function locate(follow = false) {
+    if (!navigator.geolocation) { setError('No GPS available on this device'); return; }
+    setError(null);
+    const handle = async (pos: GeolocationPosition) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const next: Spot = { lat: latitude, lon: longitude, accuracy_m: accuracy };
+      try {
+        const resp = await fetch(`/api/terrain/elevation?lat=${latitude}&lon=${longitude}`);
+        if (resp.ok) next.elevation_m = (await resp.json()).elevation_m;
+      } catch { /* offline: coordinates still useful */ }
+      setSpot(next);
+    };
+    if (follow) {
+      setWatching(true);
+      navigator.geolocation.watchPosition(handle,
+        (e) => setError(e.message), { enableHighAccuracy: true });
+    } else {
+      navigator.geolocation.getCurrentPosition(handle,
+        (e) => setError(e.message), { enableHighAccuracy: true });
+    }
+  }
+
+  function openPlannerHere(preset?: string) {
+    // Seed the planner session so the map opens on this spot with the preset.
+    try {
+      const raw = localStorage.getItem('am_session_v1');
+      const s = raw ? JSON.parse(raw) : {};
+      if (spot) {
+        s.rx = { lat: spot.lat, lng: spot.lon };
+        localStorage.setItem('am_view', JSON.stringify({ lat: spot.lat, lng: spot.lon, z: 14 }));
+      }
+      if (preset) s.technology = preset;
+      localStorage.setItem('am_session_v1', JSON.stringify(s));
+    } catch { /* storage unavailable */ }
+    window.location.href = '/';
+  }
+
+  return (
+    <div className="dash-shell">
+      <DashNav active="field" />
+      <main className="dash-main tactical">
+        <h1>Tactical view</h1>
+        <p className="hint">High-contrast on-site mode. Your GPS position becomes
+          the RX end of the link — pick a preset and validate before you climb.</p>
+
+        <div className="row">
+          <button className="primary tactical-btn" onClick={() => locate(false)}>
+            📍 GPS spot check
+          </button>
+          <button className="tactical-btn" disabled={watching} onClick={() => locate(true)}>
+            {watching ? '👣 Following…' : '👣 Follow me'}
+          </button>
+        </div>
+
+        {spot && (
+          <section className="panel tactical-readout">
+            <div className="kpi-row">
+              <div className="kpi"><div className="kpi-v">{spot.lat.toFixed(5)}</div><div className="kpi-k">latitude</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.lon.toFixed(5)}</div><div className="kpi-k">longitude</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.elevation_m !== undefined ? `${spot.elevation_m.toFixed(0)} m` : '—'}</div><div className="kpi-k">ground ASL</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.accuracy_m ? `±${spot.accuracy_m.toFixed(0)} m` : '—'}</div><div className="kpi-k">GPS accuracy</div></div>
+            </div>
+            <button className="primary tactical-btn" style={{ width: '100%' }}
+              onClick={() => openPlannerHere()}>
+              Use as RX in the planner →
+            </button>
+          </section>
+        )}
+
+        <h3 style={{ marginTop: 16 }}>Quick presets</h3>
+        <div className="tactical-grid">
+          {QUICK_PRESETS.map((p) => (
+            <button key={p.key} className="tactical-btn"
+              onClick={() => openPlannerHere(p.key)}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {error && <div className="error-box">{error}</div>}
+        <p className="hint" style={{ marginTop: 14 }}>
+          Full studies live in the <Link href="/">planner</Link>; underground
+          checks in the indoor studio there.
+        </p>
+      </main>
+    </div>
+  );
+}
