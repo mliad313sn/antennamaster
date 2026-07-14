@@ -30,6 +30,22 @@ against SPLAT!, Radio Mobile, CloudRF and commercial suites.
 * **Map providers**: OSM, OpenTopoMap, Carto Light/Dark, Esri Imagery/Topo
   out of the box, plus any custom XYZ tile template.
 
+## Indoor & underground studies
+
+Studies no DEM-based tool can run, using a DXF as *structure* instead of relief:
+
+* **Floor plan / metro / mine coverage** — upload a DXF plan, assign a wall
+  material per layer (12-material library, dB per crossing, frequency
+  interpolated), click the plan to place the TX, and get a COST-231
+  multi-wall heatmap in drawing coordinates — no georeferencing needed.
+* **Tunnel & mine gallery links** — Emslie waveguide model (dominant-mode
+  dB/m from cross-section, wall permittivity, roughness, tilt) combined with
+  the direct ray; reproduces why UHF outranges VHF underground.
+* **Through-the-earth (TTE)** — VLF magnetic-loop links through conductive
+  ground: skin-depth attenuation + near-field 1/r³ spreading, with ground
+  conductivity presets. ITU-R P.1238 is also available for site-general
+  indoor estimates.
+
 ## Architecture
 
 ```
@@ -113,3 +129,9 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/rf/models` | propagation models with validity ranges |
 | `POST /api/rf/coverage` | area coverage simulation from a TX site (radius, sector antenna, resolution, DXF fusion); returns raster URL + legend + stats |
 | `GET /api/rf/coverage/{id}.png` | coverage raster overlay (RGBA, transparent where unserved) |
+| `GET /api/indoor/materials` | wall material attenuation library |
+| `GET /api/indoor/presets` | tunnel wall permittivity + earth conductivity presets |
+| `GET /api/indoor/{dxf_id}/preview.png` | floor-plan linework preview (bounds in `X-Plan-Bounds` header) |
+| `POST /api/indoor/coverage` | COST-231 multi-wall heatmap over a DXF floor plan |
+| `GET /api/indoor/tunnel` | tunnel/mine waveguide link profile (Emslie model) |
+| `GET /api/indoor/tte` | through-the-earth VLF link budget |

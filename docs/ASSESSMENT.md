@@ -80,7 +80,45 @@ fusion and modern 3GPP models, in a self-hosted web app. Remaining distance
 to commercial suites (Atoll/HTZ) is in multi-site network planning, measured
 antenna pattern files, clutter data and ITM/P.1546 — tracked below.
 
-## 3. Roadmap (not yet implemented, ordered by value)
+## 3. Deep use-case audit → indoor & underground extension (v3)
+
+A per-use-case walk of who runs coverage studies and whether v2 could serve
+them exposed a structural blind spot: **every v2 study assumed outdoor,
+above-ground, DEM-visible geometry.** Concretely:
+
+| Use case | Actor | v2 status | v3 |
+|---|---|---|---|
+| Macro cell planning (2G→5G) | MNO RF planner | ✅ | ✅ |
+| Rural broadband / WISP PtMP | WISP | ✅ | ✅ |
+| Broadcast (FM/DVB-T) | broadcaster | ✅ | ✅ |
+| PMR / event radio | integrator | ✅ | ✅ |
+| Microwave backhaul | transmission eng. | ✅ | ✅ |
+| **In-building Wi-Fi / DAS** | IT / neutral host | ❌ no walls, no materials | ✅ DXF multi-wall engine |
+| **Metro station / basement coverage** | transit operator | ❌ | ✅ floor-plan engine (underground = concrete/soil materials) |
+| **Road/rail tunnel radio** (TETRA, FM rebroadcast, 5G) | tunnel operator | ❌ DEM sees the mountain, not the bore | ✅ Emslie waveguide model |
+| **Mine communications** (UHF leaky-feeder planning, gallery links) | mine operator | ❌ | ✅ tunnel model + rock/pillar materials |
+| **Cave rescue / mine emergency TTE** | rescue services | ❌ | ✅ VLF through-earth link (skin depth + 1/r³ induction) |
+
+v3 additions closing this:
+
+* **DXF reinterpreted as structure**: the same uploaded DXF can now be read
+  as walls/galleries (LINE, LWPOLYLINE, POLYLINE, ARC/CIRCLE → 2D segments,
+  per-layer material assignment with name-based defaults) instead of relief.
+* **Material library** (12 materials, dB per crossing at 900/2400/5800 MHz,
+  log-f interpolated): drywall→metal, plus rock/soil for underground.
+* **COST-231 multi-wall engine**: vectorized ray/segment crossing count per
+  grid cell, FSPL(3D) + Σ wall losses → margin-classed heatmap in drawing
+  coordinates (no georeferencing required), walls composited for context.
+* **ITU-R P.1238** site-general indoor model (power law + floor penetration)
+  for quick no-plan studies.
+* **Tunnel waveguide (Emslie/Lagace)**: dominant-mode dB/m from cross-section,
+  wall permittivity, roughness and tilt; two-mechanism profile
+  (direct ray vs guided mode) with breakpoint; reproduces the defining
+  physics that higher frequencies travel *farther* underground.
+* **Through-the-earth**: skin-depth attenuation + near-field 1/r³ spreading,
+  ground-conductivity presets — the VLF mine-paging use case.
+
+## 4. Roadmap (not yet implemented, ordered by value)
 
 1. **ITM / Longley-Rice** propagation option (parity with SPLAT!/RM verdicts).
 2. **Antenna pattern file import** (MSI Planet / .ant) replacing the
@@ -89,3 +127,7 @@ antenna pattern files, clutter data and ITM/P.1546 — tracked below.
 4. **Clutter** (ESA WorldCover) as a per-pixel additional loss table.
 5. ITU-R P.1546 for broadcast studies; P.530 rain fade for PtP microwave.
 6. Indoor/outdoor penetration-loss presets (O2I from TR 38.901).
+7. Multi-floor indoor (per-storey plans + P.1238 floor losses combined).
+8. Leaky-feeder cable modeling for tunnels (longitudinal loss + coupling).
+9. Georeferencing of floor plans onto the map (reuse the terrain georef
+   modes) so indoor heatmaps can overlay the outdoor coverage.

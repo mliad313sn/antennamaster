@@ -1,7 +1,8 @@
 /** Thin fetch wrappers for the terrain backend (proxied through /api). */
 import type {
-  CoverageResponse, GeorefRequest, GeorefResponse, ModelInfo,
-  ProfileResponse, Technology, UploadResponse,
+  CoverageResponse, GeorefRequest, GeorefResponse, IndoorCoverageResponse,
+  Material, ModelInfo, ProfileResponse, Technology, TteResponse,
+  TunnelResponse, UndergroundPresets, UploadResponse,
 } from './types';
 
 async function jsonOrThrow<T>(resp: Response): Promise<T> {
@@ -88,4 +89,77 @@ export async function simulateCoverage(params: {
       h_bs_m: params.hBsM,
     }),
   }));
+}
+
+// ------------------------------------------------ indoor / underground
+export async function fetchMaterials(): Promise<Material[]> {
+  const body = await jsonOrThrow<{ materials: Material[] }>(
+    await fetch('/api/indoor/materials'));
+  return body.materials;
+}
+
+export async function fetchUndergroundPresets(): Promise<UndergroundPresets> {
+  return jsonOrThrow(await fetch('/api/indoor/presets'));
+}
+
+/** Floor-plan preview PNG + its DXF-unit bounds (from the response header). */
+export async function fetchPlanPreview(
+  dxfId: string, layers: string[],
+): Promise<{ url: string; bounds: [number, number, number, number] }> {
+  const resp = await fetch(
+    `/api/indoor/${dxfId}/preview.png?layers=${encodeURIComponent(layers.join(','))}`);
+  if (!resp.ok) {
+    let detail = resp.statusText;
+    try { detail = (await resp.json()).detail ?? detail; } catch { /* keep */ }
+    throw new Error(detail);
+  }
+  const bounds = (resp.headers.get('X-Plan-Bounds') ?? '0,0,1,1')
+    .split(',').map(Number) as [number, number, number, number];
+  const blob = await resp.blob();
+  return { url: URL.createObjectURL(blob), bounds };
+}
+
+export async function simulateIndoorCoverage(params: {
+  dxfId: string; layerMaterials: Record<string, string>;
+  txX: number; txY: number; unitScale: number;
+  technology?: string | null; freqMhz?: number;
+  txPowerDbm?: number; rxSensitivityDbm?: number;
+}): Promise<IndoorCoverageResponse> {
+  return jsonOrThrow(await fetch('/api/indoor/coverage', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dxf_id: params.dxfId, layer_materials: params.layerMaterials,
+      tx_x: params.txX, tx_y: params.txY, unit_scale: params.unitScale,
+      technology: params.technology ?? undefined,
+      freq_mhz: params.freqMhz, tx_power_dbm: params.txPowerDbm,
+      rx_sensitivity_dbm: params.rxSensitivityDbm,
+    }),
+  }));
+}
+
+export async function fetchTunnelStudy(params: {
+  freqMhz: number; widthM: number; heightM: number; lengthM: number;
+  wall: string; txPowerDbm: number; txGainDbi: number; rxSensitivityDbm: number;
+}): Promise<TunnelResponse> {
+  const q = new URLSearchParams({
+    freq_mhz: String(params.freqMhz), width_m: String(params.widthM),
+    height_m: String(params.heightM), length_m: String(params.lengthM),
+    wall: params.wall, tx_power_dbm: String(params.txPowerDbm),
+    tx_gain_dbi: String(params.txGainDbi),
+    rx_sensitivity_dbm: String(params.rxSensitivityDbm),
+  });
+  return jsonOrThrow(await fetch(`/api/indoor/tunnel?${q}`));
+}
+
+export async function fetchTteStudy(params: {
+  freqHz: number; depthM: number; earth: string;
+  txPowerDbm: number; rxSensitivityDbm: number;
+}): Promise<TteResponse> {
+  const q = new URLSearchParams({
+    freq_hz: String(params.freqHz), depth_m: String(params.depthM),
+    earth: params.earth, tx_power_dbm: String(params.txPowerDbm),
+    rx_sensitivity_dbm: String(params.rxSensitivityDbm),
+  });
+  return jsonOrThrow(await fetch(`/api/indoor/tte?${q}`));
 }

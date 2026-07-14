@@ -150,3 +150,49 @@ export interface LatLng {
   lat: number;
   lng: number;
 }
+
+// ------------------------------------------------ indoor / underground
+export interface Material {
+  key: string;
+  label: string;
+  loss_900: number;
+  loss_2400: number;
+  loss_5800: number;
+}
+
+export interface UndergroundPresets {
+  tunnel_walls: { key: string; label: string; eps_r: number }[];
+  earth: { key: string; label: string; sigma: number }[];
+}
+
+export interface IndoorCoverageResponse {
+  result_id: string;
+  png_url: string;
+  bounds_dxf: [number, number, number, number];
+  legend: { margin_db: number; color: string; label: string }[];
+  stats: {
+    served_area_fraction: number;
+    walls: number;
+    grid: [number, number];
+    max_rx_power_dbm: number;
+    min_rx_power_dbm: number;
+  };
+  warnings: string[];
+}
+
+export interface TunnelResponse {
+  alpha_db_per_m: number;
+  breakpoint_m: number;
+  max_range_m: number;
+  points: { d: number; rx_power_dbm: number; served: boolean }[];
+}
+
+export interface TteResponse {
+  skin_depth_m: number;
+  attenuation_db: number;
+  spreading_db: number;
+  total_loss_db: number;
+  rx_power_dbm: number;
+  margin_db: number;
+  served: boolean;
+}

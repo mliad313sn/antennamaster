@@ -8,6 +8,7 @@
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
 import DxfWizard from '@/components/DxfWizard';
+import IndoorStudio from '@/components/IndoorStudio';
 import ProfileChart from '@/components/ProfileChart';
 import StudyPanel from '@/components/StudyPanel';
 import { fetchProfile } from '@/lib/api';
@@ -31,6 +32,7 @@ export default function Home() {
   const [freqMhz, setFreqMhz] = useState(446);
 
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [indoorOpen, setIndoorOpen] = useState(false);
   const [georef, setGeoref] = useState<GeorefResponse | null>(null);
   const [showOverlay, setShowOverlay] = useState(true);
 
@@ -183,6 +185,17 @@ export default function Home() {
             coverage={coverage} onCoverage={setCoverage}
           />
 
+          <div className="panel">
+            <h3>Indoor &amp; underground</h3>
+            <p className="hint">
+              Floor-plan Wi-Fi/DAS coverage (DXF walls + materials), tunnel/mine
+              waveguide links and through-the-earth studies — no map needed.
+            </p>
+            <button style={{ width: '100%' }} onClick={() => setIndoorOpen(true)}>
+              Open indoor / underground studio…
+            </button>
+          </div>
+
           {validation?.warning && (
             <div className="warning-box">
               <b>⚠ Terrain validation warning</b><br />
@@ -242,6 +255,7 @@ export default function Home() {
           onGeoreferenced={(r) => { setGeoref(r); setShowOverlay(true); }}
         />
       )}
+      {indoorOpen && <IndoorStudio onClose={() => setIndoorOpen(false)} />}
     </div>
   );
 }
