@@ -9,6 +9,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
 # Server-side logs for operators: broad route-level excepts log the full
 # traceback here before returning a sanitized HTTP error to the client.
@@ -22,13 +23,29 @@ from .api.routes_rf import router as rf_router
 from .api.routes_terrain import router as terrain_router
 
 app = FastAPI(
-    title="AntennaMaster Terrain & Georeferencing API",
+    title="AntennaMaster RF Coverage Simulator API",
     description=(
-        "Fuses global SRTM 30 m elevation (Terrarium tiles) with local "
-        "high-resolution DXF relief data into a seamless terrain model for "
-        "RF coverage simulation (Fresnel / knife-edge, k=4/3 earth)."
+        "Professional RF planning API: global SRTM 30 m terrain fused with "
+        "local DXF relief, six propagation models (FSPL, Hata family, 3GPP "
+        "TR 38.901), Deygout diffraction, environmental losses (Weissberger "
+        "foliage, ITU-R P.838 rain, P.676 gases), measured MSI antenna "
+        "patterns, single/multi-site coverage, indoor multi-wall, tunnel "
+        "waveguide and through-the-earth studies."
     ),
-    version="1.0.0",
+    version="2.0.0",
+    openapi_tags=[
+        {"name": "dxf", "description": "DXF upload, layer inventory, "
+         "georeferencing (known CRS / Helmert control points / origin+bearing), "
+         "hillshade overlays and session state restore."},
+        {"name": "terrain", "description": "Fused elevation queries, geodesic "
+         "TX→RX profiles with link analysis and technology studies, CSV export."},
+        {"name": "rf", "description": "Technology presets, propagation models, "
+         "MSI antenna patterns, single-site and multi-site best-server coverage "
+         "with PNG/KMZ export."},
+        {"name": "indoor-underground", "description": "Floor-plan multi-wall "
+         "coverage, material library, tunnel waveguide and through-the-earth "
+         "links."},
+    ],
 )
 
 # The Next.js dev server runs on another port; origins are configurable via
@@ -41,6 +58,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# High-sample profile responses are ~330 KB of JSON; gzip cuts them ~8x.
+# (PNG responses are already compressed and skip this by content check.)
+app.add_middleware(GZipMiddleware, minimum_size=8192)
 
 app.include_router(dxf_router)
 app.include_router(terrain_router)

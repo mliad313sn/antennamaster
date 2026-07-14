@@ -64,17 +64,24 @@ at 900/2400/5800 MHz, log-f interpolated), Emslie tunnel waveguide
 guided-mode dual mechanism, modal breakpoint), through-the-earth VLF
 (skin-depth attenuation + near-field 1/r³ induction spreading).
 
+**Environmental excess losses (stack on any model):** Weissberger MED
+foliage/vegetation (0.23–95 GHz, 400 m clamp), ITU-R P.838-3 rain
+(k·R^α, log-interpolated 1–100 GHz, P.530 effective path), ITU-R P.676-style
+atmospheric gases (22/60 GHz lines). **Channel-aware budgets:** sensitivity
+derived from kTB + 10log₁₀(BW) + NF + SINR when the preset defines channel
+width; MIMO diversity gain in all budgets.
+
 **RF context:** k-factor earth curvature (default 4/3, settable 0.1–10)
 applied before all Fresnel/LOS math; Fresnel zone-n radius; knife-edge ν;
 3GPP parabolic sector pattern (H 25 dB FTB + V 20 dB floor with
 mechanical downtilt) **or measured MSI Planet patterns** (dBd→dBi,
 electrical tilt, sum-of-cuts H+V).
 
-## 4. Radio studies (19 technology presets, all fields overridable)
+## 4. Radio studies (23 technology presets, all fields overridable)
 
 2G GSM 900/1800 · 3G UMTS 900/2100 · 4G LTE 800/1800/2600 · 5G NR n28/n78/
 n257 (28 GHz mmWave) · TETRA 400 · PMR446 · FM 87–108 · DVB-T/T2 UHF ·
-Wi-Fi 2.4/5.8 · LoRaWAN 868 · 18 GHz PtP backhaul · fully custom.
+Wi-Fi 2.4/5.8 · LoRaWAN 868 · 18 GHz PtP backhaul · **Private LTE B48/CBRS · Private 5G NR n77 (100 MHz) · NB-IoT/LTE-M · VHF land mobile 150 MHz** · fully custom.
 Presets carry freq/EIRP components/sensitivity/heights/best model; operator
 band plans mergeable from `DATA_DIR/technologies.json` without code changes.
 

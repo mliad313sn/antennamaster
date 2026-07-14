@@ -55,6 +55,8 @@ export default function Home() {
   const [technology, setTechnology] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [environment, setEnvironment] = useState<string | null>(null);
+  const [foliageDepth, setFoliageDepth] = useState(0);
+  const [rainRate, setRainRate] = useState(0);
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -188,13 +190,15 @@ export default function Home() {
         txHeight: num(txHeight, 20), rxHeight: num(rxHeight, 10),
         freqMhz: num(freqMhz, 446),
         technology, model, environment,
+        foliageDepthM: foliageDepth, rainRateMmH: rainRate,
       })
         .then((p) => { if (!cancelled) setProfile(p); })
         .catch((e) => { if (!cancelled) setProfileError((e as Error).message); })
         .finally(() => { if (!cancelled) setLoading(false); });
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [tx, rx, txHeight, rxHeight, freqMhz, georef, technology, model, environment]);
+  }, [tx, rx, txHeight, rxHeight, freqMhz, georef, technology, model, environment,
+      foliageDepth, rainRate]);
 
   const validation = georef?.validation;
   const transform = georef?.transform;
@@ -347,6 +351,8 @@ export default function Home() {
             technology={technology} onTechnologyChange={setTechnology}
             model={model} onModelChange={setModel}
             environment={environment} onEnvironmentChange={setEnvironment}
+            foliageDepth={foliageDepth} onFoliageChange={setFoliageDepth}
+            rainRate={rainRate} onRainChange={setRainRate}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={setCoverage}
           />

@@ -58,6 +58,9 @@ def terrain_profile(
     rx_gain_dbi: float | None = Query(None),
     losses_db: float | None = Query(None),
     rx_sensitivity_dbm: float | None = Query(None),
+    # Environmental excess losses (foliage clutter / weather for PtP):
+    foliage_depth_m: float = Query(0.0, ge=0, le=400),
+    rain_rate_mm_h: float = Query(0.0, ge=0, le=150),
 ) -> dict:
     """TX->RX elevation profile over the fused terrain, plus RF link analysis.
 
@@ -127,14 +130,34 @@ def terrain_profile(
             diff[i] = deygout_loss_db(d[: i + 1], curved[: i + 1],
                                       tech["h_bs_m"], tech["h_ut_m"],
                                       tech["freq_mhz"])
+        # Environmental excess losses along the path (foliage at the RX end,
+        # gases + rain scale with distance - the PtP microwave essentials).
+        from ..services.rf.environment import (foliage_loss_db,
+                                               gaseous_attenuation_db_per_km,
+                                               rain_loss_db)
+        fol = foliage_loss_db(tech["freq_mhz"], foliage_depth_m)
+        gas_per_km = gaseous_attenuation_db_per_km(tech["freq_mhz"])
+        gas = gas_per_km * d / 1000.0
+        rain_end = rain_loss_db(tech["freq_mhz"], float(d[-1]), rain_rate_mm_h)
+        # Per-sample rain via the same effective-path formula.
+        rain = np.array([rain_loss_db(tech["freq_mhz"], float(di), rain_rate_mm_h)
+                         for di in d]) if rain_rate_mm_h > 0 else np.zeros_like(d)
+
+        mimo = float(tech.get("mimo_gain_db", 0.0))
         rx_power_per_point = (tech["tx_power_dbm"] + tech["tx_gain_dbi"]
-                              + tech["rx_gain_dbi"] - tech["losses_db"]
-                              - pl - diff)
-        budget = link_budget(tech, float(pl[-1]), float(diff[-1]))
+                              + tech["rx_gain_dbi"] + mimo - tech["losses_db"]
+                              - pl - diff - fol - gas - rain)
+        budget = link_budget(tech, float(pl[-1]), float(diff[-1]),
+                             extra_losses_db=fol + float(gas[-1]) + rain_end)
         study = {
             "technology": {**tech, "key": technology},
             "path_loss_db": round(float(pl[-1]), 1),
             "diffraction_loss_db": round(float(diff[-1]), 1),
+            "foliage_loss_db": round(fol, 1),
+            "gaseous_loss_db": round(float(gas[-1]), 2),
+            "rain_loss_db": round(rain_end, 1),
+            "mimo_gain_db": mimo,
+            "sensitivity_dbm": round(budget["sensitivity_dbm"], 1),
             "rx_power_dbm": round(budget["rx_power_dbm"], 1),
             "margin_db": round(budget["margin_db"], 1),
             "served": budget["served"],
@@ -202,7 +225,8 @@ def terrain_profile_csv(
         freq_mhz=freq_mhz, k_factor=k_factor, technology=technology,
         model=model, environment=environment,
         tx_power_dbm=None, tx_gain_dbi=None, rx_gain_dbi=None,
-        losses_db=None, rx_sensitivity_dbm=None)
+        losses_db=None, rx_sensitivity_dbm=None,
+        foliage_depth_m=0.0, rain_rate_mm_h=0.0)
 
     has_rx = data["points"] and "rx_power_dbm" in data["points"][0]
     header = ["distance_m", "lat", "lon", "elevation_m", "elevation_curved_m",

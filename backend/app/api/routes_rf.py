@@ -44,9 +44,13 @@ class CoverageRequest(BaseModel):
     # served test - design to ~90/95% area instead of the 50% median.
     shadow_margin_db: float = Field(0.0, ge=0, le=30)
     k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    # Environmental excess losses (last-mile clutter / weather):
+    foliage_depth_m: float = Field(0.0, ge=0, le=400)
+    rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
     # Simulation resolution:
     n_radials: int = Field(180, ge=36, le=720)
     n_steps: int = Field(100, ge=20, le=400)
+    raster_px: int = Field(512, ge=128, le=1024)
 
 
 @router.get("/technologies")
@@ -110,8 +114,11 @@ def simulate_coverage(req: CoverageRequest) -> dict:
             vertical_beamwidth_deg=req.vertical_beamwidth_deg,
             antenna_pattern=pattern,
             shadow_margin_db=req.shadow_margin_db,
+            foliage_depth_m=req.foliage_depth_m,
+            rain_rate_mm_h=req.rain_rate_mm_h,
             k=req.k_factor,
             grid=grid, georef=georef,
+            raster_px=req.raster_px,
         )
     except Exception as exc:  # DEM fetch failure -> 502, not a stacktrace
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc

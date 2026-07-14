@@ -38,6 +38,7 @@ export async function fetchProfile(params: {
   dxfId: string | null;
   txHeight: number; rxHeight: number; freqMhz: number; samples?: number;
   technology?: string | null; model?: string | null; environment?: string | null;
+  foliageDepthM?: number; rainRateMmH?: number;
 }): Promise<ProfileResponse> {
   const q = new URLSearchParams({
     lat1: String(params.lat1), lon1: String(params.lon1),
@@ -53,6 +54,8 @@ export async function fetchProfile(params: {
   if (params.technology) q.set('technology', params.technology);
   if (params.model) q.set('model', params.model);
   if (params.environment) q.set('environment', params.environment);
+  if (params.foliageDepthM) q.set('foliage_depth_m', String(params.foliageDepthM));
+  if (params.rainRateMmH) q.set('rain_rate_mm_h', String(params.rainRateMmH));
   return jsonOrThrow(await fetch(`/api/terrain/profile?${q.toString()}`));
 }
 
@@ -74,6 +77,7 @@ export async function simulateCoverage(params: {
   antennaAzimuthDeg?: number | null; antennaBeamwidthDeg?: number;
   antennaId?: string | null;
   downtiltDeg?: number; shadowMarginDb?: number;
+  foliageDepthM?: number; rainRateMmH?: number;
   hBsM?: number;
   // Real site link-budget overrides (the preset is only a starting point):
   txPowerDbm?: number; txGainDbi?: number; rxGainDbi?: number;
@@ -94,6 +98,8 @@ export async function simulateCoverage(params: {
       antenna_id: params.antennaId ?? undefined,
       downtilt_deg: params.downtiltDeg,
       shadow_margin_db: params.shadowMarginDb,
+      foliage_depth_m: params.foliageDepthM,
+      rain_rate_mm_h: params.rainRateMmH,
       h_bs_m: params.hBsM,
       tx_power_dbm: params.txPowerDbm,
       tx_gain_dbi: params.txGainDbi,

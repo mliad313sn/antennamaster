@@ -66,6 +66,8 @@ class CoverageEngine:
                       vertical_beamwidth_deg: float = 10.0,
                       antenna_pattern: dict | None = None,
                       shadow_margin_db: float = 0.0,
+                      foliage_depth_m: float = 0.0,
+                      rain_rate_mm_h: float = 0.0,
                       grid: DxfTerrainGrid | None = None,
                       georef: BaseGeoref | None = None,
                       k: float = K_FACTOR_DEFAULT) -> dict:
@@ -146,12 +148,31 @@ class CoverageEngine:
                 ant_gain = ant_gain - np.minimum(
                     12.0 * (v_delta / max(vertical_beamwidth_deg, 1.0)) ** 2, 20.0)
 
+        # Environmental excess losses: last-mile foliage clutter at every RX
+        # location, rain over the effective path, atmospheric gases (only
+        # material above ~10 GHz but always physically present).
+        from ..rf.environment import (foliage_loss_db, gaseous_attenuation_db_per_km,
+                                      rain_specific_attenuation)
+        env_loss = np.zeros(n_steps)
+        if foliage_depth_m > 0:
+            env_loss += foliage_loss_db(freq, foliage_depth_m)
+        env_loss += gaseous_attenuation_db_per_km(freq) * dist / 1000.0
+        if rain_rate_mm_h > 0:
+            gamma_r = rain_specific_attenuation(freq, rain_rate_mm_h)
+            d0 = 35.0 * np.exp(-0.015 * min(rain_rate_mm_h, 100.0))
+            d_km = dist / 1000.0
+            env_loss += gamma_r * d_km / (1.0 + d_km / d0)
+
+        mimo = float(tech.get("mimo_gain_db", 0.0))
         rx_power = (tech["tx_power_dbm"] + tech["tx_gain_dbi"] + tech["rx_gain_dbi"]
-                    - tech["losses_db"] + ant_gain - pl - diff_loss)
+                    + mimo - tech["losses_db"] + ant_gain - pl - diff_loss
+                    - env_loss[None, :])
         # Shadow-fade (location variability) margin: subtract before the
         # served test so "served" means the target location probability,
-        # not the 50% median a bare link budget gives.
-        margin = rx_power - tech["rx_sensitivity_dbm"] - shadow_margin_db
+        # not the 50% median a bare link budget gives.  Sensitivity derives
+        # from channel bandwidth + NF + SINR when the preset defines them.
+        from ..rf.technologies import effective_sensitivity_dbm
+        margin = rx_power - effective_sensitivity_dbm(tech) - shadow_margin_db
 
         return {"az": az, "dist": dist, "dist_g": dist_g,
                 "rx_power": rx_power, "margin": margin,
@@ -166,6 +187,8 @@ class CoverageEngine:
                  vertical_beamwidth_deg: float = 10.0,
                  antenna_pattern: dict | None = None,
                  shadow_margin_db: float = 0.0,
+                 foliage_depth_m: float = 0.0,
+                 rain_rate_mm_h: float = 0.0,
                  grid: DxfTerrainGrid | None = None,
                  georef: BaseGeoref | None = None,
                  k: float = K_FACTOR_DEFAULT,
@@ -179,6 +202,8 @@ class CoverageEngine:
             vertical_beamwidth_deg=vertical_beamwidth_deg,
             antenna_pattern=antenna_pattern,
             shadow_margin_db=shadow_margin_db,
+            foliage_depth_m=foliage_depth_m,
+            rain_rate_mm_h=rain_rate_mm_h,
             grid=grid, georef=georef, k=k)
 
         png, bounds = self._rasterize(lat, lon, polar["az"], polar["dist"],

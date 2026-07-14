@@ -27,6 +27,11 @@ export interface StudyPanelProps {
   onModelChange: (key: string | null) => void;
   environment: string | null;
   onEnvironmentChange: (env: string | null) => void;
+  // Environmental excess losses (shared with the profile study in page.tsx).
+  foliageDepth: number;
+  onFoliageChange: (v: number) => void;
+  rainRate: number;
+  onRainChange: (v: number) => void;
   study: StudyResult | null;
   coverage: CoverageResponse | null;
   onCoverage: (c: CoverageResponse | null) => void;
@@ -124,6 +129,8 @@ export default function StudyPanel(props: StudyPanelProps) {
         downtiltDeg: downtilt,
         antennaId,
         shadowMarginDb: shadowMargin,
+        foliageDepthM: props.foliageDepth || undefined,
+        rainRateMmH: props.rainRate || undefined,
         hBsM: props.txHeight || undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
@@ -200,6 +207,21 @@ export default function StudyPanel(props: StudyPanelProps) {
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <div className="stat-line"><span className="k">Path loss ({props.study.technology.model})</span><span className="v">{props.study.path_loss_db.toFixed(1)} dB</span></div>
               <div className="stat-line"><span className="k">Diffraction (Deygout)</span><span className="v">{props.study.diffraction_loss_db.toFixed(1)} dB</span></div>
+              {(props.study.foliage_loss_db ?? 0) > 0 && (
+                <div className="stat-line"><span className="k">Foliage (Weissberger)</span><span className="v">{props.study.foliage_loss_db!.toFixed(1)} dB</span></div>
+              )}
+              {(props.study.rain_loss_db ?? 0) > 0 && (
+                <div className="stat-line"><span className="k">Rain (P.838)</span><span className="v">{props.study.rain_loss_db!.toFixed(1)} dB</span></div>
+              )}
+              {(props.study.gaseous_loss_db ?? 0) >= 0.1 && (
+                <div className="stat-line"><span className="k">Atmospheric gases</span><span className="v">{props.study.gaseous_loss_db!.toFixed(1)} dB</span></div>
+              )}
+              {(props.study.mimo_gain_db ?? 0) > 0 && (
+                <div className="stat-line"><span className="k">MIMO gain</span><span className="v">+{props.study.mimo_gain_db!.toFixed(1)} dB</span></div>
+              )}
+              {props.study.sensitivity_dbm !== undefined && (
+                <div className="stat-line"><span className="k">Sensitivity (kTB+NF+SINR)</span><span className="v">{props.study.sensitivity_dbm.toFixed(1)} dBm</span></div>
+              )}
               <div className="stat-line"><span className="k">RX power</span><span className="v">{props.study.rx_power_dbm.toFixed(1)} dBm</span></div>
               <div className="stat-line">
                 <span className="k">Margin</span>
@@ -271,6 +293,20 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <input type="number" min={0} max={30} value={shadowMargin}
                   title="Log-normal shadowing margin: ~5.5 dB ≈ 90% area, ~8 dB ≈ 95%"
                   onChange={(e) => setShadowMargin(parseFloat(e.target.value) || 0)} />
+              </div>
+            </div>
+            <div className="row">
+              <div>
+                <label>Foliage depth (m)</label>
+                <input type="number" min={0} max={400} value={props.foliageDepth}
+                  title="Weissberger vegetation model — dense in-leaf trees at the receiver"
+                  onChange={(e) => props.onFoliageChange(parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <label>Rain (mm/h)</label>
+                <input type="number" min={0} max={150} value={props.rainRate}
+                  title="ITU-R P.838 rain attenuation — matters above ~10 GHz (PtP links)"
+                  onChange={(e) => props.onRainChange(parseFloat(e.target.value) || 0)} />
               </div>
             </div>
             <button style={{ width: '100%', marginBottom: 6 }}

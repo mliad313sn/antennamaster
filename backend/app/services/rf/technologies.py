@@ -149,6 +149,45 @@ TECHNOLOGIES: dict[str, dict] = {
         "losses_db": 2.0, "rx_sensitivity_dbm": -70.0,
         "h_bs_m": 30.0, "h_ut_m": 30.0,
     },
+    # ----------------------------------------- private networks (LTE / NR)
+    # Presets with explicit channel width + noise figure + target SINR:
+    # sensitivity derives from kTB+NF+SINR so changing the bandwidth in the
+    # UI rescales the budget correctly; MIMO gain enters as diversity gain.
+    "private_lte_b48": {
+        "label": "Private LTE B48 / CBRS 3.6 GHz", "generation": "Private",
+        "freq_mhz": 3625.0, "model": "tr38901_uma", "environment": "nlos",
+        "tx_power_dbm": 40.0, "tx_gain_dbi": 15.0, "rx_gain_dbi": 0.0,
+        "losses_db": 1.0, "rx_sensitivity_dbm": -102.0,
+        "bandwidth_mhz": 20.0, "noise_figure_db": 7.0, "target_sinr_db": -3.0,
+        "mimo_gain_db": 3.0,   # 2x2 diversity
+        "h_bs_m": 15.0, "h_ut_m": 1.5,
+    },
+    "private_nr_n77": {
+        "label": "Private 5G NR n77 100 MHz", "generation": "Private",
+        "freq_mhz": 3900.0, "model": "tr38901_uma", "environment": "nlos",
+        "tx_power_dbm": 47.0, "tx_gain_dbi": 24.0, "rx_gain_dbi": 0.0,
+        "losses_db": 1.0, "rx_sensitivity_dbm": -95.0,
+        "bandwidth_mhz": 100.0, "noise_figure_db": 7.0, "target_sinr_db": -3.0,
+        "mimo_gain_db": 6.0,   # 4x4 massive-MIMO diversity budget
+        "h_bs_m": 15.0, "h_ut_m": 1.5,
+    },
+    "private_lte_iot": {
+        "label": "Private LTE-M / NB-IoT 1.4 MHz", "generation": "Private",
+        "freq_mhz": 3625.0, "model": "tr38901_uma", "environment": "nlos",
+        "tx_power_dbm": 40.0, "tx_gain_dbi": 15.0, "rx_gain_dbi": 0.0,
+        "losses_db": 1.0, "rx_sensitivity_dbm": -120.0,
+        "bandwidth_mhz": 1.4, "noise_figure_db": 7.0, "target_sinr_db": -6.0,
+        "mimo_gain_db": 0.0,
+        "h_bs_m": 15.0, "h_ut_m": 1.5,
+    },
+    # -------------------------------------------------------- VHF land mobile
+    "vhf150": {
+        "label": "VHF land mobile 150 MHz", "generation": "PMR",
+        "freq_mhz": 155.0, "model": "okumura_hata", "environment": "open",
+        "tx_power_dbm": 44.0, "tx_gain_dbi": 3.0, "rx_gain_dbi": 0.0,
+        "losses_db": 1.5, "rx_sensitivity_dbm": -116.0,
+        "h_bs_m": 40.0, "h_ut_m": 1.5,
+    },
     # -------------------------------------------------------------- custom
     "custom": {
         "label": "Custom study", "generation": "Custom",
@@ -196,13 +235,39 @@ def get_technology(key: str) -> dict:
     return dict(TECHNOLOGIES[key])  # copy so callers can override safely
 
 
+def effective_sensitivity_dbm(tech: dict) -> float:
+    """Receiver sensitivity for the study.
+
+    When the preset carries channel parameters (bandwidth + noise figure +
+    target SINR - the private LTE/5G presets), sensitivity is derived from
+    first principles (kTB + NF + SINR) so channel-width changes rescale the
+    budget correctly; otherwise the fixed preset value is used.
+    """
+    if all(k in tech for k in ("bandwidth_mhz", "noise_figure_db", "target_sinr_db")):
+        from .environment import thermal_sensitivity_dbm
+        return thermal_sensitivity_dbm(float(tech["bandwidth_mhz"]),
+                                       float(tech["noise_figure_db"]),
+                                       float(tech["target_sinr_db"]))
+    return float(tech["rx_sensitivity_dbm"])
+
+
 def link_budget(tech: dict, path_loss_db_value: float,
-                diffraction_db: float = 0.0) -> dict:
-    """RX power and fade margin from a technology dict + losses."""
+                diffraction_db: float = 0.0,
+                extra_losses_db: float = 0.0) -> dict:
+    """RX power and fade margin from a technology dict + losses.
+
+    ``extra_losses_db`` bundles environmental terms (foliage, rain, gases);
+    MIMO diversity gain (if the preset defines one) improves the budget.
+    """
+    mimo = float(tech.get("mimo_gain_db", 0.0))
     rx_power = (tech["tx_power_dbm"] + tech["tx_gain_dbi"] + tech["rx_gain_dbi"]
-                - tech["losses_db"] - path_loss_db_value - diffraction_db)
+                + mimo - tech["losses_db"] - path_loss_db_value
+                - diffraction_db - extra_losses_db)
+    sens = float(effective_sensitivity_dbm(tech))
+    rx_power = float(rx_power)
     return {
         "rx_power_dbm": rx_power,
-        "margin_db": rx_power - tech["rx_sensitivity_dbm"],
-        "served": rx_power >= tech["rx_sensitivity_dbm"],
+        "sensitivity_dbm": sens,
+        "margin_db": rx_power - sens,
+        "served": bool(rx_power >= sens),
     }

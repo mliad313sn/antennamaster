@@ -29,9 +29,30 @@ interface ChartRow {
   rxPower?: number;
 }
 
+/** Cap the rendered point count so high-sample profiles (up to 2,048) never
+ *  jank the SVG chart.  Buckets keep their highest-terrain sample, so peaks
+ *  (which decide the RF verdict) are never smoothed away. */
+const MAX_CHART_POINTS = 512;
+
+function downsample(points: ProfilePoint[]): ProfilePoint[] {
+  if (points.length <= MAX_CHART_POINTS) return points;
+  const bucket = Math.ceil(points.length / MAX_CHART_POINTS);
+  const out: ProfilePoint[] = [points[0]];
+  for (let i = 1; i < points.length - 1; i += bucket) {
+    let best = points[i];
+    for (let j = i; j < Math.min(i + bucket, points.length - 1); j++) {
+      if (points[j].elev_curved > best.elev_curved) best = points[j];
+    }
+    out.push(best);
+  }
+  out.push(points[points.length - 1]);
+  return out;
+}
+
 /** Split terrain into srtm/dxf series; duplicate boundary samples into both
  *  series so the two areas meet without a visual gap. */
-function toRows(points: ProfilePoint[]): ChartRow[] {
+function toRows(allPoints: ProfilePoint[]): ChartRow[] {
+  const points = downsample(allPoints);
   const isDxf = (p: ProfilePoint) => p.dxf_weight >= 0.5;
   return points.map((p, i) => {
     const mine = isDxf(p);

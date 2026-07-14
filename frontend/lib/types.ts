@@ -106,6 +106,11 @@ export interface StudyResult {
   technology: Technology;
   path_loss_db: number;
   diffraction_loss_db: number;
+  foliage_loss_db?: number;
+  gaseous_loss_db?: number;
+  rain_loss_db?: number;
+  mimo_gain_db?: number;
+  sensitivity_dbm?: number;
   rx_power_dbm: number;
   margin_db: number;
   served: boolean;
