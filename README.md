@@ -10,8 +10,10 @@ Deygout multi-knife-edge diffraction, k = 4/3 effective-earth curvature).
 The DXF is a *local override*: the app works globally with SRTM alone, and a
 georeferenced DXF patches high-res detail over the base within its footprint.
 
-See `docs/ASSESSMENT.md` for the low-level audit and the feature benchmark
-against SPLAT!, Radio Mobile, CloudRF and commercial suites.
+**Start with `docs/USER_GUIDE.md`** — the complete user guide covering every
+setting and capability. See `docs/ASSESSMENT.md` for the low-level audit and
+the feature benchmark against SPLAT!, Radio Mobile, CloudRF and commercial
+suites.
 
 ## Radio studies
 
