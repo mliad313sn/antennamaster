@@ -92,9 +92,10 @@ def ready():
 
     from fastapi.responses import JSONResponse
 
-    from .config import DATA_DIR, DEM_CACHE_DIR
+    from .config import DATA_DIR, DEM_CACHE_DIR, DSM_URL
     checks = {"data_dir_writable": os.access(DATA_DIR, os.W_OK)}
     checks["dem_cache_present"] = any(DEM_CACHE_DIR.glob("*/*/*.png"))
+    checks["surface_model_configured"] = bool(DSM_URL)
     ok = checks["data_dir_writable"]
     return JSONResponse(status_code=200 if ok else 503,
                         content={"status": "ready" if ok else "degraded",

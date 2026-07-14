@@ -115,6 +115,7 @@ export interface StudyResult {
   foliage_loss_db?: number;
   gaseous_loss_db?: number;
   rain_loss_db?: number;
+  clutter_loss_db?: number;
   mimo_gain_db?: number;
   sensitivity_dbm?: number;
   rx_power_dbm: number;
@@ -137,6 +138,15 @@ export interface CoverageResponse {
     sites?: { name: string; color: string; best_server_share: number;
               max_rx_power_dbm: number }[];
   };
+  // multi-site composites with interference analysis enabled:
+  sinr?: {
+    png_url: string;
+    legend: { margin_db: number; color: string; label: string }[];
+    mean_db: number;
+    edge_fraction: number;
+    ge_6db_fraction: number;
+    noise_dbm: number;
+  } | null;
   technology: Technology;
   warnings: string[];
 }

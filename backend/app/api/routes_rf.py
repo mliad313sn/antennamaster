@@ -1,6 +1,7 @@
 """RF study endpoints: technology presets, propagation models, area coverage."""
 from __future__ import annotations
 
+import numpy as np
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
@@ -13,7 +14,7 @@ from ..services.rf.technologies import TECHNOLOGIES, get_technology
 from ..services.saas.tiers import check_preset_allowed, require_feature
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
 from .routes_auth import current_user
-from .routes_terrain import get_fusion_service
+from .routes_terrain import resolve_fusion
 
 router = APIRouter(prefix="/api/rf", tags=["rf"])
 
@@ -49,6 +50,12 @@ class CoverageRequest(BaseModel):
     # Environmental excess losses (last-mile clutter / weather):
     foliage_depth_m: float = Field(0.0, ge=0, le=400)
     rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    # ITU-R P.2108 statistical man-made clutter: percentage of locations
+    # not exceeded (0 = off, 50 = median urban clutter, 90 = conservative).
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    # Simulate on the surface model (DSM) instead of bare terrain;
+    # requires AM_DSM_URL to be configured on the server.
+    surface: bool = False
     # Simulation resolution:
     n_radials: int = Field(180, ge=36, le=720)
     n_steps: int = Field(100, ge=20, le=400)
@@ -112,7 +119,7 @@ def run_coverage(req: CoverageRequest, progress_cb=None) -> dict:
         if req.tx_gain_dbi is None:
             tech["tx_gain_dbi"] = float(pattern.get("gain_dbi", tech["tx_gain_dbi"]))
 
-    engine = CoverageEngine(get_fusion_service())
+    engine = CoverageEngine(resolve_fusion(req.surface))
     try:
         result = engine.simulate(
             req.lat, req.lon, tech, radius_m=req.radius_km * 1000.0,
@@ -125,6 +132,7 @@ def run_coverage(req: CoverageRequest, progress_cb=None) -> dict:
             shadow_margin_db=req.shadow_margin_db,
             foliage_depth_m=req.foliage_depth_m,
             rain_rate_mm_h=req.rain_rate_mm_h,
+            clutter_pct=req.clutter_pct,
             k=req.k_factor,
             grid=grid, georef=georef,
             raster_px=req.raster_px,
@@ -234,8 +242,15 @@ class MultiCoverageRequest(BaseModel):
     shadow_margin_db: float = Field(0.0, ge=0, le=30)
     foliage_depth_m: float = Field(0.0, ge=0, le=400)
     rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    surface: bool = False
     vertical_beamwidth_deg: float = Field(10.0, gt=1, le=90)
     k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    # Co-channel SINR analysis (interference): thermal noise floor comes
+    # from these; defaults or preset values are used when omitted.
+    interference: bool = True
+    bandwidth_mhz: float | None = Field(None, gt=0, le=400)
+    noise_figure_db: float | None = Field(None, ge=0, le=20)
     n_radials: int = Field(120, ge=36, le=360)
     n_steps: int = Field(80, ge=20, le=200)
     raster_px: int = Field(768, ge=128, le=1024)
@@ -289,7 +304,7 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
             raise HTTPException(409, "DXF has not been georeferenced yet")
         grid, georef = session.grid, session.georef
 
-    engine = CoverageEngine(get_fusion_service())
+    engine = CoverageEngine(resolve_fusion(req.surface))
     radius_m = req.radius_km * 1000.0
     computed = []
     warnings: list[str] = []
@@ -306,6 +321,7 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
                 shadow_margin_db=req.shadow_margin_db,
                 foliage_depth_m=req.foliage_depth_m,
                 rain_rate_mm_h=req.rain_rate_mm_h,
+                clutter_pct=req.clutter_pct,
                 k=req.k_factor, grid=grid, georef=georef)
             warnings.extend(w for w in polar["warnings"] if w not in warnings)
             computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
@@ -313,11 +329,34 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
     except Exception as exc:
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
 
-    png, bounds, site_stats, served_frac = composite_best_server(
-        computed, raster_px=req.raster_px)
+    # Thermal noise floor for the co-channel SINR view.  Explicit request
+    # fields win; else the preset's channel parameters; else a 10 MHz / 7 dB
+    # generic receiver (flagged, so the assumption is visible).
+    noise_dbm = None
+    if req.interference and len(req.sites) > 1:
+        bw = req.bandwidth_mhz or tech.get("bandwidth_mhz")
+        nf = req.noise_figure_db if req.noise_figure_db is not None \
+            else tech.get("noise_figure_db")
+        if bw is None or nf is None:
+            bw, nf = bw or 10.0, nf if nf is not None else 7.0
+            warnings.append(
+                f"SINR noise floor assumes a {bw:g} MHz / {nf:g} dB NF "
+                "receiver (preset carries no channel parameters); set "
+                "bandwidth_mhz / noise_figure_db to refine.")
+        noise_dbm = -174.0 + 10.0 * float(np.log10(float(bw) * 1e6)) + float(nf)
+
+    png, bounds, site_stats, served_frac, sinr = composite_best_server(
+        computed, raster_px=req.raster_px, noise_dbm=noise_dbm)
     import uuid as _uuid
     result_id = _uuid.uuid4().hex[:12]
     results_store.save("coverage", result_id, png, {"bounds": bounds})
+
+    sinr_out = None
+    if sinr is not None:
+        sinr_id = _uuid.uuid4().hex[:12]
+        results_store.save("coverage", sinr_id, sinr.pop("png"),
+                           {"bounds": bounds})
+        sinr_out = {"png_url": f"/api/rf/coverage/{sinr_id}.png", **sinr}
 
     return {
         "coverage_id": result_id,
@@ -332,6 +371,7 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
             "tx_elevation_m": computed[0]["polar"]["tx_elev"],
             "max_rx_power_dbm": max(s["max_rx_power_dbm"] for s in site_stats),
         },
+        "sinr": sinr_out,
         "technology": {**tech, "key": req.technology},
         "warnings": warnings,
     }

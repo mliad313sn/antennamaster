@@ -40,6 +40,12 @@ class IndoorCoverageRequest(BaseModel):
     rx_sensitivity_dbm: float | None = None
     tx_height_m: float = Field(2.5, gt=0)
     rx_height_m: float = Field(1.2, gt=0)
+    # Multi-floor: number of slabs between TX and the mapped RX floor,
+    # storey height, and the COST-231 per-floor penetration (18.3 dB is the
+    # standard concrete-slab value; the total saturates non-linearly).
+    floors_crossed: int = Field(0, ge=0, le=30)
+    floor_height_m: float = Field(3.0, ge=2, le=6)
+    floor_loss_db: float = Field(18.3, ge=0, le=40)
     grid_px: int = Field(200, ge=50, le=400)
 
 
@@ -112,6 +118,9 @@ def indoor_coverage(req: IndoorCoverageRequest,
             losses_db=float(tech["losses_db"]),
             rx_sensitivity_dbm=float(tech["rx_sensitivity_dbm"]),
             tx_height_m=req.tx_height_m, rx_height_m=req.rx_height_m,
+            floors_crossed=req.floors_crossed,
+            floor_height_m=req.floor_height_m,
+            floor_loss_db=req.floor_loss_db,
             grid_px=req.grid_px)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc

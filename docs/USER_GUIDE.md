@@ -120,6 +120,8 @@ values (e.g. 30 m mast / 1.5 m handheld for GSM).
 | k-factor | 0.1–10 | 1.333 | effective-earth radius factor; 4/3 = standard atmosphere, 0.7 ≈ sub-refraction worst case, 2+ ≈ ducting |
 | Foliage depth | 0–400 m | 0 | vegetation crossed by the path (Weissberger model) |
 | Rain rate | 0–150 mm/h | 0 | rain fade (ITU-R P.838/P.530), matters above ~7 GHz |
+| Clutter %loc | 0–99.9 | 0 (off) | ITU-R P.2108 statistical man-made clutter; 50 = median urban, 90 = conservative |
+| Surface model | on/off | off | sample a DSM (buildings as obstructions); visible only when `AM_DSM_URL` is configured |
 
 The profile recomputes automatically (debounced ~350 ms) whenever an input
 changes. **Export CSV** downloads the full per-sample table with the same
@@ -210,6 +212,8 @@ be overridden.
 | Fade margin | extra dB subtracted before the verdict — plan ~5.5 dB for 90 % area confidence, ~8 dB for 95 % |
 | Foliage depth | Weissberger vegetation loss (0–400 m) |
 | Rain rate | ITU-R P.838/P.530 rain fade (0–150 mm/h) |
+| Clutter %loc | ITU-R P.2108 statistical man-made clutter: 0 = off, 50 = median urban, 90 = conservative planning (0.5–67 GHz; distance-dependent) |
+| Surface model | sample a DSM (buildings/canopy as obstructions) instead of bare terrain — shown when the server has `AM_DSM_URL` configured |
 | k-factor | earth curvature (0.1–10, default 4/3) |
 
 ### What you get
@@ -225,6 +229,8 @@ be overridden.
 
 Channel-aware presets (Private LTE/5G/IoT) derive sensitivity from thermal
 noise: `−174 + 10·log₁₀(BW) + NF + SINR`, and add MIMO gain to the budget.
+With clutter enabled the study shows a separate **Clutter (P.2108)** line in
+the loss breakdown (as do foliage, rain and gases).
 
 ---
 
@@ -247,7 +253,8 @@ margin-classed raster on the map.
 | V-beamwidth | 1–90° | 10 | parametric vertical cut |
 | Downtilt | −10…+20° | 0 | mechanical tilt (MSI electrical tilt is read from the file) |
 | Shadow-fade margin | 0–30 dB | 0 | subtracts a log-normal fade allowance from every pixel — design to 90/95 % area |
-| Foliage / rain / k-factor | as in §4 | | applied per-step |
+| Foliage / rain / clutter / k-factor | as in §4 | | applied per-step |
+| Surface model | on/off | off | needs `AM_DSM_URL`; buildings become obstructions |
 
 ### Output
 
@@ -275,6 +282,22 @@ Enterprise-tier feature. Build a site list and composite them:
    palette).
 3. Per-site **best-server shares** and a combined served fraction are shown;
    the raster is exportable like single-site coverage.
+
+### SINR / interference analysis
+
+Every multi-site run (2+ sites) also computes a **co-channel SINR map**:
+per pixel, `SINR = S / (I + N)` where S is the best server, I the linear sum
+of every other site heard there (worst-case frequency-reuse-1 — all sites on
+the same carrier) and N the thermal noise floor
+(`−174 + 10·log₁₀(BW) + NF`, taken from the preset's channel parameters or
+the request's `bandwidth_mhz` / `noise_figure_db`; a 10 MHz / 7 dB default is
+used — and flagged in a warning — when neither is available).
+
+The panel gains a **Best server / SINR** view toggle plus three statistics:
+mean SINR over the served area, % of area at ≥ 6 dB (comfortable MCS), and
+the cell-edge fraction below 0 dB. The SINR raster has its own 5-class
+green-to-amber legend and PNG URL. Set `interference: false` in the API call
+to skip it.
 
 Multi-site accepts the same physics settings as single-site (radials capped
 at 360, steps at 200 per site; raster up to 1,024 px on the union bbox).
@@ -315,7 +338,14 @@ runs in drawing coordinates.
 3. Set the **unit scale** (meters per drawing unit), frequency (or a preset),
    TX/RX heights (default 2.5 m / 1.2 m) and the grid resolution
    (50–400 px, default 200).
-4. **Click the rendered plan** to place the TX — or type exact plan X/Y.
+4. **Multi-floor** (optional): set *Floors crossed* (0–30) when the TX sits
+   N storeys away from the floor you mapped. The engine adds the COST-231
+   floor-penetration term `Lf · n^((n+2)/(n+1) − 0.46)` — per-slab loss
+   configurable (default 18.3 dB ≈ concrete slab), saturating with n because
+   energy increasingly leaks via stairwells/windows — and stretches the 3D
+   distance by the storey height. The P.1238 fallback honors the floor count
+   too.
+5. **Click the rendered plan** to place the TX — or type exact plan X/Y.
 
 The engine computes FSPL over 3D distance **plus the sum of wall crossings**
 (COST-231 multi-wall; exact vectorized segment-intersection tests) for every
@@ -519,8 +549,12 @@ the k-curved fused profile.
 
 Environmental add-ons (any model): Weissberger foliage (0–400 m),
 ITU-R P.838-3/P.530 rain fade (specific attenuation × effective path length),
-and ITU-R P.676-style gaseous absorption (oxygen 60 GHz / water-vapor 22 GHz
-lines — automatic, significant only for high-frequency PtP).
+ITU-R P.676-style gaseous absorption (oxygen 60 GHz / water-vapor 22 GHz
+lines — automatic, significant only for high-frequency PtP), and
+**ITU-R P.2108 §3.2 statistical clutter** — the man-made land-use loss the
+DEM cannot see, at a settable percentage of locations (50 = median,
+90 = conservative; defined 0.5–67 GHz, sub-500 MHz requests use the 0.5 GHz
+curve with a warning).
 
 Indoor/underground models: COST-231 multi-wall, ITU-R P.1238, Emslie tunnel
 waveguide, TTE skin-depth — see [§8](#8-indoor--underground-studio).
@@ -574,6 +608,8 @@ Consolidated list of every user-adjustable parameter with its valid range.
 | tx_power_dbm, tx_gain_dbi, rx_gain_dbi, losses_db, rx_sensitivity_dbm | free | preset |
 | foliage_depth_m | 0–400 | 0 |
 | rain_rate_mm_h | 0–150 | 0 |
+| clutter_pct | 0–99.9 (0 = off) | 0 |
+| surface | true/false (needs `AM_DSM_URL`) | false |
 | dxf_id | georeferenced DXF | none (SRTM only) |
 
 ### Coverage (`POST /api/rf/coverage`)
@@ -592,13 +628,17 @@ Consolidated list of every user-adjustable parameter with its valid range.
 | shadow_margin_db | 0–30 | 0 |
 | k_factor | 0.1–10 | 4/3 |
 | foliage_depth_m / rain_rate_mm_h | 0–400 / 0–150 | 0 / 0 |
+| clutter_pct | 0–99.9 | 0 |
+| surface | true/false | false |
 | + all link-budget overrides from §4 | | |
 
 ### Multi-site (`POST /api/rf/coverage/multi`)
 
 Same as coverage, except: `sites` 1–8 (each with lat/lon, azimuth,
 downtilt, optional antenna), `n_radials` 36–360 (default 120), `n_steps`
-20–200 (default 80), `raster_px` default 768.
+20–200 (default 80), `raster_px` default 768. SINR analysis:
+`interference` (default true), `bandwidth_mhz` (0–400, else preset/10),
+`noise_figure_db` (0–20, else preset/7).
 
 ### Indoor coverage (`POST /api/indoor/coverage`)
 
@@ -608,6 +648,9 @@ downtilt, optional antenna), `n_radials` 36–360 (default 120), `n_steps`
 | layer→material map | §15 | auto-guessed |
 | tx_x, tx_y (drawing coords) | in plan | click |
 | tx_height_m / rx_height_m | > 0 | 2.5 / 1.2 |
+| floors_crossed | 0–30 | 0 |
+| floor_height_m | 2–6 | 3 |
+| floor_loss_db | 0–40 | 18.3 |
 | grid_px | 50–400 | 200 |
 | freq_mhz or technology | > 0 | preset |
 | tx_power_dbm etc. | free | preset |
@@ -647,6 +690,7 @@ edits needed.
 | `AM_DATA_DIR` | `backend/data` | root for DEM cache, DXF store, results, SQLite DB |
 | `AM_DEM_URL` | AWS Terrarium template | any Terrarium-encoded XYZ elevation source |
 | `AM_DEM_ZOOM` | 12 (≈ 38 m/px) | DEM tile zoom; higher = finer + more tiles |
+| `AM_DSM_URL` | unset | optional Terrarium-encoded **surface model** source (buildings/canopy); enables `surface=true` on profiles and coverage |
 | `AM_DEM_CACHE_MB` | 2048 | disk budget for the tile cache (LRU-evicted) |
 | `AM_FEATHER_CELLS` | 3.0 | width of the DXF↔SRTM blending band, in grid cells |
 | `AM_VALIDATION_DIFF_M` | 50.0 | mean-elevation mismatch that triggers the strict warning |
@@ -698,13 +742,17 @@ Verified by 100 backend test cases + 10 frontend tests (`./start.sh --check`).
 | HTTP **429** on login | lockout after 8 failed attempts — wait 15 min |
 | HTTP **502** from terrain endpoints | DEM tile source unreachable — check internet / `AM_DEM_URL` |
 | Place search does nothing | Nominatim geocoding needs internet; `lat, lon` entry always works offline |
-| Coverage looks too optimistic | add a shadow-fade margin (5.5 dB ≈ 90 %, 8 dB ≈ 95 % area) and check the environment setting (nlos vs los) |
+| Coverage looks too optimistic | add a shadow-fade margin (5.5 dB ≈ 90 %, 8 dB ≈ 95 % area), enable P.2108 clutter for built-up areas, and check the environment setting (nlos vs los) |
+| 422 "No surface model configured" | `surface=true` needs `AM_DSM_URL` pointing at a Terrarium-encoded DSM tile source |
+| SINR warning about assumed receiver | the preset has no channel parameters — pass `bandwidth_mhz` / `noise_figure_db` in the multi-site request |
 | Indoor heatmap ignores walls | selected layers had no line entities — the P.1238 fallback warning tells you; check layer selection and material mapping |
 | Profile chart looks flat under the LOS line | you may be zoomed on a long path — hover the worst-obstruction dot; the chart is k-curved, terrain drops with distance |
 | Model warning about frequency | you're outside the model's validity range — the value was clamped; pick a suitable model from §14 |
 
 Known modeling boundaries (by design, documented in `docs/CAPABILITIES.md`):
-median empirical models + knife-edge diffraction (no ITM/P.452), no
-clutter/land-use database, no SINR/interference analysis (best-server is
-power-based), single-floor indoor engine, outdoor DEM is surface-agnostic
-(no building heights).
+median empirical models + knife-edge diffraction (no ITM/P.1546/P.452 —
+Deygout + the Hata/38.901 family covers the same planning use cases);
+clutter is statistical (ITU-R P.2108), not a per-pixel land-use database;
+SINR assumes worst-case co-channel reuse-1 (no frequency plan / scheduler);
+multi-floor is a penetration term, not per-floor wall maps; building
+obstruction needs a user-supplied DSM tile source (`AM_DSM_URL`).

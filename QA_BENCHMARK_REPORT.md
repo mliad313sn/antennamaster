@@ -8,7 +8,7 @@ self-correction ≤3 loops → freeze). Core application code is now **frozen**.
 
 | Suite | Framework | Count | Result |
 |---|---|---|---|
-| Backend unit + physics + API + security | pytest | **90 functions / 100 cases** | ✅ all pass (stable across repeated runs) |
+| Backend unit + physics + API + security | pytest | **95 functions / 106 cases** | ✅ all pass (stable across repeated runs) |
 | Frontend components | vitest + testing-library (jsdom) | **10** | ✅ all pass |
 | Benchmark gates | `benchmarks/bench.py` (CI exit-code) | 8 scenarios | ✅ all pass |
 

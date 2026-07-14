@@ -11,6 +11,7 @@ workspaces, monetization).
 | Capability | Detail |
 |---|---|
 | Global elevation | Mapzen/AWS **Terrarium** RGB tiles (SRTM-derived, ~30 m), any Terrarium-encoded XYZ source via `AM_DEM_URL`; zoom configurable (`AM_DEM_ZOOM`, default 12 ≈ 38 m/px) |
+| Surface model (DSM) | optional second Terrarium source via `AM_DSM_URL` (buildings/canopy included); any profile or coverage request can pass `surface=true` to treat them as obstructions |
 | Tile caching | Two-tier: decoded-tile RAM LRU (2,000 tiles ≈ 500 MB cap) + on-disk Z/X/Y PNG cache with mtime-LRU eviction to `AM_DEM_CACHE_MB` (default 2 GB); atomic writes; download-once semantics |
 | Sampling | Seamless cross-tile **bilinear** interpolation in global pixel space, vectorized; antimeridian wrap; polar clamp (±85°) |
 | Profiles | True **WGS84 geodesic** paths (pyproj), 16–2,048 samples per profile |
@@ -69,7 +70,9 @@ guided-mode dual mechanism, modal breakpoint), through-the-earth VLF
 **Environmental excess losses (stack on any model):** Weissberger MED
 foliage/vegetation (0.23–95 GHz, 400 m clamp), ITU-R P.838-3 rain
 (k·R^α, log-interpolated 1–100 GHz, P.530 effective path), ITU-R P.676-style
-atmospheric gases (22/60 GHz lines). **Channel-aware budgets:** sensitivity
+atmospheric gases (22/60 GHz lines), **ITU-R P.2108 §3.2 statistical
+clutter** (man-made land-use loss at a settable location percentage —
+50% median to 90%+ planning margins; distance-dependent, 0.5–67 GHz). **Channel-aware budgets:** sensitivity
 derived from kTB + 10log₁₀(BW) + NF + SINR when the preset defines channel
 width; MIMO diversity gain in all budgets.
 
@@ -99,9 +102,16 @@ band plans mergeable from `DATA_DIR/technologies.json` without code changes.
 - **Multi-site best-server**: up to 8 sites, per-site azimuth/downtilt,
   strongest-served-signal composite in CVD-safe site colors, per-site
   best-server shares, union-bbox raster.
+- **Co-channel SINR / interference**: every multi-site run also computes
+  per-pixel SINR = S/(I+N) (worst-case frequency-reuse-1; thermal floor
+  from bandwidth+NF, preset-derived or overridable), a 5-class SINR raster,
+  mean SINR, %area ≥ 6 dB and cell-edge (<0 dB) fraction.
 - **Indoor floor-plan coverage**: click-to-place TX on the rendered plan,
   FSPL(3D)+wall crossings per grid cell (vectorized ray/segment tests,
-  50–400 px grid), heatmap with walls composited, served %, RX dynamic range.
+  50–400 px grid), heatmap with walls composited, served %, RX dynamic
+  range; **multi-floor**: COST-231 floor-penetration term (non-linear
+  saturation, per-slab dB configurable) for TX N storeys from the mapped
+  floor — the P.1238 fallback honors the floor count too.
 - **Tunnel/mine link**: RX power vs distance chart, α dB/m, breakpoint,
   max range vs sensitivity; wall presets (concrete/rock/coal/limestone/salt).
 - **TTE link**: skin depth, ground+spreading loss split, margin/verdict;
@@ -139,10 +149,10 @@ indoor heatmap PNG.
 | Result retention | last 200 raster results on disk (auto-pruned) |
 | Upload caps | DXF ≤100 MB (`AM_MAX_DXF_MB`), antenna files ≤2 MB |
 | Simulation caps | radius ≤150 km, 720 radials × 400 steps, 2,048 profile samples, 8 sites/composite, indoor grid ≤400 px |
-| Config | 11 `AM_*` env vars (data dir, DEM URL/zoom, DEM cache budget, CORS, upload cap, feather, validation threshold, SaaS mode, billing secret) |
+| Config | 12 `AM_*` env vars (data dir, DEM/DSM URLs, DEM zoom, cache budget, CORS, upload cap, feather, validation threshold, SaaS mode, billing secret) |
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
-| Tests | 90 test functions / 100 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier regression; API workflows) |
+| Tests | 95 test functions / 106 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier regression; API workflows) |
 
 ## 7. SaaS & workspace layer
 
@@ -157,8 +167,11 @@ resource ownership on DXFs and antenna patterns. Full detail:
 
 ## 8. Known limits (honest boundaries)
 
-Median empirical models + knife-edge diffraction (no ITM/P.1546/P.452 yet);
-no clutter/land-use losses; single-floor indoor; no rain fade (P.530) for
-PtP; no SINR/interference (best-server is power-based); Nominatim search
-requires internet; DEM is
-surface-agnostic (no buildings in outdoor coverage).
+Median empirical models + knife-edge diffraction (no ITM/P.1546/P.452 —
+Deygout + the Hata/38.901 family covers the same planning use cases);
+clutter is statistical (ITU-R P.2108), not a per-pixel land-use database;
+SINR assumes worst-case co-channel reuse-1 (no frequency planning /
+scheduler model); multi-floor is a penetration term, not per-floor wall
+maps; building obstruction requires a user-supplied DSM source
+(`AM_DSM_URL` — no public global Terrarium DSM exists); Nominatim search
+requires internet.

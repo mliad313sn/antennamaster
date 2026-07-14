@@ -68,6 +68,7 @@ class CoverageEngine:
                       shadow_margin_db: float = 0.0,
                       foliage_depth_m: float = 0.0,
                       rain_rate_mm_h: float = 0.0,
+                      clutter_pct: float = 0.0,
                       grid: DxfTerrainGrid | None = None,
                       georef: BaseGeoref | None = None,
                       k: float = K_FACTOR_DEFAULT,
@@ -170,7 +171,8 @@ class CoverageEngine:
         # Environmental excess losses: last-mile foliage clutter at every RX
         # location, rain over the effective path, atmospheric gases (only
         # material above ~10 GHz but always physically present).
-        from ..rf.environment import (foliage_loss_db, gaseous_attenuation_db_per_km,
+        from ..rf.environment import (clutter_loss_db, foliage_loss_db,
+                                      gaseous_attenuation_db_per_km,
                                       rain_specific_attenuation)
         env_loss = np.zeros(n_steps)
         if foliage_depth_m > 0:
@@ -181,6 +183,12 @@ class CoverageEngine:
             d0 = 35.0 * np.exp(-0.015 * min(rain_rate_mm_h, 100.0))
             d_km = dist / 1000.0
             env_loss += gamma_r * d_km / (1.0 + d_km / d0)
+        if clutter_pct > 0:
+            env_loss += clutter_loss_db(freq, dist, clutter_pct)
+            if freq < 500.0:
+                warnings.append(
+                    "P.2108 clutter is defined for 0.5-67 GHz; the 0.5 GHz "
+                    "curve was used (conservative below 500 MHz).")
 
         mimo = float(tech.get("mimo_gain_db", 0.0))
         rx_power = (tech["tx_power_dbm"] + tech["tx_gain_dbi"] + tech["rx_gain_dbi"]
@@ -208,6 +216,7 @@ class CoverageEngine:
                  shadow_margin_db: float = 0.0,
                  foliage_depth_m: float = 0.0,
                  rain_rate_mm_h: float = 0.0,
+                 clutter_pct: float = 0.0,
                  grid: DxfTerrainGrid | None = None,
                  georef: BaseGeoref | None = None,
                  k: float = K_FACTOR_DEFAULT,
@@ -224,6 +233,7 @@ class CoverageEngine:
             shadow_margin_db=shadow_margin_db,
             foliage_depth_m=foliage_depth_m,
             rain_rate_mm_h=rain_rate_mm_h,
+            clutter_pct=clutter_pct,
             grid=grid, georef=georef, k=k,
             progress_cb=progress_cb)
 
@@ -298,8 +308,20 @@ SITE_COLORS = [
 ]
 
 
+# SINR raster classes: co-channel downlink SINR (interference-limited view).
+SINR_LEGEND_STEPS = [
+    (20.0, (0, 109, 44), "Excellent (≥ 20 dB SINR)"),
+    (13.0, (49, 163, 84), "High MCS (≥ 13 dB)"),
+    (6.0, (116, 196, 118), "Mid MCS (≥ 6 dB)"),
+    (0.0, (186, 228, 179), "Cell edge (≥ 0 dB)"),
+    (-6.0, (237, 190, 130), "Degraded (≥ -6 dB)"),
+]
+
+
 def composite_best_server(sites: list[dict], raster_px: int = 768,
-                          ) -> tuple[bytes, list[list[float]], list[dict], float]:
+                          noise_dbm: float | None = None,
+                          ) -> tuple[bytes, list[list[float]], list[dict],
+                                     float, dict | None]:
     """Composite several sites' polar fields into one best-server raster.
 
     ``sites``: [{lat, lon, radius_m, name, polar}] where ``polar`` is the
@@ -307,9 +329,16 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
     in the color of the site delivering the strongest RX power there,
     provided that site's fade-margin test passes (else transparent).
 
+    When ``noise_dbm`` is given (thermal noise floor = -174 + 10log10(BW)
+    + NF) a co-channel downlink SINR analysis is added: per pixel,
+    SINR = S / (I + N) with S the best server's power and I the linear sum
+    of every other site heard there - the worst-case frequency-reuse-1 view
+    (LTE/5G/Wi-Fi same-channel).  Pixels served by one site only are
+    noise-limited and show S/N.
+
     Returns (png, [[south, west], [north, east]], per_site_stats,
-    served_area_fraction) where the fraction is served pixels over pixels
-    inside at least one site's coverage disc.
+    served_area_fraction, sinr) where ``sinr`` is None or
+    {png, legend, mean_db, edge_fraction, ge_6db_fraction, noise_dbm}.
     """
     # Union bounding box of all coverage discs.
     boxes = []
@@ -335,6 +364,7 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
     best_rx = np.full((h, w), -np.inf)
     best_margin = np.full((h, w), -np.inf)
     best_idx = np.full((h, w), -1, dtype=int)
+    sum_lin_mw = np.zeros((h, w))          # total co-channel power heard
 
     for i, s in enumerate(sites):
         polar = s["polar"]
@@ -354,6 +384,7 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
         best_rx = np.where(better, rx, best_rx)
         best_margin = np.where(better, polar["margin"][ai, di], best_margin)
         best_idx = np.where(better, i, best_idx)
+        sum_lin_mw += np.where(inside, 10.0 ** (rx / 10.0), 0.0)
 
     served = np.isfinite(best_rx) & (best_margin >= 0.0)
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
@@ -375,4 +406,31 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
     Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
     inside_any = np.isfinite(best_rx)
     served_frac = round(float(served.sum()) / max(int(inside_any.sum()), 1), 4)
-    return buf.getvalue(), [[south, west], [north, east]], stats, served_frac
+
+    sinr = None
+    if noise_dbm is not None:
+        best_lin = np.where(inside_any, 10.0 ** (best_rx / 10.0), 0.0)
+        interf = np.maximum(sum_lin_mw - best_lin, 0.0)
+        n_lin = 10.0 ** (noise_dbm / 10.0)
+        with np.errstate(divide="ignore"):
+            sinr_db = 10.0 * np.log10(
+                np.maximum(best_lin, 1e-30) / (interf + n_lin))
+        srgba = np.zeros((h, w, 4), dtype=np.uint8)
+        for thresh, color, _label in SINR_LEGEND_STEPS:
+            mask = served & (sinr_db >= thresh) & (srgba[:, :, 3] == 0)
+            srgba[mask, 0], srgba[mask, 1], srgba[mask, 2] = color
+            srgba[mask, 3] = 150
+        sbuf = io.BytesIO()
+        Image.fromarray(srgba, "RGBA").save(sbuf, format="PNG")
+        sv = sinr_db[served] if served.any() else np.array([0.0])
+        sinr = {
+            "png": sbuf.getvalue(),
+            "legend": [{"margin_db": m, "color": "#%02x%02x%02x" % c,
+                        "label": l} for m, c, l in SINR_LEGEND_STEPS],
+            "mean_db": round(float(sv.mean()), 1),
+            "edge_fraction": round(float(np.mean(sv < 0.0)), 4),
+            "ge_6db_fraction": round(float(np.mean(sv >= 6.0)), 4),
+            "noise_dbm": round(noise_dbm, 1),
+        }
+    return (buf.getvalue(), [[south, west], [north, east]], stats,
+            served_frac, sinr)

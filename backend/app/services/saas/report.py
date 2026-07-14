@@ -118,7 +118,8 @@ def build_report(*, title: str, org_name: str, logo_png: bytes | None,
                 ["Diffraction (Deygout)", f"{study.get('diffraction_loss_db', 0):.1f} dB"]]
         for key, label in (("foliage_loss_db", "Foliage (Weissberger)"),
                            ("rain_loss_db", "Rain (ITU-R P.838)"),
-                           ("gaseous_loss_db", "Atmospheric gases")):
+                           ("gaseous_loss_db", "Atmospheric gases"),
+                           ("clutter_loss_db", "Clutter (ITU-R P.2108)")):
             if study.get(key):
                 rows.append([label, f"{study[key]:.1f} dB"])
         if study.get("mimo_gain_db"):

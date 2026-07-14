@@ -103,6 +103,37 @@ def test_wall_extraction_and_crossing_loss(tmp_path):
     assert p1238.stats["walls"] == 0
 
 
+def test_multi_floor_penetration(tmp_path):
+    from app.services.indoor.engine import cost231_floor_loss_db
+    # COST-231 non-linear floor term: first slab full price, then saturating.
+    assert cost231_floor_loss_db(0) == 0.0
+    assert cost231_floor_loss_db(1) == pytest.approx(18.3 * 1.0, abs=0.1)
+    l2, l3 = cost231_floor_loss_db(2), cost231_floor_loss_db(3)
+    assert l2 > 18.3 and l3 > l2                # more floors, more loss...
+    assert (l3 - l2) < (l2 - 18.3) + 6.0        # ...but sub-linear growth
+
+    doc = ezdxf.readfile(str(_office_dxf(tmp_path)))
+    walls = extract_walls(doc, {"SHELL": "concrete", "PARTITION": "brick"})
+    same = simulate_indoor(walls, tx_x=5.0, tx_y=5.0, freq_mhz=2442.0,
+                           grid_px=60, raster_px=150)
+    below = simulate_indoor(walls, tx_x=5.0, tx_y=5.0, freq_mhz=2442.0,
+                            floors_crossed=2, grid_px=60, raster_px=150)
+    assert below.stats["floors_crossed"] == 2
+    assert below.stats["floor_penetration_db"] == pytest.approx(
+        cost231_floor_loss_db(2), abs=0.1)
+    assert below.stats["max_rx_power_dbm"] \
+        < same.stats["max_rx_power_dbm"] - 20.0
+    assert below.stats["served_area_fraction"] \
+        <= same.stats["served_area_fraction"]
+    # P.1238 fallback also honors the floor count.
+    no_walls = extract_walls(doc, {})
+    f0 = simulate_indoor(no_walls, tx_x=5.0, tx_y=5.0, freq_mhz=2442.0,
+                         grid_px=60, raster_px=150)
+    f2 = simulate_indoor(no_walls, tx_x=5.0, tx_y=5.0, freq_mhz=2442.0,
+                         floors_crossed=2, grid_px=60, raster_px=150)
+    assert f2.stats["max_rx_power_dbm"] < f0.stats["max_rx_power_dbm"] - 10.0
+
+
 # --------------------------------------------------------------- API layer
 @pytest.fixture
 def client():

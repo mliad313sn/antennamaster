@@ -39,6 +39,7 @@ export async function fetchProfile(params: {
   txHeight: number; rxHeight: number; freqMhz: number; samples?: number;
   technology?: string | null; model?: string | null; environment?: string | null;
   foliageDepthM?: number; rainRateMmH?: number;
+  clutterPct?: number; surface?: boolean;
 }): Promise<ProfileResponse> {
   const q = new URLSearchParams({
     lat1: String(params.lat1), lon1: String(params.lon1),
@@ -56,6 +57,8 @@ export async function fetchProfile(params: {
   if (params.environment) q.set('environment', params.environment);
   if (params.foliageDepthM) q.set('foliage_depth_m', String(params.foliageDepthM));
   if (params.rainRateMmH) q.set('rain_rate_mm_h', String(params.rainRateMmH));
+  if (params.clutterPct) q.set('clutter_pct', String(params.clutterPct));
+  if (params.surface) q.set('surface', 'true');
   return jsonOrThrow(await fetch(`/api/terrain/profile?${q.toString()}`));
 }
 
@@ -78,6 +81,7 @@ export async function simulateCoverage(params: {
   antennaId?: string | null;
   downtiltDeg?: number; shadowMarginDb?: number;
   foliageDepthM?: number; rainRateMmH?: number;
+  clutterPct?: number; surface?: boolean;
   hBsM?: number;
   // Real site link-budget overrides (the preset is only a starting point):
   txPowerDbm?: number; txGainDbi?: number; rxGainDbi?: number;
@@ -100,6 +104,8 @@ export async function simulateCoverage(params: {
       shadow_margin_db: params.shadowMarginDb,
       foliage_depth_m: params.foliageDepthM,
       rain_rate_mm_h: params.rainRateMmH,
+      clutter_pct: params.clutterPct,
+      surface: params.surface || undefined,
       h_bs_m: params.hBsM,
       tx_power_dbm: params.txPowerDbm,
       tx_gain_dbi: params.txGainDbi,
@@ -123,6 +129,7 @@ export function profileCsvUrl(params: {
   freqMhz: number; technology?: string | null;
   model?: string | null; environment?: string | null;
   foliageDepthM?: number; rainRateMmH?: number;
+  clutterPct?: number; surface?: boolean;
 }): string {
   const q = new URLSearchParams({
     lat1: String(params.lat1), lon1: String(params.lon1),
@@ -136,6 +143,8 @@ export function profileCsvUrl(params: {
   if (params.environment) q.set('environment', params.environment);
   if (params.foliageDepthM) q.set('foliage_depth_m', String(params.foliageDepthM));
   if (params.rainRateMmH) q.set('rain_rate_mm_h', String(params.rainRateMmH));
+  if (params.clutterPct) q.set('clutter_pct', String(params.clutterPct));
+  if (params.surface) q.set('surface', 'true');
   return `/api/terrain/profile.csv?${q.toString()}`;
 }
 
@@ -172,6 +181,7 @@ export async function simulateIndoorCoverage(params: {
   txX: number; txY: number; unitScale: number;
   technology?: string | null; freqMhz?: number;
   txPowerDbm?: number; rxSensitivityDbm?: number;
+  floorsCrossed?: number; floorLossDb?: number;
 }): Promise<IndoorCoverageResponse> {
   return jsonOrThrow(await fetch('/api/indoor/coverage', {
     method: 'POST',
@@ -182,6 +192,8 @@ export async function simulateIndoorCoverage(params: {
       technology: params.technology ?? undefined,
       freq_mhz: params.freqMhz, tx_power_dbm: params.txPowerDbm,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
+      floors_crossed: params.floorsCrossed,
+      floor_loss_db: params.floorLossDb,
     }),
   }));
 }
@@ -231,6 +243,7 @@ export async function simulateMultiCoverage(params: {
   technology: string; radiusKm: number; dxfId: string | null;
   antennaId?: string | null; model?: string | null; environment?: string | null;
   shadowMarginDb?: number; hBsM?: number;
+  clutterPct?: number; surface?: boolean;
   txPowerDbm?: number; rxSensitivityDbm?: number;
 }): Promise<CoverageResponse> {
   return jsonOrThrow(await fetch('/api/rf/coverage/multi', {
@@ -248,9 +261,22 @@ export async function simulateMultiCoverage(params: {
       model: params.model ?? undefined,
       environment: params.environment ?? undefined,
       shadow_margin_db: params.shadowMarginDb,
+      clutter_pct: params.clutterPct,
+      surface: params.surface || undefined,
       h_bs_m: params.hBsM,
       tx_power_dbm: params.txPowerDbm,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
     }),
   }));
+}
+
+/** Whether the backend has a surface model (DSM) tile source configured. */
+export async function fetchSurfaceAvailable(): Promise<boolean> {
+  try {
+    const r = await fetch('/api/ready');
+    const body = await r.json();
+    return Boolean(body?.checks?.surface_model_configured);
+  } catch {
+    return false;
+  }
 }

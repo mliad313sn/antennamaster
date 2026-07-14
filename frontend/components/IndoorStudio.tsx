@@ -71,6 +71,9 @@ function PlanStudy() {
   const [freqMhz, setFreqMhz] = useState(2442);
   const [txPower, setTxPower] = useState(20);
   const [sensitivity, setSensitivity] = useState(-82);
+  // Multi-floor: slabs between the TX and the mapped RX floor.
+  const [floors, setFloors] = useState(0);
+  const [floorLoss, setFloorLoss] = useState(18.3);
   const [result, setResult] = useState<IndoorCoverageResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,6 +133,8 @@ function PlanStudy() {
         dxfId: upload.dxf_id, layerMaterials: layerMats,
         txX: tx.x, txY: tx.y, unitScale,
         freqMhz, txPowerDbm: txPower, rxSensitivityDbm: sensitivity,
+        floorsCrossed: floors || undefined,
+        floorLossDb: floors ? floorLoss : undefined,
       }));
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
@@ -187,6 +192,20 @@ function PlanStudy() {
                 <label>Freq (MHz)</label>
                 <input type="number" value={freqMhz}
                   onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
+              </div>
+            </div>
+            <div className="row">
+              <div>
+                <label>Floors crossed</label>
+                <input type="number" min={0} max={30} value={floors}
+                  title="Slabs between TX and the mapped floor — COST-231 penetration (saturates non-linearly)"
+                  onChange={(e) => setFloors(Math.max(0, parseInt(e.target.value) || 0))} />
+              </div>
+              <div>
+                <label>Floor loss (dB)</label>
+                <input type="number" min={0} max={40} step={0.1} value={floorLoss}
+                  title="Per-slab penetration; 18.3 dB = standard concrete slab"
+                  onChange={(e) => setFloorLoss(parseFloat(e.target.value) || 18.3)} />
               </div>
             </div>
             <div className="row">

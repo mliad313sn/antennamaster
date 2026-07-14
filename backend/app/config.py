@@ -47,6 +47,12 @@ TERRARIUM_URL = os.environ.get(
 #                                                          [AM_DEM_ZOOM]
 DEM_ZOOM = _env_int("AM_DEM_ZOOM", 12)
 
+# Optional Digital SURFACE Model source (Terrarium-encoded XYZ): elevations
+# that include buildings/canopy.  When set, profile and coverage requests
+# may pass surface=true to treat those as obstructions.    [AM_DSM_URL]
+DSM_URL = os.environ.get("AM_DSM_URL") or None
+DSM_CACHE_DIR = DATA_DIR / "dsm_cache"
+
 # Number of DXF grid cells over which the DXF->SRTM transition is feathered.
 #                                                          [AM_FEATHER_CELLS]
 FUSION_FEATHER_CELLS = _env_float("AM_FEATHER_CELLS", 3.0)

@@ -74,8 +74,10 @@ def test_composite_best_server(fake_store):
                                      n_radials=48, n_steps=30)
         sites.append({"lat": la, "lon": lo, "name": f"S{i+1}",
                       "radius_m": 6000.0, "polar": polar})
-    png, bounds, stats, served_frac = composite_best_server(sites, raster_px=192)
+    png, bounds, stats, served_frac, sinr = composite_best_server(
+        sites, raster_px=192)
     assert png[:4] == b"\x89PNG"
+    assert sinr is None                          # no noise floor given
     assert len(stats) == 2
     assert 0.0 < served_frac <= 1.0
     shares = [s["best_server_share"] for s in stats]
@@ -83,6 +85,35 @@ def test_composite_best_server(fake_store):
     assert min(shares) > 0.2                     # both sites win territory
     (s, w), (n, e) = bounds
     assert w < 15.0 and e > 15.12                # union bbox spans both
+
+
+def test_composite_sinr_analysis(fake_store):
+    """Co-channel SINR: overlap zones must degrade vs an isolated site."""
+    engine = CoverageEngine(TerrainFusionService(store=fake_store))
+    from app.services.rf.technologies import get_technology
+    tech = get_technology("gsm900")
+    noise = -174.0 + 10.0 * np.log10(10e6) + 7.0          # 10 MHz / 7 dB NF
+
+    def run(site_lls):
+        sites = []
+        for i, (la, lo) in enumerate(site_lls):
+            polar = engine.compute_polar(la, lo, dict(tech), radius_m=6000,
+                                         n_radials=48, n_steps=30)
+            sites.append({"lat": la, "lon": lo, "name": f"S{i+1}",
+                          "radius_m": 6000.0, "polar": polar})
+        return composite_best_server(sites, raster_px=160, noise_dbm=noise)
+
+    *_, sinr_two = run([(47.0, 15.0), (47.0, 15.05)])     # heavy overlap
+    *_, sinr_one = run([(47.0, 15.0)])
+    assert sinr_two is not None and sinr_one is not None
+    assert sinr_two["png"][:4] == b"\x89PNG"
+    assert sinr_two["noise_dbm"] == pytest.approx(noise, abs=0.1)
+    # Alone, the site is only noise-limited; a co-channel neighbor a few km
+    # away must degrade the SINR statistics (means include both cells'
+    # signal-dominated centers, so the drop is a few dB, not tens).
+    assert sinr_two["mean_db"] < sinr_one["mean_db"] - 2.0
+    assert sinr_two["ge_6db_fraction"] < sinr_one["ge_6db_fraction"]
+    assert sinr_two["edge_fraction"] >= sinr_one["edge_fraction"]
 
 
 # ----------------------------------------------------------------- API layer

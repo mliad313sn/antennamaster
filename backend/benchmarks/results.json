@@ -1,56 +1,56 @@
 [
  {
   "name": "profile 256 samples + study (Deygout per-sample)",
-  "ms": 30,
-  "peak_mb": 0.3,
+  "ms": 29,
+  "peak_mb": 0.2,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "profile 2048 samples + study",
-  "ms": 271,
-  "peak_mb": 2.4,
+  "ms": 257,
+  "peak_mb": 2.5,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage default 180x100 @10km",
-  "ms": 159,
+  "ms": 154,
   "peak_mb": 21.2,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km (SRTM)",
-  "ms": 2679,
+  "ms": 2684,
   "peak_mb": 69.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km FUSED DXF grid",
-  "ms": 2725,
+  "ms": 2611,
   "peak_mb": 69.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "multi-site 4x (120x80 @10km) + composite",
-  "ms": 354,
-  "peak_mb": 39.6,
+  "ms": 382,
+  "peak_mb": 42.3,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "indoor multi-wall 400px grid, 200 walls",
-  "ms": 559,
+  "ms": 597,
   "peak_mb": 23.2,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "executive PDF (profile chart + tables)",
-  "ms": 101,
+  "ms": 105,
   "peak_mb": 2.0,
   "ok": true,
   "budget_s": 5.0

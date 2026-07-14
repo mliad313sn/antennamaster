@@ -21,7 +21,7 @@ import Help from '@/components/Help';
 import IndoorStudio from '@/components/IndoorStudio';
 import ProfileChart from '@/components/ProfileChart';
 import StudyPanel from '@/components/StudyPanel';
-import { fetchDxfState, fetchProfile, profileCsvUrl } from '@/lib/api';
+import { fetchDxfState, fetchProfile, fetchSurfaceAvailable, profileCsvUrl } from '@/lib/api';
 import {
   authHeaders, createProject, fetchMe, setToken, type User,
 } from '@/lib/saas';
@@ -63,6 +63,9 @@ export default function Home() {
   const [environment, setEnvironment] = useState<string | null>(null);
   const [foliageDepth, setFoliageDepth] = useState(0);
   const [rainRate, setRainRate] = useState(0);
+  const [clutterPct, setClutterPct] = useState(0);
+  const [surfaceOn, setSurfaceOn] = useState(false);
+  const [surfaceAvailable, setSurfaceAvailable] = useState(false);
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
 
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -122,6 +125,10 @@ export default function Home() {
     const saved = localStorage.getItem('am_theme');
     if (saved === 'light' || saved === 'dark') setTheme(saved);
   }, []);
+
+  // Surface-model (DSM) availability: shows the DSM toggle only when the
+  // backend has AM_DSM_URL configured.
+  useEffect(() => { fetchSurfaceAvailable().then(setSurfaceAvailable); }, []);
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'auto') root.removeAttribute('data-theme');
@@ -259,6 +266,7 @@ export default function Home() {
         freqMhz: num(freqMhz, 446),
         technology, model, environment,
         foliageDepthM: foliageDepth, rainRateMmH: rainRate,
+        clutterPct, surface: surfaceOn,
       })
         .then((p) => { if (!cancelled) setProfile(p); })
         .catch((e) => { if (!cancelled) setProfileError((e as Error).message); })
@@ -266,7 +274,7 @@ export default function Home() {
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [tx, rx, txHeight, rxHeight, freqMhz, georef, technology, model, environment,
-      foliageDepth, rainRate]);
+      foliageDepth, rainRate, clutterPct, surfaceOn]);
 
   const validation = georef?.validation;
   const transform = georef?.transform;
@@ -442,6 +450,9 @@ export default function Home() {
             environment={environment} onEnvironmentChange={setEnvironment}
             foliageDepth={foliageDepth} onFoliageChange={setFoliageDepth}
             rainRate={rainRate} onRainChange={setRainRate}
+            clutterPct={clutterPct} onClutterChange={setClutterPct}
+            surfaceOn={surfaceOn} onSurfaceChange={setSurfaceOn}
+            surfaceAvailable={surfaceAvailable}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={setCoverage}
           />
@@ -494,6 +505,7 @@ export default function Home() {
                   txHeight: num(txHeight, 20), rxHeight: num(rxHeight, 10),
                   freqMhz: num(freqMhz, 446), technology, model, environment,
                   foliageDepthM: foliageDepth, rainRateMmH: rainRate,
+                  clutterPct, surface: surfaceOn,
                 })}
                 download
               >

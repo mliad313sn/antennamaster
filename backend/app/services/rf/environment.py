@@ -23,6 +23,18 @@ ATMOSPHERIC GASES (ITU-R P.676 approximation)
     Sea-level specific attenuation for dry air + water vapour (7.5 g/m3)
     from the standard simplified fits; significant above ~10 GHz and
     dominated by the 22.2 GHz water-vapour and 60 GHz oxygen lines.
+
+CLUTTER / LAND USE (ITU-R P.2108 section 3.2)
+    Statistical clutter loss for a terminal embedded in man-made clutter
+    (urban/suburban land use) on a terrestrial path - the loss the DEM
+    cannot see because SRTM carries no buildings:
+        Ll   = 23.5 + 9.6 log10(f)
+        Ls   = 32.98 + 23.9 log10(d) + 3 log10(f)
+        Lctt = -5 log10(10^-0.2Ll + 10^-0.2Ls) - 6 Qinv(p/100)
+    with f in GHz (0.5-67), d in km (0.25-2, saturating beyond) and p the
+    percentage of locations not exceeded (50 = median; 90+ for planning
+    margins).  This is the model 3GPP/ITU sharing studies use for exactly
+    this "median model + no clutter database" gap.
 """
 from __future__ import annotations
 
@@ -92,6 +104,39 @@ def gaseous_attenuation_db_per_km(freq_mhz: float,
                + 3.98 * (1 + 0.006 * rho) / ((f - 22.235) ** 2 + 9.42)
                ) * f ** 2 * rho * 1e-4
     return float(gamma_o + gamma_w)
+
+
+def clutter_loss_db(freq_mhz: float, dist_m,
+                    p_percent: float = 50.0):
+    """ITU-R P.2108 (section 3.2) statistical terrestrial clutter loss, dB.
+
+    ``dist_m`` may be a scalar or an ndarray; the return matches its shape.
+    ``p_percent`` is the percentage of locations at which the loss is not
+    exceeded (50 = median, 90 = conservative planning).  0 disables.
+
+    Validity clamps: f to [0.5, 67] GHz (sub-500 MHz callers get the 0.5 GHz
+    curve - conservative for VHF/UHF, flagged with a warning at the API
+    layer); d to [0.25, 2] km, with a linear ramp from zero below 250 m so
+    coverage cells next to the mast are not charged full street-level
+    clutter, and saturation beyond 2 km where the curves flatten.
+    """
+    if p_percent <= 0:
+        return np.zeros_like(np.asarray(dist_m, dtype=np.float64)) \
+            if np.ndim(dist_m) else 0.0
+    from scipy.special import ndtri
+
+    f = float(np.clip(freq_mhz / 1000.0, 0.5, 67.0))
+    d = np.asarray(dist_m, dtype=np.float64) / 1000.0        # km
+    d_eff = np.clip(d, 0.25, 2.0)
+    ll = 23.5 + 9.6 * np.log10(f)
+    ls = 32.98 + 23.9 * np.log10(d_eff) + 3.0 * np.log10(f)
+    # Qinv(x) = ndtri(1 - x): inverse complementary cumulative normal.
+    q_inv = float(ndtri(1.0 - min(max(p_percent, 0.1), 99.9) / 100.0))
+    loss = (-5.0 * np.log10(10.0 ** (-0.2 * ll) + 10.0 ** (-0.2 * ls))
+            - 6.0 * q_inv)
+    # Ramp in over the first 250 m instead of a hard validity step.
+    loss = np.maximum(loss, 0.0) * np.clip(d / 0.25, 0.0, 1.0)
+    return loss if np.ndim(dist_m) else float(loss)
 
 
 def thermal_sensitivity_dbm(bandwidth_mhz: float, noise_figure_db: float,

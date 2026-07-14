@@ -131,3 +131,97 @@ def test_coverage_with_foliage_shrinks(client):
                          json={**base, "foliage_depth_m": 60}).json()
     assert wooded["stats"]["served_area_fraction"] \
         < clear["stats"]["served_area_fraction"]
+
+
+# ------------------------------------------------- ITU-R P.2108 clutter
+def test_p2108_clutter_reference_value():
+    from app.services.rf.environment import clutter_loss_db
+    # Hand-computed median at 2 GHz / 1 km:
+    # Ll = 23.5 + 9.6 log10(2) = 26.39; Ls = 32.98 + 0 + 3 log10(2) = 33.88
+    # Lctt = -5 log10(10^-5.278 + 10^-6.776) = 26.2 dB
+    assert clutter_loss_db(2000.0, 1000.0, 50.0) == pytest.approx(26.2, abs=0.5)
+    # Off switch and short-distance ramp.
+    assert clutter_loss_db(2000.0, 1000.0, 0.0) == 0.0
+    assert clutter_loss_db(2000.0, 50.0, 50.0) \
+        < clutter_loss_db(2000.0, 500.0, 50.0)
+    # Monotonic in location percentage and frequency.
+    assert clutter_loss_db(2000.0, 1000.0, 90.0) \
+        > clutter_loss_db(2000.0, 1000.0, 50.0) + 5.0
+    assert clutter_loss_db(28000.0, 1000.0, 50.0) \
+        > clutter_loss_db(2000.0, 1000.0, 50.0)
+    # Vectorized over distance, saturating past 2 km.
+    arr = clutter_loss_db(3500.0, np.array([500.0, 2000.0, 10_000.0]), 50.0)
+    assert arr.shape == (3,)
+    assert arr[1] == pytest.approx(arr[2], abs=1e-9)
+
+
+def test_profile_and_coverage_with_clutter(client):
+    params = {"lat1": 47.0, "lon1": 14.98, "lat2": 47.0, "lon2": 15.02,
+              "samples": 64, "technology": "nr3500"}
+    open_sky = client.get("/api/terrain/profile", params=params).json()
+    cluttered = client.get("/api/terrain/profile",
+                           params={**params, "clutter_pct": 90}).json()
+    assert cluttered["study"]["clutter_loss_db"] > 20.0
+    assert cluttered["study"]["margin_db"] \
+        < open_sky["study"]["margin_db"] - 20.0
+    # Sub-500 MHz callers get the conservative clamp warning.
+    vhf = client.get("/api/terrain/profile", params={
+        **params, "technology": "vhf150", "clutter_pct": 50}).json()
+    assert any("P.2108" in w for w in vhf["study"]["warnings"])
+
+    base = {"lat": 47.0, "lon": 15.0, "technology": "nr3500",
+            "radius_km": 8, "n_radials": 36, "n_steps": 40}
+    clear = client.post("/api/rf/coverage", json=base).json()
+    urban = client.post("/api/rf/coverage",
+                        json={**base, "clutter_pct": 75}).json()
+    assert urban["stats"]["served_area_fraction"] \
+        < clear["stats"]["served_area_fraction"]
+
+
+# ------------------------------------------------- surface model (DSM)
+def test_surface_model_not_configured_and_injected(client, fake_store,
+                                                   monkeypatch):
+    params = {"lat1": 47.0, "lon1": 14.99, "lat2": 47.0, "lon2": 15.01,
+              "samples": 32, "surface": True}
+    resp = client.get("/api/terrain/profile", params=params)
+    assert resp.status_code == 422
+    assert "AM_DSM_URL" in resp.json()["detail"]
+
+    # Inject a "DSM" that sits 25 m above the fake DTM everywhere: the
+    # surface profile must come back uniformly higher.
+    class RaisedStore(type(fake_store)):
+        def get_tile(self, z, x, y):
+            return super().get_tile(z, x, y) + 25.0
+
+    raised = RaisedStore(fake_store.cache_dir.parent)
+    monkeypatch.setattr(routes_terrain, "_surface_fusion",
+                        TerrainFusionService(store=raised))
+    dtm = client.get("/api/terrain/profile",
+                     params={**params, "surface": False}).json()
+    dsm = client.get("/api/terrain/profile", params=params).json()
+    assert dsm["surface"] is True
+    diffs = [b["elev"] - a["elev"]
+             for a, b in zip(dtm["points"], dsm["points"])]
+    assert min(diffs) == pytest.approx(25.0, abs=0.01)
+    assert max(diffs) == pytest.approx(25.0, abs=0.01)
+
+
+def test_multisite_sinr_api(client):
+    body = {"technology": "private_nr_n77", "radius_km": 6,
+            "n_radials": 36, "n_steps": 30, "raster_px": 192,
+            "sites": [{"lat": 47.0, "lon": 15.0},
+                      {"lat": 47.0, "lon": 15.04}]}
+    resp = client.post("/api/rf/coverage/multi", json=body)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["sinr"] is not None
+    assert data["sinr"]["png_url"].endswith(".png")
+    assert len(data["sinr"]["legend"]) == 5
+    # n77 preset: 100 MHz / 7 dB NF -> noise floor = -87 dBm.
+    assert data["sinr"]["noise_dbm"] == pytest.approx(-87.0, abs=0.5)
+    png = client.get(data["sinr"]["png_url"])
+    assert png.status_code == 200 and png.content[:4] == b"\x89PNG"
+    # Interference analysis can be disabled.
+    off = client.post("/api/rf/coverage/multi",
+                      json={**body, "interference": False}).json()
+    assert off["sinr"] is None

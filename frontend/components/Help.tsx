@@ -25,6 +25,9 @@ const GLOSSARY: Record<string, string> = {
   deygout: 'Deygout diffraction: estimates the dB lost when hills/buildings '
     + 'block the path, by treating the strongest obstacles as knife edges '
     + '(up to 3, recursively).',
+  clutter: 'Clutter (ITU-R P.2108): statistical extra loss from buildings/'
+    + 'street furniture the elevation data cannot see. The percentage is the '
+    + 'share of locations covered: 50% = median city, 90% = conservative.',
   helmert: 'Helmert transform: a scale + rotation + shift solved from your '
     + 'control-point pairs; the residual (m) says how well the points agree — '
     + 'large residuals mean a mis-picked point or wrong units.',

@@ -33,6 +33,11 @@ export interface StudyPanelProps {
   onFoliageChange: (v: number) => void;
   rainRate: number;
   onRainChange: (v: number) => void;
+  clutterPct: number;
+  onClutterChange: (v: number) => void;
+  surfaceOn: boolean;
+  onSurfaceChange: (v: boolean) => void;
+  surfaceAvailable: boolean;
   study: StudyResult | null;
   coverage: CoverageResponse | null;
   onCoverage: (c: CoverageResponse | null) => void;
@@ -60,8 +65,20 @@ export default function StudyPanel(props: StudyPanelProps) {
   // Measured antenna patterns (MSI Planet uploads).
   const [antennas, setAntennas] = useState<AntennaInfo[]>([]);
   const [antennaId, setAntennaId] = useState<string | null>(null);
-  // Multi-site best-server study.
+  // Multi-site best-server study; the raw response is kept so the map
+  // overlay can be flipped between best-server and SINR views.
   const [sites, setSites] = useState<SiteEntry[]>([]);
+  const [multiRaw, setMultiRaw] = useState<CoverageResponse | null>(null);
+  const [sinrView, setSinrView] = useState(false);
+
+  function showMultiView(sinr: boolean) {
+    if (!multiRaw) return;
+    setSinrView(sinr);
+    props.onCoverage(sinr && multiRaw.sinr
+      ? { ...multiRaw, png_url: multiRaw.sinr.png_url,
+          legend: multiRaw.sinr.legend }
+      : multiRaw);
+  }
 
   const numOr = (s: string) => {
     const v = parseFloat(s);
@@ -88,13 +105,18 @@ export default function StudyPanel(props: StudyPanelProps) {
     setBusy(true);
     setError(null);
     try {
-      props.onCoverage(await simulateMultiCoverage({
+      const resp = await simulateMultiCoverage({
         sites, technology: props.technology, radiusKm,
         dxfId: props.dxfId, antennaId,
         model: props.model, environment: props.environment,
         shadowMarginDb: shadowMargin, hBsM: props.txHeight || undefined,
+        clutterPct: props.clutterPct || undefined,
+        surface: props.surfaceOn || undefined,
         txPowerDbm: numOr(ovrPower), rxSensitivityDbm: numOr(ovrSens),
-      }));
+      });
+      setMultiRaw(resp);
+      setSinrView(false);
+      props.onCoverage(resp);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
@@ -132,11 +154,15 @@ export default function StudyPanel(props: StudyPanelProps) {
         shadowMarginDb: shadowMargin,
         foliageDepthM: props.foliageDepth || undefined,
         rainRateMmH: props.rainRate || undefined,
+        clutterPct: props.clutterPct || undefined,
+        surface: props.surfaceOn || undefined,
         hBsM: props.txHeight || undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
         rxSensitivityDbm: numOr(ovrSens),
       });
+      setMultiRaw(null);
+      setSinrView(false);
       props.onCoverage(resp);
     } catch (e) {
       setError((e as Error).message);
@@ -213,6 +239,9 @@ export default function StudyPanel(props: StudyPanelProps) {
               )}
               {(props.study.rain_loss_db ?? 0) > 0 && (
                 <div className="stat-line"><span className="k">Rain (P.838)</span><span className="v">{props.study.rain_loss_db!.toFixed(1)} dB</span></div>
+              )}
+              {(props.study.clutter_loss_db ?? 0) > 0 && (
+                <div className="stat-line"><span className="k">Clutter (P.2108)</span><span className="v">{props.study.clutter_loss_db!.toFixed(1)} dB</span></div>
               )}
               {(props.study.gaseous_loss_db ?? 0) >= 0.1 && (
                 <div className="stat-line"><span className="k">Atmospheric gases</span><span className="v">{props.study.gaseous_loss_db!.toFixed(1)} dB</span></div>
@@ -310,6 +339,24 @@ export default function StudyPanel(props: StudyPanelProps) {
                   onChange={(e) => props.onRainChange(parseFloat(e.target.value) || 0)} />
               </div>
             </div>
+            <div className="row">
+              <div>
+                <label>Clutter %loc<Help term="clutter" /></label>
+                <input type="number" min={0} max={99.9} value={props.clutterPct}
+                  title="ITU-R P.2108 statistical urban clutter — 0 = off, 50 = median, 90 = conservative planning"
+                  onChange={(e) => props.onClutterChange(parseFloat(e.target.value) || 0)} />
+              </div>
+              {props.surfaceAvailable && (
+                <div>
+                  <label>Surface model</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
+                    <input type="checkbox" checked={props.surfaceOn}
+                      onChange={(e) => props.onSurfaceChange(e.target.checked)} />
+                    DSM (buildings)
+                  </label>
+                </div>
+              )}
+            </div>
             <button style={{ width: '100%', marginBottom: 6 }}
               onClick={() => setShowAdvanced((v) => !v)}>
               {showAdvanced ? '▾' : '▸'} Site link budget (override preset)
@@ -390,6 +437,28 @@ export default function StudyPanel(props: StudyPanelProps) {
                     <span className="k">Served area</span>
                     <span className="v">{(props.coverage.stats.served_area_fraction * 100).toFixed(0)}%</span>
                   </div>
+                )}
+                {multiRaw?.sinr && (
+                  <>
+                    <div className="row" style={{ marginTop: 6 }}>
+                      <button className={sinrView ? '' : 'primary'}
+                        onClick={() => showMultiView(false)}>Best server</button>
+                      <button className={sinrView ? 'primary' : ''}
+                        onClick={() => showMultiView(true)}>SINR / interference</button>
+                    </div>
+                    <div className="stat-line">
+                      <span className="k">Mean SINR (co-channel)</span>
+                      <span className="v">{multiRaw.sinr.mean_db.toFixed(1)} dB</span>
+                    </div>
+                    <div className="stat-line">
+                      <span className="k">Area ≥ 6 dB SINR</span>
+                      <span className="v">{(multiRaw.sinr.ge_6db_fraction * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="stat-line">
+                      <span className="k">Cell-edge (&lt; 0 dB)</span>
+                      <span className="v">{(multiRaw.sinr.edge_fraction * 100).toFixed(0)}% · noise {multiRaw.sinr.noise_dbm.toFixed(0)} dBm</span>
+                    </div>
+                  </>
                 )}
                 {props.coverage.stats.sites?.map((s) => (
                   <div key={s.name} className="stat-line">

@@ -16,9 +16,40 @@ from .routes_auth import current_user
 # Process-wide fusion service (shares the DEM tile cache across requests).
 _fusion = TerrainFusionService()
 
+# Optional surface-model (DSM) fusion service: same machinery pointed at a
+# Terrarium DSM source (buildings/canopy included), created lazily when
+# AM_DSM_URL is configured.  Tests may inject one directly.
+_surface_fusion: TerrainFusionService | None = None
+
 
 def get_fusion_service() -> TerrainFusionService:
     return _fusion
+
+
+def get_surface_fusion_service() -> TerrainFusionService | None:
+    global _surface_fusion
+    if _surface_fusion is not None:
+        return _surface_fusion
+    from ..config import DSM_CACHE_DIR, DSM_URL
+    if not DSM_URL:
+        return None
+    from ..services.dem.tiles import TerrariumTileStore
+    _surface_fusion = TerrainFusionService(
+        store=TerrariumTileStore(cache_dir=DSM_CACHE_DIR, url_template=DSM_URL))
+    return _surface_fusion
+
+
+def resolve_fusion(surface: bool) -> TerrainFusionService:
+    """The fusion service for a request; 422 when a DSM is asked for but
+    not configured, so the client gets an actionable message."""
+    if not surface:
+        return get_fusion_service()
+    svc = get_surface_fusion_service()
+    if svc is None:
+        raise HTTPException(422, "No surface model configured: set AM_DSM_URL "
+                                 "to a Terrarium-encoded DSM tile source to "
+                                 "use surface=true.")
+    return svc
 
 router = APIRouter(prefix="/api/terrain", tags=["terrain"])
 
@@ -65,6 +96,12 @@ def terrain_profile(
     # Environmental excess losses (foliage clutter / weather for PtP):
     foliage_depth_m: float = Query(0.0, ge=0, le=400),
     rain_rate_mm_h: float = Query(0.0, ge=0, le=150),
+    # ITU-R P.2108 statistical man-made clutter at the RX end: percentage of
+    # locations not exceeded (0 = off, 50 = median, 90 = planning margin).
+    clutter_pct: float = Query(0.0, ge=0, le=99.9),
+    # Sample the surface model (DSM: buildings/canopy) instead of the bare
+    # terrain - requires AM_DSM_URL to be configured.
+    surface: bool = Query(False),
     user: dict | None = Depends(current_user),
 ) -> dict:
     """TX->RX elevation profile over the fused terrain, plus RF link analysis.
@@ -73,7 +110,7 @@ def terrain_profile(
     the DXF patch (for provenance color-coding).  `terrain_curved_m` has the
     k-factor earth bulge applied and is what the LOS/Fresnel numbers use.
     """
-    fusion = get_fusion_service()
+    fusion = resolve_fusion(surface)
 
     grid = georef = None
     dxf_active = False
@@ -141,7 +178,8 @@ def terrain_profile(
                                       tech["freq_mhz"])
         # Environmental excess losses along the path (foliage at the RX end,
         # gases + rain scale with distance - the PtP microwave essentials).
-        from ..services.rf.environment import (foliage_loss_db,
+        from ..services.rf.environment import (clutter_loss_db,
+                                               foliage_loss_db,
                                                gaseous_attenuation_db_per_km,
                                                rain_loss_db)
         fol = foliage_loss_db(tech["freq_mhz"], foliage_depth_m)
@@ -151,13 +189,21 @@ def terrain_profile(
         # Per-sample rain via the same effective-path formula.
         rain = np.array([rain_loss_db(tech["freq_mhz"], float(di), rain_rate_mm_h)
                          for di in d]) if rain_rate_mm_h > 0 else np.zeros_like(d)
+        # ITU-R P.2108 statistical clutter (distance-dependent per sample).
+        clu = clutter_loss_db(tech["freq_mhz"], d, clutter_pct) \
+            if clutter_pct > 0 else np.zeros_like(d)
+        if clutter_pct > 0 and tech["freq_mhz"] < 500.0:
+            warnings.append(
+                "P.2108 clutter is defined for 0.5-67 GHz; the 0.5 GHz curve "
+                "was used (conservative below 500 MHz).")
 
         mimo = float(tech.get("mimo_gain_db", 0.0))
         rx_power_per_point = (tech["tx_power_dbm"] + tech["tx_gain_dbi"]
                               + tech["rx_gain_dbi"] + mimo - tech["losses_db"]
-                              - pl - diff - fol - gas - rain)
+                              - pl - diff - fol - gas - rain - clu)
         budget = link_budget(tech, float(pl[-1]), float(diff[-1]),
-                             extra_losses_db=fol + float(gas[-1]) + rain_end)
+                             extra_losses_db=fol + float(gas[-1]) + rain_end
+                             + float(clu[-1]))
         study = {
             "technology": {**tech, "key": technology},
             "path_loss_db": round(float(pl[-1]), 1),
@@ -165,6 +211,7 @@ def terrain_profile(
             "foliage_loss_db": round(fol, 1),
             "gaseous_loss_db": round(float(gas[-1]), 2),
             "rain_loss_db": round(rain_end, 1),
+            "clutter_loss_db": round(float(clu[-1]), 1),
             "mimo_gain_db": mimo,
             "sensitivity_dbm": round(budget["sensitivity_dbm"], 1),
             "rx_power_dbm": round(budget["rx_power_dbm"], 1),
@@ -176,6 +223,7 @@ def terrain_profile(
     return {
         "samples": samples,
         "dxf_id": dxf_id if dxf_active else None,
+        "surface": surface,
         "distance_m": prof.distances_m[-1] - prof.distances_m[0],
         "points": [
             {
@@ -230,6 +278,8 @@ def terrain_profile_csv(
     rx_sensitivity_dbm: float | None = Query(None),
     foliage_depth_m: float = Query(0.0, ge=0, le=400),
     rain_rate_mm_h: float = Query(0.0, ge=0, le=150),
+    clutter_pct: float = Query(0.0, ge=0, le=99.9),
+    surface: bool = Query(False),
     user: dict | None = Depends(current_user),
 ):
     """The elevation/link profile as CSV - the deliverable engineers attach
@@ -245,6 +295,7 @@ def terrain_profile_csv(
         rx_gain_dbi=rx_gain_dbi, losses_db=losses_db,
         rx_sensitivity_dbm=rx_sensitivity_dbm,
         foliage_depth_m=foliage_depth_m, rain_rate_mm_h=rain_rate_mm_h,
+        clutter_pct=clutter_pct, surface=surface,
         user=user)
 
     has_rx = data["points"] and "rx_power_dbm" in data["points"][0]

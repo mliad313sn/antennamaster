@@ -43,6 +43,8 @@ class ReportRequest(BaseModel):
     dxf_id: str | None = None
     foliage_depth_m: float = 0.0
     rain_rate_mm_h: float = 0.0
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    surface: bool = False
     # Coverage section (optional): a previously computed raster.
     coverage_id: str | None = None
     served_area_fraction: float | None = Field(None, ge=0, le=1)
@@ -73,6 +75,7 @@ def report_pdf(req: ReportRequest,
             losses_db=None, rx_sensitivity_dbm=None,
             foliage_depth_m=req.foliage_depth_m,
             rain_rate_mm_h=req.rain_rate_mm_h,
+            clutter_pct=req.clutter_pct, surface=req.surface,
             user=user)
         study, rf = data["study"], data["rf"]
         points, distance = data["points"], data["distance_m"]

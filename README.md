@@ -31,6 +31,15 @@ suites.
 * **Area coverage**: polar-sweep simulation from the TX (omni or 3GPP
   parametric sector antenna), margin-classed raster overlay with legend and
   served-area statistics.
+* **Environmental & clutter losses**: Weissberger foliage, ITU-R P.838/P.530
+  rain, P.676 gases and **ITU-R P.2108 statistical clutter** (the man-made
+  land-use loss elevation data cannot see) stack on any model.
+* **Multi-site & interference**: best-server composites over up to 8 sites
+  plus a **co-channel SINR map** (S/(I+N), worst-case reuse-1) with mean
+  SINR, ≥6 dB area and cell-edge statistics.
+* **Surface models**: point `AM_DSM_URL` at a Terrarium-encoded DSM and any
+  profile/coverage can treat buildings and canopy as obstructions
+  (`surface=true`).
 * **Map providers**: OSM, OpenTopoMap, Carto Light/Dark, Esri Imagery/Topo
   out of the box, plus any custom XYZ tile template.
 
@@ -42,6 +51,8 @@ Studies no DEM-based tool can run, using a DXF as *structure* instead of relief:
   material per layer (12-material library, dB per crossing, frequency
   interpolated), click the plan to place the TX, and get a COST-231
   multi-wall heatmap in drawing coordinates — no georeferencing needed.
+  **Multi-floor**: a COST-231 floor-penetration term (non-linear saturation)
+  covers TX placements N storeys from the mapped floor.
 * **Tunnel & mine gallery links** — Emslie waveguide model (dominant-mode
   dB/m from cross-section, wall permittivity, roughness, tilt) combined with
   the direct ray; reproduces why UHF outranges VHF underground.
