@@ -11,7 +11,7 @@
  */
 import { useMemo } from 'react';
 import {
-  Area, ComposedChart, Legend, Line, ResponsiveContainer,
+  Area, ComposedChart, Legend, Line, ReferenceDot, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import type { ProfilePoint, ProfileResponse } from '@/lib/types';
@@ -138,6 +138,17 @@ export default function ProfileChart({ profile }: { profile: ProfileResponse }) 
             dataKey="los" name="Line of sight" stroke="var(--ink-primary)"
             strokeDasharray="6 4" strokeWidth={1.5} dot={false} isAnimationActive={false}
           />
+          {/* Mark the controlling obstruction (where a repeater/mast-raise
+              would act) whenever the path is not comfortably clear. */}
+          {profile.rf.worst_obstruction_v > -0.78 && (() => {
+            const p = profile.points[profile.rf.worst_obstruction_index];
+            return p ? (
+              <ReferenceDot x={p.d / 1000} y={p.elev_curved} r={5}
+                fill="var(--status-critical)" stroke="#fff" strokeWidth={1.5}
+                label={{ value: 'worst obstruction', position: 'top', fontSize: 10,
+                         fill: 'var(--status-critical)' }} />
+            ) : null;
+          })()}
         </ComposedChart>
       </ResponsiveContainer>
     </div>

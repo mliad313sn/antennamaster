@@ -35,8 +35,22 @@ export default function StudyPanel(props: StudyPanelProps) {
   const [sector, setSector] = useState(false);
   const [azimuth, setAzimuth] = useState(0);
   const [beamwidth, setBeamwidth] = useState(65);
+  const [downtilt, setDowntilt] = useState(0);
+  const [shadowMargin, setShadowMargin] = useState(0);
+  // Real-site link budget overrides (empty = use the preset value).
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [ovrPower, setOvrPower] = useState('');
+  const [ovrTxGain, setOvrTxGain] = useState('');
+  const [ovrRxGain, setOvrRxGain] = useState('');
+  const [ovrLosses, setOvrLosses] = useState('');
+  const [ovrSens, setOvrSens] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const numOr = (s: string) => {
+    const v = parseFloat(s);
+    return Number.isFinite(v) ? v : undefined;
+  };
 
   useEffect(() => {
     fetchTechnologies().then(setTechs).catch(() => setTechs([]));
@@ -72,7 +86,12 @@ export default function StudyPanel(props: StudyPanelProps) {
         model: props.model, environment: props.environment,
         antennaAzimuthDeg: sector ? azimuth : null,
         antennaBeamwidthDeg: beamwidth,
+        downtiltDeg: downtilt,
+        shadowMarginDb: shadowMargin,
         hBsM: props.txHeight || undefined,
+        txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
+        rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
+        rxSensitivityDbm: numOr(ovrSens),
       });
       props.onCoverage(resp);
     } catch (e) {
@@ -189,6 +208,56 @@ export default function StudyPanel(props: StudyPanelProps) {
                 </div>
               </div>
             )}
+            <div className="row">
+              <div>
+                <label>Downtilt (°)</label>
+                <input type="number" min={-10} max={20} value={downtilt}
+                  onChange={(e) => setDowntilt(parseFloat(e.target.value) || 0)} />
+              </div>
+              <div>
+                <label>Fade margin (dB)</label>
+                <input type="number" min={0} max={30} value={shadowMargin}
+                  title="Log-normal shadowing margin: ~5.5 dB ≈ 90% area, ~8 dB ≈ 95%"
+                  onChange={(e) => setShadowMargin(parseFloat(e.target.value) || 0)} />
+              </div>
+            </div>
+            <button style={{ width: '100%', marginBottom: 6 }}
+              onClick={() => setShowAdvanced((v) => !v)}>
+              {showAdvanced ? '▾' : '▸'} Site link budget (override preset)
+            </button>
+            {showAdvanced && (
+              <>
+                <div className="row">
+                  <div>
+                    <label>TX power (dBm)</label>
+                    <input type="number" placeholder={String(selectedTech.tx_power_dbm)}
+                      value={ovrPower} onChange={(e) => setOvrPower(e.target.value)} />
+                  </div>
+                  <div>
+                    <label>TX gain (dBi)</label>
+                    <input type="number" placeholder={String(selectedTech.tx_gain_dbi)}
+                      value={ovrTxGain} onChange={(e) => setOvrTxGain(e.target.value)} />
+                  </div>
+                </div>
+                <div className="row">
+                  <div>
+                    <label>RX gain (dBi)</label>
+                    <input type="number" placeholder={String(selectedTech.rx_gain_dbi)}
+                      value={ovrRxGain} onChange={(e) => setOvrRxGain(e.target.value)} />
+                  </div>
+                  <div>
+                    <label>Losses (dB)</label>
+                    <input type="number" placeholder={String(selectedTech.losses_db)}
+                      value={ovrLosses} onChange={(e) => setOvrLosses(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <label>RX sensitivity (dBm)</label>
+                  <input type="number" placeholder={String(selectedTech.rx_sensitivity_dbm)}
+                    value={ovrSens} onChange={(e) => setOvrSens(e.target.value)} />
+                </div>
+              </>
+            )}
             <button className="primary" style={{ width: '100%' }}
               disabled={!props.tx || busy} onClick={runCoverage}>
               {busy ? 'Simulating…' : props.tx ? 'Simulate coverage from TX' : 'Place TX first'}
@@ -198,6 +267,21 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <div className="stat-line" style={{ marginTop: 8 }}>
                   <span className="k">Served area</span>
                   <span className="v">{(props.coverage.stats.served_area_fraction * 100).toFixed(0)}%</span>
+                </div>
+                <div className="stat-line">
+                  <span className="k">TX ground</span>
+                  <span className="v">{props.coverage.stats.tx_elevation_m.toFixed(0)} m ASL</span>
+                </div>
+                <div className="stat-line">
+                  <span className="k">Peak RX power</span>
+                  <span className="v">{props.coverage.stats.max_rx_power_dbm.toFixed(1)} dBm</span>
+                </div>
+                <div className="row" style={{ marginTop: 6 }}>
+                  <a className="download-link" href={props.coverage.png_url} download>⤓ PNG</a>
+                  <a className="download-link"
+                    href={props.coverage.png_url.replace(/\.png$/, '.kmz')} download>
+                    ⤓ KMZ (Google Earth)
+                  </a>
                 </div>
                 <div style={{ marginTop: 4 }}>
                   {props.coverage.legend.map((l) => (

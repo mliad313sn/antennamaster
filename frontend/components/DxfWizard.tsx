@@ -8,7 +8,7 @@
  * On success the parent receives the GeorefResponse (footprint, overlay,
  * validation) and renders it on the map.
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { georeference, uploadDxf } from '@/lib/api';
 import type {
   ControlPointPair, GeorefMode, GeorefResponse, LayerInfo, UploadResponse,
@@ -43,6 +43,12 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
   ]);
 
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onClose]);
 
   // ------------------------------------------------------------- handlers
   async function handleFile(file: File) {

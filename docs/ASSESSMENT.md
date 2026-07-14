@@ -118,7 +118,60 @@ v3 additions closing this:
 * **Through-the-earth**: skin-depth attenuation + near-field 1/r³ spreading,
   ground-conductivity presets — the VLF mine-paging use case.
 
-## 4. Roadmap (not yet implemented, ordered by value)
+## 4. Multi-persona review panel → ergonomy / agility / scalability (v4)
+
+Four independent reviewers examined the full codebase, each from a different
+métier: a **senior RF planning engineer** (operator, Atoll/Planet user), a
+**field technician / WISP installer** (laptop/phone on site), a
+**backend/platform architect** (production self-hosting), and a **UX designer
++ broadcast/DAS engineer** (heuristic evaluation + "other métiers"). Their
+findings converged strongly; the table shows each finding and its status.
+
+### Ergonomy
+
+| Finding (personas) | Status |
+|---|---|
+| TX/RX placement click-only; no exact coordinate entry (all 4) | ✅ editable lat/lon inputs, paste-friendly |
+| Page refresh wipes the whole session (3) | ✅ localStorage persistence incl. DXF rebinding via new `GET /api/dxf/{id}/state` |
+| No place/coordinate search; map fixed on Austria (2) | ✅ header search: "lat, lon" jump + Nominatim geocoding; last map view remembered |
+| No device GPS use (field tech) | ✅ "Use my GPS position" button |
+| No swap-TX/RX quick action (field tech) | ✅ ⇄ swap button (coords + heights) |
+| No exports — nothing to hand a client (planner, UX) | ✅ profile CSV endpoint + download link, coverage PNG + **KMZ (Google Earth)**, indoor heatmap PNG |
+| Un-debounced refetch on every keystroke (2) | ✅ 350 ms debounce |
+| Number inputs snap to fallback when cleared (2) | ✅ string-state fields parsed at fetch time |
+| Data computed but never shown: worst obstruction, coverage TX-ground/peak-power, indoor min/max dBm, TTE total loss (UX) | ✅ all surfaced; worst obstruction marked on the chart |
+| Custom tile provider dead code (2) | ✅ sidebar input, persisted, feeds the layer switcher |
+| No responsive layout (2) | ✅ ≤800 px stacks sidebar/map/chart |
+| Modals lack Escape/aria (UX) | ✅ Escape-to-close + aria-labels on both modals |
+| Dark mode (UX) | ⏳ roadmap |
+
+### Agility
+
+| Finding | Status |
+|---|---|
+| Coverage UI hid link-budget overrides the API accepts (planner) | ✅ "Site link budget" panel: power/gains/losses/sensitivity |
+| No antenna downtilt / vertical pattern (planner) | ✅ parametric vertical pattern + mechanical downtilt in the engine and UI |
+| Median-only prediction; no shadow-fade margin (planner) | ✅ `shadow_margin_db` in engine + "Fade margin" field (5.5 dB≈90%, 8 dB≈95% hints) |
+| k-factor locked to 4/3 for coverage (planner) | ✅ `k_factor` on the coverage API |
+| Presets hardcoded in Python (planner) | ✅ operator overrides merged from `DATA_DIR/technologies.json` |
+| All config hardcoded (architect) | ✅ `AM_*` env vars: data dir, DEM URL/zoom, CORS, upload cap, thresholds |
+
+### Scalability
+
+| Finding | Status |
+|---|---|
+| Coverage/indoor PNGs in per-process dicts → 404 across workers/restarts (architect, planner) | ✅ disk-backed `results_store` (any worker serves any result; pruned by count) |
+| DXF georef state memory-only → 409 on sibling worker (architect) | ✅ JSON sidecar + deterministic rebuild (`ensure_ready()`), tested via simulated restart |
+| Unbounded decoded-tile RAM cache (architect) | ✅ LRU capped at 2000 tiles (~500 MB) |
+| Per-point Python loop in tile sampling (architect, planner) | ✅ fully vectorized web-mercator projection |
+| Per-step `_ke_loss` list comprehension (planner) | ✅ vectorized `ke_loss_array` |
+| Served-area KPI polar-biased optimistic (planner) | ✅ area-weighted by radius |
+| No readiness probe; liveness only (architect) | ✅ `/api/ready` (data-dir writable + DEM cache state) |
+| No logging config (architect) | ✅ basicConfig at startup (route-level tracebacks land in server logs) |
+| On-disk DEM cache unbounded (architect) | ⏳ roadmap (results store prunes; DEM tiles still accumulate) |
+| Heavy sims block the threadpool under many concurrent users (architect) | ⏳ roadmap (background job queue) |
+
+## 5. Roadmap (not yet implemented, ordered by value)
 
 1. **ITM / Longley-Rice** propagation option (parity with SPLAT!/RM verdicts).
 2. **Antenna pattern file import** (MSI Planet / .ant) replacing the

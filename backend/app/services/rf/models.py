@@ -243,6 +243,14 @@ def _ke_loss(v: float) -> float:
     return float(6.9 + 20.0 * np.log10(np.sqrt((v - 0.1) ** 2 + 1.0) + v - 0.1))
 
 
+def ke_loss_array(v: np.ndarray) -> np.ndarray:
+    """Vectorized ITU-R P.526 knife-edge loss for arrays of v (0 below -0.78)."""
+    v = np.asarray(v, dtype=np.float64)
+    with np.errstate(invalid="ignore"):
+        loss = 6.9 + 20.0 * np.log10(np.sqrt((v - 0.1) ** 2 + 1.0) + v - 0.1)
+    return np.where(v > -0.78, loss, 0.0)
+
+
 def deygout_loss_db(distances_m: np.ndarray, elevations_m: np.ndarray,
                     tx_h_m: float, rx_h_m: float, freq_mhz: float,
                     max_edges: int = 3) -> float:

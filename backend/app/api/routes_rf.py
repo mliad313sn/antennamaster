@@ -1,25 +1,18 @@
 """RF study endpoints: technology presets, propagation models, area coverage."""
 from __future__ import annotations
 
-import threading
-from collections import OrderedDict
-
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from ..services import results_store
 from ..services.dxf.store import get_dxf_store
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
-from ..services.terrain.coverage import CoverageEngine, CoverageResult
+from ..services.terrain.coverage import CoverageEngine
 from .routes_terrain import get_fusion_service
 
 router = APIRouter(prefix="/api/rf", tags=["rf"])
-
-# Completed coverage rasters kept for map display (bounded LRU).
-_coverage_results: OrderedDict[str, CoverageResult] = OrderedDict()
-_coverage_lock = threading.Lock()
-_MAX_KEPT = 20
 
 
 class CoverageRequest(BaseModel):
@@ -42,6 +35,12 @@ class CoverageRequest(BaseModel):
     # Sector antenna (omni when azimuth is null):
     antenna_azimuth_deg: float | None = Field(None, ge=0, lt=360)
     antenna_beamwidth_deg: float = Field(65.0, gt=5, le=360)
+    downtilt_deg: float = Field(0.0, ge=-10, le=20)
+    vertical_beamwidth_deg: float = Field(10.0, gt=1, le=90)
+    # Location-variability (shadow fade) margin subtracted before the
+    # served test - design to ~90/95% area instead of the 50% median.
+    shadow_margin_db: float = Field(0.0, ge=0, le=30)
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
     # Simulation resolution:
     n_radials: int = Field(180, ge=36, le=720)
     n_steps: int = Field(100, ge=20, le=400)
@@ -84,7 +83,7 @@ def simulate_coverage(req: CoverageRequest) -> dict:
         session = get_dxf_store().get(req.dxf_id)
         if session is None:
             raise HTTPException(404, f"Unknown DXF id: {req.dxf_id}")
-        if session.grid is None:
+        if not session.ensure_ready():
             raise HTTPException(409, "DXF has not been georeferenced yet")
         grid, georef = session.grid, session.georef
 
@@ -95,15 +94,18 @@ def simulate_coverage(req: CoverageRequest) -> dict:
             n_radials=req.n_radials, n_steps=req.n_steps,
             antenna_azimuth_deg=req.antenna_azimuth_deg,
             antenna_beamwidth_deg=req.antenna_beamwidth_deg,
+            downtilt_deg=req.downtilt_deg,
+            vertical_beamwidth_deg=req.vertical_beamwidth_deg,
+            shadow_margin_db=req.shadow_margin_db,
+            k=req.k_factor,
             grid=grid, georef=georef,
         )
     except Exception as exc:  # DEM fetch failure -> 502, not a stacktrace
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
 
-    with _coverage_lock:
-        _coverage_results[result.coverage_id] = result
-        while len(_coverage_results) > _MAX_KEPT:
-            _coverage_results.popitem(last=False)
+    # Disk-backed so any worker can serve the PNG and restarts lose nothing.
+    results_store.save("coverage", result.coverage_id, result.png,
+                       {"bounds": result.bounds})
 
     return {
         "coverage_id": result.coverage_id,
@@ -118,9 +120,41 @@ def simulate_coverage(req: CoverageRequest) -> dict:
 
 @router.get("/coverage/{coverage_id}.png")
 def coverage_png(coverage_id: str) -> Response:
-    with _coverage_lock:
-        result = _coverage_results.get(coverage_id)
-    if result is None:
+    hit = results_store.load("coverage", coverage_id)
+    if hit is None:
         raise HTTPException(404, "Coverage result expired or unknown")
-    return Response(content=result.png, media_type="image/png",
+    return Response(content=hit[0], media_type="image/png",
                     headers={"Cache-Control": "max-age=3600"})
+
+
+@router.get("/coverage/{coverage_id}.kmz")
+def coverage_kmz(coverage_id: str) -> Response:
+    """Coverage raster as a KMZ GroundOverlay - opens in Google Earth / GIS,
+    the deliverable format planners hand to clients."""
+    hit = results_store.load("coverage", coverage_id)
+    if hit is None:
+        raise HTTPException(404, "Coverage result expired or unknown")
+    png, meta = hit
+    (south, west), (north, east) = meta.get("bounds", [[0, 0], [0, 0]])
+    kml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <GroundOverlay>
+    <name>AntennaMaster coverage {coverage_id}</name>
+    <Icon><href>coverage.png</href></Icon>
+    <LatLonBox>
+      <north>{north}</north><south>{south}</south>
+      <east>{east}</east><west>{west}</west>
+    </LatLonBox>
+  </GroundOverlay>
+</kml>"""
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("doc.kml", kml)
+        z.writestr("coverage.png", png)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.google-earth.kmz",
+        headers={"Content-Disposition":
+                 f'attachment; filename="coverage-{coverage_id}.kmz"'})

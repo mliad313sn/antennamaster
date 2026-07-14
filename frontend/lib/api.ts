@@ -72,7 +72,11 @@ export async function simulateCoverage(params: {
   dxfId: string | null;
   freqMhz?: number; model?: string | null; environment?: string | null;
   antennaAzimuthDeg?: number | null; antennaBeamwidthDeg?: number;
+  downtiltDeg?: number; shadowMarginDb?: number;
   hBsM?: number;
+  // Real site link-budget overrides (the preset is only a starting point):
+  txPowerDbm?: number; txGainDbi?: number; rxGainDbi?: number;
+  lossesDb?: number; rxSensitivityDbm?: number;
 }): Promise<CoverageResponse> {
   return jsonOrThrow(await fetch('/api/rf/coverage', {
     method: 'POST',
@@ -86,9 +90,42 @@ export async function simulateCoverage(params: {
       environment: params.environment ?? undefined,
       antenna_azimuth_deg: params.antennaAzimuthDeg ?? undefined,
       antenna_beamwidth_deg: params.antennaBeamwidthDeg,
+      downtilt_deg: params.downtiltDeg,
+      shadow_margin_db: params.shadowMarginDb,
       h_bs_m: params.hBsM,
+      tx_power_dbm: params.txPowerDbm,
+      tx_gain_dbi: params.txGainDbi,
+      rx_gain_dbi: params.rxGainDbi,
+      losses_db: params.lossesDb,
+      rx_sensitivity_dbm: params.rxSensitivityDbm,
     }),
   }));
+}
+
+/** Restore a georeferenced DXF's map state (footprint/overlay) by id —
+ *  used to rebuild the session after a page reload. */
+export async function fetchDxfState(dxfId: string): Promise<GeorefResponse> {
+  return jsonOrThrow(await fetch(`/api/dxf/${dxfId}/state`));
+}
+
+/** URL of the CSV export matching the given profile query (same params). */
+export function profileCsvUrl(params: {
+  lat1: number; lon1: number; lat2: number; lon2: number;
+  dxfId: string | null; txHeight: number; rxHeight: number;
+  freqMhz: number; technology?: string | null;
+  model?: string | null; environment?: string | null;
+}): string {
+  const q = new URLSearchParams({
+    lat1: String(params.lat1), lon1: String(params.lon1),
+    lat2: String(params.lat2), lon2: String(params.lon2),
+    tx_height_m: String(params.txHeight), rx_height_m: String(params.rxHeight),
+  });
+  if (!params.technology) q.set('freq_mhz', String(params.freqMhz));
+  if (params.dxfId) q.set('dxf_id', params.dxfId);
+  if (params.technology) q.set('technology', params.technology);
+  if (params.model) q.set('model', params.model);
+  if (params.environment) q.set('environment', params.environment);
+  return `/api/terrain/profile.csv?${q.toString()}`;
 }
 
 // ------------------------------------------------ indoor / underground

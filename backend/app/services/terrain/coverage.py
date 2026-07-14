@@ -23,7 +23,7 @@ from pyproj import Geod
 
 from ..dxf.georef import BaseGeoref
 from ..dxf.gridder import DxfTerrainGrid
-from ..rf.models import _ke_loss, path_loss_db
+from ..rf.models import ke_loss_array, path_loss_db
 from ..rf.physics import EARTH_RADIUS_M, K_FACTOR_DEFAULT
 from .fusion import TerrainFusionService
 
@@ -62,6 +62,9 @@ class CoverageEngine:
                  n_radials: int = 180, n_steps: int = 100,
                  antenna_azimuth_deg: float | None = None,
                  antenna_beamwidth_deg: float = 65.0,
+                 downtilt_deg: float = 0.0,
+                 vertical_beamwidth_deg: float = 10.0,
+                 shadow_margin_db: float = 0.0,
                  grid: DxfTerrainGrid | None = None,
                  georef: BaseGeoref | None = None,
                  k: float = K_FACTOR_DEFAULT,
@@ -104,28 +107,45 @@ class CoverageEngine:
             los = e_tx + (e_rx[:, None] - e_tx) * (d_j / d_i)   # (S, S)
             h_obs = elev[r][None, :] + bulge - los
             v = np.where(seg_valid, h_obs * sqrt_term, -np.inf)
-            v_max = v.max(axis=1)                               # worst edge per step
-            diff_loss[r] = np.array([_ke_loss(float(vv)) for vv in v_max])
+            diff_loss[r] = ke_loss_array(v.max(axis=1))         # worst edge per step
 
         # ---- 4) empirical path loss + link budget -------------------------
         pl, warnings = path_loss_db(tech["model"], dist_g.ravel(), freq,
                                     h_bs, h_ut, tech.get("environment", "urban"))
         pl = pl.reshape(n_radials, n_steps)
 
-        ant_gain = np.zeros(n_radials)
+        # Horizontal sector pattern (3GPP parabolic, 25 dB front-to-back).
+        ant_gain = np.zeros((n_radials, 1))
         if antenna_azimuth_deg is not None:
-            # 3GPP parabolic sector pattern, 25 dB front-to-back.
             delta = (az - antenna_azimuth_deg + 180.0) % 360.0 - 180.0
-            ant_gain = -np.minimum(12.0 * (delta / antenna_beamwidth_deg) ** 2, 25.0)
+            ant_gain = -np.minimum(
+                12.0 * (delta / antenna_beamwidth_deg) ** 2, 25.0)[:, None]
+
+        # Vertical pattern with mechanical/electrical downtilt: elevation
+        # angle of each sample as seen from the TX antenna (negative = below
+        # horizon), 3GPP parabolic in the vertical plane, 20 dB floor.
+        if downtilt_deg != 0.0 or antenna_azimuth_deg is not None:
+            dh = (elev + h_ut) - (tx_elev + h_bs)               # (R, S) meters
+            elev_angle = np.degrees(np.arctan2(dh, dist_g))     # (R, S)
+            v_delta = elev_angle - (-downtilt_deg)              # boresight below horizon
+            ant_gain = ant_gain - np.minimum(
+                12.0 * (v_delta / max(vertical_beamwidth_deg, 1.0)) ** 2, 20.0)
 
         rx_power = (tech["tx_power_dbm"] + tech["tx_gain_dbi"] + tech["rx_gain_dbi"]
-                    - tech["losses_db"] + ant_gain[:, None] - pl - diff_loss)
-        margin = rx_power - tech["rx_sensitivity_dbm"]
+                    - tech["losses_db"] + ant_gain - pl - diff_loss)
+        # Shadow-fade (location variability) margin: subtract before the
+        # served test so "served" means the target location probability,
+        # not the 50% median a bare link budget gives.
+        margin = rx_power - tech["rx_sensitivity_dbm"] - shadow_margin_db
 
         # ---- 5) rasterize the polar field to a lat/lon RGBA overlay -------
         png, bounds = self._rasterize(lat, lon, az, dist, margin, radius_m, raster_px)
 
-        served_frac = float(np.mean(margin >= 0.0))
+        # Area-weight the served statistic: a polar cell's ground area grows
+        # linearly with distance, so an unweighted mean over-counts the
+        # (nearly always served) samples close to the mast.
+        w_area = dist_g / dist_g.sum()
+        served_frac = float(np.sum((margin >= 0.0) * w_area))
         return CoverageResult(
             coverage_id=uuid.uuid4().hex[:12],
             png=png, bounds=bounds,

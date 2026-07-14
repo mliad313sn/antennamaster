@@ -30,7 +30,7 @@ def point_elevation(lat: float = Query(ge=-90, le=90),
     grid = georef = None
     if dxf_id:
         session = get_dxf_store().get(dxf_id)
-        if session and session.grid is not None:
+        if session and session.ensure_ready():
             grid, georef = session.grid, session.georef
     elev, w = fusion.fused_elevations(np.array([lat]), np.array([lon]), grid, georef)
     return {"lat": lat, "lon": lon, "elevation_m": float(elev[0]),
@@ -73,7 +73,7 @@ def terrain_profile(
         session = get_dxf_store().get(dxf_id)
         if session is None:
             raise HTTPException(404, f"Unknown DXF id: {dxf_id}")
-        if session.grid is None:
+        if not session.ensure_ready():
             raise HTTPException(409, "DXF has not been georeferenced yet")
         grid, georef = session.grid, session.georef
         dxf_active = True
@@ -176,3 +176,52 @@ def terrain_profile(
             "rx_height_m": rx_height_m,
         },
     }
+
+
+@router.get("/profile.csv")
+def terrain_profile_csv(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    samples: int = Query(256, ge=16, le=2048),
+    dxf_id: str | None = None,
+    tx_height_m: float = Query(20.0, ge=0),
+    rx_height_m: float = Query(10.0, ge=0),
+    freq_mhz: float | None = Query(None, gt=0),
+    k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
+    technology: str | None = Query(None),
+    model: str | None = Query(None),
+    environment: str | None = Query(None),
+):
+    """The elevation/link profile as CSV - the deliverable engineers attach
+    to reports and load into Excel/GIS.  Same parameters as /profile."""
+    from fastapi.responses import Response
+
+    data = terrain_profile(
+        lat1=lat1, lon1=lon1, lat2=lat2, lon2=lon2, samples=samples,
+        dxf_id=dxf_id, tx_height_m=tx_height_m, rx_height_m=rx_height_m,
+        freq_mhz=freq_mhz, k_factor=k_factor, technology=technology,
+        model=model, environment=environment,
+        tx_power_dbm=None, tx_gain_dbi=None, rx_gain_dbi=None,
+        losses_db=None, rx_sensitivity_dbm=None)
+
+    has_rx = data["points"] and "rx_power_dbm" in data["points"][0]
+    header = ["distance_m", "lat", "lon", "elevation_m", "elevation_curved_m",
+              "los_m", "fresnel1_lower_m", "source", "dxf_weight"]
+    if has_rx:
+        header.append("rx_power_dbm")
+    lines = [
+        f"# AntennaMaster profile: TX {lat1},{lon1} h={tx_height_m}m -> "
+        f"RX {lat2},{lon2} h={rx_height_m}m",
+        f"# freq_mhz={data['rf']['freq_mhz']} k={k_factor:.3f} "
+        f"technology={technology or '-'} dxf={dxf_id or '-'}",
+        ",".join(header),
+    ]
+    for p in data["points"]:
+        row = [p["d"], p["lat"], p["lon"], p["elev"], p["elev_curved"],
+               p["los"], p["fresnel_lower"], p["source"], p["dxf_weight"]]
+        if has_rx:
+            row.append(p.get("rx_power_dbm", ""))
+        lines.append(",".join(str(v) for v in row))
+    return Response(
+        content="\n".join(lines) + "\n", media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="profile.csv"'})

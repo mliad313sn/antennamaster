@@ -7,6 +7,7 @@ from fastapi import APIRouter, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from ..config import MAX_DXF_BYTES
 from ..services.dxf import parser
 from ..services.dxf.georef import build_georef
 from ..services.dxf.gridder import build_grid
@@ -15,8 +16,6 @@ from ..services.dxf.store import get_dxf_store
 from ..services.terrain.fusion import TerrainFusionService
 
 router = APIRouter(prefix="/api/dxf", tags=["dxf"])
-
-MAX_DXF_BYTES = 100 * 1024 * 1024  # 100 MB upload cap
 
 
 # ---------------------------------------------------------------- schemas
@@ -53,7 +52,7 @@ async def upload_dxf(file: UploadFile = File(...)) -> dict:
         raise HTTPException(400, "Only .dxf files are accepted")
     content = await file.read()
     if len(content) > MAX_DXF_BYTES:
-        raise HTTPException(413, "DXF exceeds the 100 MB upload limit")
+        raise HTTPException(413, f"DXF exceeds the {MAX_DXF_BYTES // (1024*1024)} MB upload limit")
 
     session = get_dxf_store().create(file.filename or "upload.dxf", content)
     try:
@@ -111,13 +110,16 @@ def georeference(dxf_id: str, req: GeorefRequest) -> dict:
     except Exception as exc:  # DEM download failure must not kill georeferencing
         validation = {"warning": None, "error": f"SRTM validation unavailable: {exc}"}
 
-    # 5) Persist on the session and precompute map artifacts.
+    # 5) Persist on the session (and to disk so other workers / a restarted
+    #    server can rebuild the grid deterministically) + map artifacts.
     session.georef = georef
     session.grid = grid
     session.selected_layers = req.layers
+    session.georef_params = params
     session.validation = validation
     session.footprint = footprint_lonlat(grid, georef)
     session.overlay_png, session.overlay_bounds = hillshade_png(grid, georef)
+    session.persist_state()
 
     return {
         "dxf_id": dxf_id,
@@ -137,7 +139,7 @@ def overlay_png(dxf_id: str,
                 alpha: float = Query(0.62, ge=0.0, le=1.0)) -> Response:
     """Semi-transparent hillshade of the georeferenced DXF terrain."""
     session = _session_or_404(dxf_id)
-    if session.grid is None or session.georef is None:
+    if not session.ensure_ready():
         raise HTTPException(409, "DXF has not been georeferenced yet")
     if session.overlay_png is None or alpha != 0.62:
         session.overlay_png, session.overlay_bounds = hillshade_png(
@@ -157,3 +159,28 @@ def _session_or_404(dxf_id: str):
     if session is None:
         raise HTTPException(404, f"Unknown DXF id: {dxf_id}")
     return session
+
+
+@router.get("/{dxf_id}/state")
+def dxf_state(dxf_id: str) -> dict:
+    """Restore a previously georeferenced DXF (e.g. after a page reload):
+    returns the same payload shape as POST /georeference."""
+    session = _session_or_404(dxf_id)
+    if not session.ensure_ready():
+        raise HTTPException(409, "DXF has not been georeferenced yet")
+    if session.footprint is None:
+        session.footprint = footprint_lonlat(session.grid, session.georef)
+    if session.overlay_bounds is None or session.overlay_png is None:
+        session.overlay_png, session.overlay_bounds = hillshade_png(
+            session.grid, session.georef)
+    return {
+        "dxf_id": dxf_id,
+        "transform": session.georef.describe(),
+        "grid": {"nx": session.grid.nx, "ny": session.grid.ny,
+                 "cell_size_m": session.grid.dx * session.georef.meters_per_unit(),
+                 "points_used": 0},
+        "footprint": session.footprint,
+        "overlay_bounds": session.overlay_bounds,
+        "overlay_url": f"/api/dxf/{dxf_id}/overlay.png",
+        "validation": session.validation or {"warning": None},
+    }

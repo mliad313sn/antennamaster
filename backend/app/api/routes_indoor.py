@@ -6,15 +6,13 @@ mine gallery layout (this module) — the user decides per study.
 """
 from __future__ import annotations
 
-import threading
-from collections import OrderedDict
-
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+from ..services import results_store
 from ..services.dxf.store import get_dxf_store
-from ..services.indoor.engine import IndoorResult, simulate_indoor
+from ..services.indoor.engine import simulate_indoor
 from ..services.indoor.floorplan import extract_walls, render_preview
 from ..services.indoor.materials import guess_material, list_materials
 from ..services.rf.technologies import get_technology
@@ -22,10 +20,6 @@ from ..services.rf.underground import (EARTH_PRESETS, TUNNEL_WALL_PRESETS,
                                        tte_link, tunnel_profile)
 
 router = APIRouter(prefix="/api/indoor", tags=["indoor-underground"])
-
-_results: OrderedDict[str, IndoorResult] = OrderedDict()
-_lock = threading.Lock()
-_MAX_KEPT = 20
 
 
 # ------------------------------------------------------------------ schemas
@@ -118,10 +112,8 @@ def indoor_coverage(req: IndoorCoverageRequest) -> dict:
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 
-    with _lock:
-        _results[result.result_id] = result
-        while len(_results) > _MAX_KEPT:
-            _results.popitem(last=False)
+    results_store.save("indoor", result.result_id, result.png,
+                       {"bounds_dxf": result.bounds_dxf})
 
     return {
         "result_id": result.result_id,
@@ -135,11 +127,10 @@ def indoor_coverage(req: IndoorCoverageRequest) -> dict:
 
 @router.get("/coverage/{result_id}.png")
 def indoor_coverage_png(result_id: str) -> Response:
-    with _lock:
-        result = _results.get(result_id)
-    if result is None:
+    hit = results_store.load("indoor", result_id)
+    if hit is None:
         raise HTTPException(404, "Indoor coverage result expired or unknown")
-    return Response(content=result.png, media_type="image/png",
+    return Response(content=hit[0], media_type="image/png",
                     headers={"Cache-Control": "max-age=3600"})
 
 

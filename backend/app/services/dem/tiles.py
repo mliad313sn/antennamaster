@@ -12,8 +12,8 @@ process lifetime.
 from __future__ import annotations
 
 import io
-import math
 import threading
+from collections import OrderedDict
 from pathlib import Path
 
 import httpx
@@ -25,14 +25,17 @@ from ...config import DEM_CACHE_DIR, DEM_ZOOM, TERRARIUM_URL
 TILE_SIZE = 256
 
 
-def lonlat_to_global_px(lon: float, lat: float, zoom: int) -> tuple[float, float]:
-    """Project WGS84 lon/lat to continuous global pixel coordinates at `zoom`."""
+def lonlat_to_global_px(lon, lat, zoom: int):
+    """Project WGS84 lon/lat (scalars or arrays) to continuous global pixel
+    coordinates at `zoom`.  Fully vectorized - coverage fans sample hundreds
+    of thousands of points per request."""
     # Web-Mercator clamps latitude; Terrarium has no data beyond ~85 deg anyway.
-    lat = max(min(lat, 85.05112878), -85.05112878)
+    lat = np.clip(np.asarray(lat, dtype=np.float64), -85.05112878, 85.05112878)
+    lon = np.asarray(lon, dtype=np.float64)
     n = TILE_SIZE * (2 ** zoom)
     x = (lon + 180.0) / 360.0 * n
-    siny = math.sin(math.radians(lat))
-    y = (0.5 - math.log((1 + siny) / (1 - siny)) / (4 * math.pi)) * n
+    siny = np.sin(np.radians(lat))
+    y = (0.5 - np.log((1 + siny) / (1 - siny)) / (4 * np.pi)) * n
     return x, y
 
 
@@ -44,7 +47,10 @@ class TerrariumTileStore:
         self.cache_dir = Path(cache_dir)
         self.url_template = url_template
         self.zoom = zoom
-        self._mem: dict[tuple[int, int, int], np.ndarray] = {}
+        # Bounded decoded-tile cache (LRU): ~256 KB per tile, 2000 tiles
+        # ~= 500 MB worst case per process instead of unbounded growth.
+        self._mem: "OrderedDict[tuple[int, int, int], np.ndarray]" = OrderedDict()
+        self._mem_cap = 2000
         self._lock = threading.Lock()
         self._client = httpx.Client(timeout=30.0, follow_redirects=True)
 
@@ -74,14 +80,17 @@ class TerrariumTileStore:
         key = (z, x, y)
         with self._lock:
             cached = self._mem.get(key)
-        if cached is not None:
-            return cached
+            if cached is not None:
+                self._mem.move_to_end(key)
+                return cached
         raw = self._fetch_tile_bytes(z, x, y)
         rgb = np.asarray(Image.open(io.BytesIO(raw)).convert("RGB"), dtype=np.float64)
         elev = (rgb[:, :, 0] * 256.0 + rgb[:, :, 1] + rgb[:, :, 2] / 256.0) - 32768.0
         elev = elev.astype(np.float32)
         with self._lock:
             self._mem[key] = elev
+            while len(self._mem) > self._mem_cap:
+                self._mem.popitem(last=False)
         return elev
 
     # ------------------------------------------------------------- elevation
@@ -97,10 +106,7 @@ class TerrariumTileStore:
         z = self.zoom
         n_px = TILE_SIZE * (2 ** z)
 
-        gx = np.empty_like(lons)
-        gy = np.empty_like(lats)
-        for i in range(lons.size):
-            gx.flat[i], gy.flat[i] = lonlat_to_global_px(lons.flat[i], lats.flat[i], z)
+        gx, gy = lonlat_to_global_px(lons, lats, z)
 
         # Pixel centers sit at +0.5; shift so integer indices are pixel centers.
         fx = gx - 0.5

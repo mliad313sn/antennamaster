@@ -85,6 +85,47 @@ function FitToFootprint({ bounds }: { bounds: L.LatLngBounds | null }) {
   return null;
 }
 
+export interface FlyTarget { lat: number; lng: number; zoom?: number; seq: number }
+
+/** Imperative recenter used by the search box / GPS button. */
+function FlyTo({ target }: { target: FlyTarget | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) {
+      map.flyTo([target.lat, target.lng],
+        target.zoom ?? Math.max(map.getZoom(), 13));
+    }
+  }, [target, map]);
+  return null;
+}
+
+/** Remember the last map view so a reload reopens where the user worked. */
+function ViewPersist() {
+  useMapEvents({
+    moveend: (e) => {
+      const c = e.target.getCenter();
+      try {
+        localStorage.setItem('am_view',
+          JSON.stringify({ lat: c.lat, lng: c.lng, z: e.target.getZoom() }));
+      } catch { /* storage may be unavailable */ }
+    },
+  });
+  return null;
+}
+
+function initialView(): { center: [number, number]; zoom: number } {
+  try {
+    const raw = localStorage.getItem('am_view');
+    if (raw) {
+      const v = JSON.parse(raw);
+      if (Number.isFinite(v.lat) && Number.isFinite(v.lng)) {
+        return { center: [v.lat, v.lng], zoom: v.z ?? 11 };
+      }
+    }
+  } catch { /* fall through to default */ }
+  return { center: [47.0, 15.0], zoom: 11 };
+}
+
 export interface MapViewProps {
   tx: LatLng | null;
   rx: LatLng | null;
@@ -94,11 +135,14 @@ export interface MapViewProps {
   showOverlay: boolean;
   coverage: CoverageResponse | null;
   customTileUrl?: string;
+  flyTarget?: FlyTarget | null;
 }
 
 export default function MapView({
   tx, rx, placing, onPlace, georef, showOverlay, coverage, customTileUrl,
+  flyTarget,
 }: MapViewProps) {
+  const view = useMemo(initialView, []);
   const overlayBounds = useMemo(() => {
     if (!georef) return null;
     const [[s, w], [n, e]] = georef.overlay_bounds;
@@ -118,7 +162,7 @@ export default function MapView({
           Click the map to place the {placing === 'tx' ? 'transmitter (TX)' : 'receiver (RX)'}
         </div>
       )}
-      <MapContainer center={[47.0, 15.0]} zoom={11} scrollWheelZoom>
+      <MapContainer center={view.center} zoom={view.zoom} scrollWheelZoom>
         <LayersControl position="topright">
           {BASE_LAYERS.map((l, i) => (
             <LayersControl.BaseLayer key={l.name} name={l.name} checked={i === 0}>
@@ -134,6 +178,8 @@ export default function MapView({
         </LayersControl>
         <ClickHandler onClick={onPlace} />
         <FitToFootprint bounds={overlayBounds} />
+        <FlyTo target={flyTarget ?? null} />
+        <ViewPersist />
 
         {/* RF coverage raster (signal-strength classes; transparent = unserved). */}
         {coverage && coverageBounds && (

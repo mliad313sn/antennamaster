@@ -27,6 +27,11 @@ type Tab = 'plan' | 'tunnel' | 'tte';
 
 export default function IndoorStudio({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('plan');
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [onClose]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 860 }} onClick={(e) => e.stopPropagation()}>
@@ -207,6 +212,11 @@ function PlanStudy() {
                   <span className="v">{(result.stats.served_area_fraction * 100).toFixed(0)}%</span>
                 </div>
                 <div className="stat-line"><span className="k">Walls</span><span className="v">{result.stats.walls}</span></div>
+                <div className="stat-line">
+                  <span className="k">RX dynamic range</span>
+                  <span className="v">{result.stats.min_rx_power_dbm.toFixed(0)} … {result.stats.max_rx_power_dbm.toFixed(0)} dBm</span>
+                </div>
+                <a className="download-link" href={result.png_url} download>⤓ Download heatmap PNG</a>
                 <div style={{ marginTop: 4 }}>
                   {result.legend.map((l) => (
                     <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
@@ -390,6 +400,7 @@ function TteStudy() {
           <div className="stat-line"><span className="k">Skin depth</span><span className="v">{result.skin_depth_m.toFixed(1)} m</span></div>
           <div className="stat-line"><span className="k">Ground attenuation</span><span className="v">{result.attenuation_db.toFixed(1)} dB</span></div>
           <div className="stat-line"><span className="k">Near-field spreading</span><span className="v">{result.spreading_db.toFixed(1)} dB</span></div>
+          <div className="stat-line"><span className="k">Total path loss</span><span className="v">{result.total_loss_db.toFixed(1)} dB</span></div>
           <div className="stat-line"><span className="k">RX power</span><span className="v">{result.rx_power_dbm.toFixed(1)} dBm</span></div>
           <div className="stat-line">
             <span className="k">Margin</span>

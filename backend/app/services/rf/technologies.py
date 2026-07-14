@@ -160,6 +160,36 @@ TECHNOLOGIES: dict[str, dict] = {
 }
 
 
+def _load_operator_presets() -> None:
+    """Merge operator-specific presets from DATA_DIR/technologies.json.
+
+    Lets an organization standardize on its real band plan (actual EIRP,
+    sensitivities, heights) without touching code: the file maps preset key
+    -> partial or full preset dict.  Existing keys are updated field-by-
+    field; new keys are added (they need at least the full field set).
+    """
+    import json
+
+    from ...config import DATA_DIR
+    path = DATA_DIR / "technologies.json"
+    if not path.exists():
+        return
+    try:
+        custom = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return
+    for key, fields in custom.items():
+        if not isinstance(fields, dict):
+            continue
+        if key in TECHNOLOGIES:
+            TECHNOLOGIES[key].update(fields)
+        else:
+            TECHNOLOGIES[key] = fields
+
+
+_load_operator_presets()
+
+
 def get_technology(key: str) -> dict:
     if key not in TECHNOLOGIES:
         raise ValueError(f"Unknown technology preset: {key!r}")

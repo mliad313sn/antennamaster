@@ -70,6 +70,15 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 }
 .app-header h1 { font-size: 16px; margin: 0; font-weight: 650; }
 .app-header .sub { color: var(--ink-muted); font-size: 12px; }
+.header-search { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.header-search input { width: 240px; }
+
+.download-link {
+  display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 600;
+  color: var(--accent); text-decoration: none; padding: 4px 8px;
+  border: 1px solid var(--hairline); border-radius: 6px;
+}
+.download-link:hover { background: #e3edfa; }
 
 .app-main { display: flex; flex: 1; min-height: 0; }
 .sidebar {
@@ -156,6 +165,21 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 }
 .cp-grid { display: grid; grid-template-columns: repeat(4, 1fr) 32px; gap: 6px; align-items: end; margin-bottom: 6px; }
 .cp-grid button { padding: 6px 4px; }
+
+/* Responsive: below tablet width stack the sidebar above the map so the
+   app stays usable on phones in the field. */
+@media (max-width: 800px) {
+  .app-main { flex-direction: column; overflow-y: auto; }
+  .sidebar {
+    width: 100%; border-right: none; border-bottom: 1px solid var(--hairline);
+    max-height: 45vh;
+  }
+  .map-and-chart { min-height: 55vh; }
+  .map-wrap { min-height: 320px; }
+  .chart-wrap { height: 240px; }
+  .header-search input { width: 130px; }
+  .app-header .sub { display: none; }
+}
 
 /* Leaflet needs an explicit height on its container */
 .leaflet-container { width: 100%; height: 100%; }
