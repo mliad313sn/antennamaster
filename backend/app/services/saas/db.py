@@ -61,12 +61,26 @@ CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts);
 """
 
 
-def _conn() -> sqlite3.Connection:
+from contextlib import contextmanager
+
+
+@contextmanager
+def _conn():
+    """Short-lived connection: commit on success, rollback on error, and
+    ALWAYS close - sqlite3's own context manager commits but never closes,
+    which leaks file handles on GCs without prompt refcounting."""
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db() -> None:
@@ -130,6 +144,11 @@ def update_user(user_id: int, **fields) -> None:
 
 
 # ----------------------------------------------------------------- tokens
+# Session tokens expire; long-lived API tokens (enterprise) do not, but both
+# are revocable via revoke_token (logout / key rotation).
+SESSION_TTL_S = 30 * 24 * 3600
+
+
 def issue_token(user_id: int, kind: str = "session") -> str:
     token = secrets.token_urlsafe(32)
     with _conn() as c:
@@ -141,9 +160,23 @@ def issue_token(user_id: int, kind: str = "session") -> str:
 def user_for_token(token: str) -> dict | None:
     with _conn() as c:
         row = c.execute(
-            "SELECT u.* FROM users u JOIN tokens t ON t.user_id = u.id "
+            "SELECT u.*, t.kind AS token_kind, t.created_at AS token_created "
+            "FROM users u JOIN tokens t ON t.user_id = u.id "
             "WHERE t.token=?", (token,)).fetchone()
-    return dict(row) if row else None
+    if row is None:
+        return None
+    user = dict(row)
+    if (user.pop("token_kind") == "session"
+            and time.time() - user.pop("token_created", 0) > SESSION_TTL_S):
+        revoke_token(token)
+        return None
+    user.pop("token_created", None)
+    return user
+
+
+def revoke_token(token: str) -> None:
+    with _conn() as c:
+        c.execute("DELETE FROM tokens WHERE token=?", (token,))
 
 
 # --------------------------------------------------------------- projects
@@ -221,11 +254,22 @@ def log_action(user_id: int | None, action: str, detail: str = "") -> None:
                   "VALUES (?,?,?,?)", (user_id, action, detail, time.time()))
 
 
-def list_audit(limit: int = 200) -> list[dict]:
+def list_audit(limit: int = 200, org_name: str | None = None) -> list[dict]:
+    """Audit entries, TENANT-SCOPED: when org_name is given only that org's
+    users' actions are returned - a manager must never see another tenant's
+    emails or activity."""
+    limit = min(max(limit, 1), 1000)
     with _conn() as c:
-        rows = c.execute(
-            "SELECT a.*, u.email FROM audit_log a LEFT JOIN users u "
-            "ON u.id = a.user_id ORDER BY a.ts DESC LIMIT ?", (limit,)).fetchall()
+        if org_name is not None:
+            rows = c.execute(
+                "SELECT a.*, u.email FROM audit_log a JOIN users u "
+                "ON u.id = a.user_id WHERE u.org_name = ? "
+                "ORDER BY a.ts DESC LIMIT ?", (org_name, limit)).fetchall()
+        else:
+            rows = c.execute(
+                "SELECT a.*, u.email FROM audit_log a LEFT JOIN users u "
+                "ON u.id = a.user_id ORDER BY a.ts DESC LIMIT ?",
+                (limit,)).fetchall()
     return [dict(r) for r in rows]
 
 

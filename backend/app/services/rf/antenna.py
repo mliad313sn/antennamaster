@@ -115,9 +115,11 @@ def parse_msi(text: str) -> dict:
 
 
 # ------------------------------------------------------------------- store
-def save_antenna(text: str) -> dict:
-    """Parse + persist a pattern; returns metadata including its id."""
+def save_antenna(text: str, owner_id: int | None = None) -> dict:
+    """Parse + persist a pattern; returns metadata including its id.
+    ``owner_id`` scopes the pattern to its uploader in listings."""
     pattern = parse_msi(text)
+    pattern["owner_id"] = owner_id
     antenna_id = uuid.uuid4().hex[:12]
     (ANTENNA_DIR / f"{antenna_id}.json").write_text(json.dumps(pattern))
     with _lock:
@@ -143,12 +145,18 @@ def load_antenna(antenna_id: str) -> dict | None:
     return pattern
 
 
-def list_antennas() -> list[dict]:
+def list_antennas(owner_id: int | None = None) -> list[dict]:
+    """Patterns visible to the caller: their own uploads plus ownerless
+    (anonymous/open-mode) patterns.  One tenant's proprietary antenna
+    models must never appear in another tenant's dropdown."""
     out = []
     for path in sorted(ANTENNA_DIR.glob("*.json")):
         try:
             p = json.loads(path.read_text())
         except (OSError, json.JSONDecodeError):
+            continue
+        pat_owner = p.get("owner_id")
+        if pat_owner is not None and pat_owner != owner_id:
             continue
         out.append({"antenna_id": path.stem, "name": p.get("name", "?"),
                     "gain_dbi": p.get("gain_dbi", 0.0),

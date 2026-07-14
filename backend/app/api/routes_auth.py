@@ -1,17 +1,45 @@
 """Authentication, accounts, tiers, audit and white-label branding."""
 from __future__ import annotations
 
+import os
+import threading
+import time
+
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 
 from ..config import DATA_DIR
 from ..services.saas import db
-from ..services.saas.tiers import TIER_INFO, require_feature
+from ..services.saas.tiers import TIER_INFO, require_feature, saas_mode
 
 router = APIRouter(prefix="/api/auth", tags=["saas"])
 
 LOGO_DIR = DATA_DIR / "logos"
 LOGO_DIR.mkdir(parents=True, exist_ok=True)
+
+# ------------------------------------------------- login brute-force guard
+# Simple in-process lockout: N failures per account within the window locks
+# further attempts out until the window expires. Per-worker state is enough
+# to break online brute force given the PBKDF2 cost per attempt.
+_FAILS: dict[str, list[float]] = {}
+_FAILS_LOCK = threading.Lock()
+_LOCKOUT_N = 8
+_LOCKOUT_WINDOW_S = 900.0
+
+
+def _login_locked(email: str) -> bool:
+    now = time.time()
+    with _FAILS_LOCK:
+        attempts = [t for t in _FAILS.get(email, []) if now - t < _LOCKOUT_WINDOW_S]
+        _FAILS[email] = attempts
+        return len(attempts) >= _LOCKOUT_N
+
+
+def _login_failed(email: str) -> None:
+    with _FAILS_LOCK:
+        _FAILS.setdefault(email, []).append(time.time())
+        if len(_FAILS) > 10_000:            # bound the tracking dict itself
+            _FAILS.pop(next(iter(_FAILS)))
 
 
 # ------------------------------------------------------------ dependencies
@@ -66,12 +94,24 @@ def register(body: RegisterIn) -> dict:
 
 @router.post("/login")
 def login(body: LoginIn) -> dict:
-    user = db.get_user_by_email(body.email)
+    email = body.email.lower()
+    if _login_locked(email):
+        raise HTTPException(429, "Too many failed attempts - try again later")
+    user = db.get_user_by_email(email)
     if user is None or not db.verify_password(body.password, user["password_hash"]):
+        _login_failed(email)
         raise HTTPException(401, "Invalid email or password")
     token = db.issue_token(user["id"])
     db.log_action(user["id"], "login")
     return {"token": token, "user": _public(user)}
+
+
+@router.post("/logout")
+def logout(authorization: str | None = Header(None)) -> dict:
+    """Revoke the presented session token."""
+    if authorization and authorization.lower().startswith("bearer "):
+        db.revoke_token(authorization.split(" ", 1)[1].strip())
+    return {"ok": True}
 
 
 @router.get("/me")
@@ -86,9 +126,18 @@ def tiers() -> dict:
 
 
 @router.post("/tier")
-def set_tier(body: TierIn, user: dict = Depends(required_user)) -> dict:
-    """Self-serve plan change (in production this sits behind the billing
-    provider's webhook; the entitlement plumbing is identical)."""
+def set_tier(body: TierIn, user: dict = Depends(required_user),
+             x_billing_secret: str | None = Header(None)) -> dict:
+    """Plan change. In open (self-hosted) mode this is self-serve for
+    evaluation. In SaaS mode (AM_SAAS_MODE=1) it simulates the billing
+    provider's webhook and REQUIRES the AM_BILLING_SECRET header - users
+    must not be able to grant themselves Enterprise for free."""
+    if saas_mode():
+        secret = os.environ.get("AM_BILLING_SECRET", "")
+        if not secret or x_billing_secret != secret:
+            raise HTTPException(
+                403, "Plan changes in SaaS mode are made by the billing "
+                     "provider, not the client.")
     db.update_user(user["id"], tier=body.tier)
     db.log_action(user["id"], "tier_change", body.tier)
     return {"user": _public(db.get_user(user["id"]))}
@@ -122,7 +171,13 @@ async def upload_logo(file: UploadFile = File(...),
 
 @router.get("/audit")
 def audit(user: dict = Depends(required_user)) -> dict:
-    """OT/IT compliance log (manager role)."""
+    """OT/IT compliance log (manager role), TENANT-SCOPED: a manager sees
+    only their own organization's activity - never other tenants' emails."""
     if user["role"] != "manager":
         raise HTTPException(403, "Audit log is restricted to managers")
+    if saas_mode():
+        org = user.get("org_name") or ""
+        if not org:
+            raise HTTPException(403, "Audit access requires an organization")
+        return {"entries": db.list_audit(org_name=org)}
     return {"entries": db.list_audit()}

@@ -217,12 +217,17 @@ def _load_operator_presets() -> None:
         custom = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return
+    required = {"label", "generation", "freq_mhz", "model", "environment",
+                "tx_power_dbm", "tx_gain_dbi", "rx_gain_dbi", "losses_db",
+                "rx_sensitivity_dbm", "h_bs_m", "h_ut_m"}
     for key, fields in custom.items():
         if not isinstance(fields, dict):
             continue
         if key in TECHNOLOGIES:
             TECHNOLOGIES[key].update(fields)
-        else:
+        elif required <= fields.keys():
+            # Brand-new presets must be complete - a partial dict would
+            # KeyError deep inside the link-budget math at request time.
             TECHNOLOGIES[key] = fields
 
 

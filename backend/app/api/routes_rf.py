@@ -192,22 +192,27 @@ def coverage_kmz(coverage_id: str) -> Response:
 
 # ----------------------------------------------------------- antennas (MSI)
 @router.post("/antenna")
-async def upload_antenna(file: UploadFile = File(...)) -> dict:
-    """Upload an MSI Planet (.msi/.pln/.ant) measured antenna pattern."""
+async def upload_antenna(file: UploadFile = File(...),
+                         user: dict | None = Depends(current_user)) -> dict:
+    """Upload an MSI Planet (.msi/.pln/.ant) measured antenna pattern.
+    Authenticated uploads are private to the uploading account."""
     raw = await file.read()
     if len(raw) > 2 * 1024 * 1024:
         raise HTTPException(413, "Pattern file exceeds 2 MB")
     try:
         text = raw.decode("utf-8", errors="replace")
-        return antenna_store.save_antenna(text)
+        return antenna_store.save_antenna(text,
+                                          owner_id=user["id"] if user else None)
     except ValueError as exc:
         raise HTTPException(422, f"Could not parse antenna pattern: {exc}") from exc
 
 
 @router.get("/antennas")
-def list_antennas() -> dict:
-    """All uploaded antenna patterns (name, gain, -3 dB beamwidths)."""
-    return {"antennas": antenna_store.list_antennas()}
+def list_antennas(user: dict | None = Depends(current_user)) -> dict:
+    """Antenna patterns visible to the caller (own + public), with gains
+    and -3 dB beamwidths."""
+    return {"antennas": antenna_store.list_antennas(
+        owner_id=user["id"] if user else None)}
 
 
 # --------------------------------------------------------- multi-site study
@@ -227,9 +232,13 @@ class MultiCoverageRequest(BaseModel):
     antenna_id: str | None = None
     antenna_beamwidth_deg: float = Field(65.0, gt=5, le=360)
     shadow_margin_db: float = Field(0.0, ge=0, le=30)
+    foliage_depth_m: float = Field(0.0, ge=0, le=400)
+    rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    vertical_beamwidth_deg: float = Field(10.0, gt=1, le=90)
     k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
     n_radials: int = Field(120, ge=36, le=360)
     n_steps: int = Field(80, ge=20, le=200)
+    raster_px: int = Field(768, ge=128, le=1024)
     # Link budget overrides shared by every site:
     freq_mhz: float | None = Field(None, gt=0)
     model: str | None = None
@@ -292,8 +301,11 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
                 antenna_azimuth_deg=s.antenna_azimuth_deg,
                 antenna_beamwidth_deg=req.antenna_beamwidth_deg,
                 downtilt_deg=s.downtilt_deg,
+                vertical_beamwidth_deg=req.vertical_beamwidth_deg,
                 antenna_pattern=pattern,
                 shadow_margin_db=req.shadow_margin_db,
+                foliage_depth_m=req.foliage_depth_m,
+                rain_rate_mm_h=req.rain_rate_mm_h,
                 k=req.k_factor, grid=grid, georef=georef)
             warnings.extend(w for w in polar["warnings"] if w not in warnings)
             computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
@@ -301,7 +313,8 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
     except Exception as exc:
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
 
-    png, bounds, site_stats = composite_best_server(computed)
+    png, bounds, site_stats, served_frac = composite_best_server(
+        computed, raster_px=req.raster_px)
     import uuid as _uuid
     result_id = _uuid.uuid4().hex[:12]
     results_store.save("coverage", result_id, png, {"bounds": bounds})
@@ -314,7 +327,7 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
                     "margin_db": 0} for s in site_stats],
         "stats": {
             "sites": site_stats,
-            "served_area_fraction": None,
+            "served_area_fraction": served_frac,
             "radius_m": radius_m,
             "tx_elevation_m": computed[0]["polar"]["tx_elev"],
             "max_rx_power_dbm": max(s["max_rx_power_dbm"] for s in site_stats),

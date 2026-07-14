@@ -16,8 +16,6 @@ const GLOSSARY: Record<string, string> = {
   fade_margin: 'Fade margin: extra dB reserved for signal variability '
     + '(shadowing, weather). ~5.5 dB gives ~90% area reliability, ~8 dB ≈ 95%. '
     + 'Zero margin means the median barely reaches — half of locations fail.',
-  eirp: 'EIRP: transmit power plus antenna gain minus cable losses — the '
-    + 'power the antenna effectively radiates toward the receiver.',
   sensitivity: 'Receiver sensitivity: the weakest signal (dBm) the radio can '
     + 'still decode. Derived from thermal noise (kTB), channel bandwidth, '
     + 'receiver noise figure and the SINR the modulation needs.',
@@ -27,13 +25,9 @@ const GLOSSARY: Record<string, string> = {
   deygout: 'Deygout diffraction: estimates the dB lost when hills/buildings '
     + 'block the path, by treating the strongest obstacles as knife edges '
     + '(up to 3, recursively).',
-  provenance: 'Data provenance: which elevation source produced each profile '
-    + 'sample — global SRTM (blue) or your uploaded DXF survey (orange).',
   helmert: 'Helmert transform: a scale + rotation + shift solved from your '
     + 'control-point pairs; the residual (m) says how well the points agree — '
     + 'large residuals mean a mis-picked point or wrong units.',
-  bulge: 'Earth bulge: on long paths the Earth\'s curvature rises between '
-    + 'the endpoints; at k=4/3 a 50 km path bulges ~37 m at mid-path.',
 };
 
 export default function Help({ term }: { term: keyof typeof GLOSSARY | string }) {

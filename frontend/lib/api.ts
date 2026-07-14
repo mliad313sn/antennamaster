@@ -122,6 +122,7 @@ export function profileCsvUrl(params: {
   dxfId: string | null; txHeight: number; rxHeight: number;
   freqMhz: number; technology?: string | null;
   model?: string | null; environment?: string | null;
+  foliageDepthM?: number; rainRateMmH?: number;
 }): string {
   const q = new URLSearchParams({
     lat1: String(params.lat1), lon1: String(params.lon1),
@@ -133,6 +134,8 @@ export function profileCsvUrl(params: {
   if (params.technology) q.set('technology', params.technology);
   if (params.model) q.set('model', params.model);
   if (params.environment) q.set('environment', params.environment);
+  if (params.foliageDepthM) q.set('foliage_depth_m', String(params.foliageDepthM));
+  if (params.rainRateMmH) q.set('rain_rate_mm_h', String(params.rainRateMmH));
   return `/api/terrain/profile.csv?${q.toString()}`;
 }
 
@@ -155,7 +158,7 @@ export async function fetchPlanPreview(
     `/api/indoor/${dxfId}/preview.png?layers=${encodeURIComponent(layers.join(','))}`);
   if (!resp.ok) {
     let detail = resp.statusText;
-    try { detail = (await resp.json()).detail ?? detail; } catch { /* keep */ }
+    try { detail = (await resp.json()).detail ?? detail; } catch { /* non-JSON body */ }
     throw new Error(detail);
   }
   const bounds = (resp.headers.get('X-Plan-Bounds') ?? '0,0,1,1')

@@ -96,6 +96,7 @@ def simulate_indoor(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
     # ---- wall-crossing losses: vectorized ray/segment intersection --------
     # Ray: TX -> cell (P + t*r, t in [0,1]); wall: A + u*s, u in [0,1].
     wall_loss = np.zeros(cells.shape[0])
+    use_p1238 = walls.count == 0
     if walls.count:
         per_wall_loss = np.array([material_loss_db(m, freq_mhz)
                                   for m in walls.material])
@@ -112,13 +113,18 @@ def simulate_indoor(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
             crossed = ok & (t > 0.0) & (t < 1.0) & (u >= 0.0) & (u <= 1.0)
             wall_loss += np.where(crossed, per_wall_loss[i], 0.0)
     else:
-        warnings.append("No wall segments on the selected layers - "
-                        "free-space indoor propagation assumed.")
+        warnings.append("No wall segments on the selected layers - falling "
+                        "back to the ITU-R P.1238 site-general indoor model.")
 
     # ---- path loss + link budget ------------------------------------------
     d2d = np.hypot(cells[:, 0] - tx_x, cells[:, 1] - tx_y) * unit_scale
     d3d = np.sqrt(d2d ** 2 + (tx_height_m - rx_height_m) ** 2)
-    loss = _fspl_db(d3d, freq_mhz) + wall_loss
+    if use_p1238:
+        # No structural information: the statistical indoor model beats bare
+        # FSPL, which would wildly overestimate in-building range.
+        loss = itu_p1238_loss_db(d3d, freq_mhz, 0, "office")
+    else:
+        loss = _fspl_db(d3d, freq_mhz) + wall_loss
     rx = tx_power_dbm + tx_gain_dbi + rx_gain_dbi - losses_db - loss
     margin = (rx - rx_sensitivity_dbm).reshape(ny, nx)
 

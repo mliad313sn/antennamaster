@@ -6,7 +6,7 @@
  * link to my saved TX work from here), and one-tap technology presets.
  */
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import DashNav from '@/components/DashNav';
 
 interface Spot {
@@ -28,6 +28,7 @@ const QUICK_PRESETS = [
 export default function Field() {
   const [spot, setSpot] = useState<Spot | null>(null);
   const [watching, setWatching] = useState(false);
+  const watchId = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Force dark theme for sunlight-readable high contrast on site.
@@ -54,13 +55,25 @@ export default function Field() {
     };
     if (follow) {
       setWatching(true);
-      navigator.geolocation.watchPosition(handle,
-        (e) => setError(e.message), { enableHighAccuracy: true });
+      watchId.current = navigator.geolocation.watchPosition(handle,
+        (e) => { setError(e.message); stopFollowing(); },
+        { enableHighAccuracy: true });
     } else {
       navigator.geolocation.getCurrentPosition(handle,
         (e) => setError(e.message), { enableHighAccuracy: true });
     }
   }
+
+  function stopFollowing() {
+    if (watchId.current !== null) {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    setWatching(false);
+  }
+
+  // Never leak the GPS watcher past this page's lifetime.
+  useEffect(() => stopFollowing, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function openPlannerHere(preset?: string) {
     // Seed the planner session so the map opens on this spot with the preset.
@@ -89,8 +102,9 @@ export default function Field() {
           <button className="primary tactical-btn" onClick={() => locate(false)}>
             📍 GPS spot check
           </button>
-          <button className="tactical-btn" disabled={watching} onClick={() => locate(true)}>
-            {watching ? '👣 Following…' : '👣 Follow me'}
+          <button className="tactical-btn"
+            onClick={() => (watching ? stopFollowing() : locate(true))}>
+            {watching ? '⏹ Stop following' : '👣 Follow me'}
           </button>
         </div>
 

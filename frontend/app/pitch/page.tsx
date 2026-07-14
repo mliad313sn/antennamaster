@@ -164,10 +164,16 @@ export default function Pitch() {
             <input value={lon} onChange={(e) => setLon(e.target.value)} /></div>
           <div><label>Sites</label>
             <input type="number" min={1} max={100} value={sites}
-              onChange={(e) => setSites(parseInt(e.target.value, 10) || 1)} /></div>
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (Number.isFinite(v) && v >= 1) setSites(v);
+              }} /></div>
           <div><label>Revenue $/mo (fleet)</label>
             <input type="number" value={revenuePerMonth}
-              onChange={(e) => setRevenuePerMonth(parseFloat(e.target.value) || 0)} /></div>
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (Number.isFinite(v)) setRevenuePerMonth(v);
+              }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
           {card(a, setA, 'a', costsA)}

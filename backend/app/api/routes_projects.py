@@ -53,6 +53,9 @@ def get_shared(token: str) -> dict:
     if project is None:
         raise HTTPException(404, "Unknown share link")
     project.pop("user_id", None)
+    # Never echo the capability token back into an unauthenticated response
+    # (it would end up in logs/referrers of anyone the link reaches).
+    project.pop("share_token", None)
     return {"project": project}
 
 

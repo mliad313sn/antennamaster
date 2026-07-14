@@ -64,11 +64,11 @@ Legend: ✅ has it · 🟡 partial · ❌ missing
 | 3GPP TR 38.901 (4G/5G, mmWave) | ✅ | ❌ | ❌ | 🟡 | ✅ |
 | Longley-Rice / ITM | ❌ (roadmap) | ✅ | ✅ | ✅ | ✅ |
 | ITU-R P.1546 / P.452 / P.526 full | 🟡 P.526 single/multi edge | 🟡 | 🟡 | ✅ | ✅ |
-| Technology presets (2G→5G, IoT, broadcast…) | ✅ 17 presets | ❌ | 🟡 | ✅ | ✅ |
+| Technology presets (2G→5G, IoT, broadcast…) | ✅ 23 presets | ❌ | 🟡 | ✅ | ✅ |
 | Link budget w/ sensitivity & margin | ✅ | 🟡 | ✅ | ✅ | ✅ |
 | Sector antenna patterns | ✅ parametric | 🟡 | ✅ files | ✅ | ✅ (MSI/planet) |
-| Antenna pattern file import (MSI/ANT) | ❌ (roadmap) | 🟡 | ✅ | ✅ | ✅ |
-| Multi-site / best-server analysis | ❌ (roadmap) | 🟡 | ✅ | ✅ | ✅ |
+| Antenna pattern file import (MSI/ANT) | ✅ | 🟡 | ✅ | ✅ | ✅ |
+| Multi-site / best-server analysis | ✅ | 🟡 | ✅ | ✅ | ✅ |
 | Clutter / land-use layers | ❌ (roadmap) | ❌ | 🟡 | ✅ | ✅ |
 | Web UI, no install | ✅ | ❌ CLI | ❌ Windows | ✅ SaaS | ❌ desktop |
 | Map provider choice / custom XYZ | ✅ 6 + custom | ❌ | 🟡 | 🟡 | ✅ |

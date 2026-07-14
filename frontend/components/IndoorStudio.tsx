@@ -37,7 +37,7 @@ export default function IndoorStudio({ onClose }: { onClose: () => void }) {
       <div className="modal" style={{ width: 860 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Indoor &amp; underground studies</h2>
-          <button onClick={onClose}>✕</button>
+          <button onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-body">
           <div className="mode-tabs">
@@ -245,6 +245,26 @@ function PlanStudy() {
             )}
             {tx && !result && (
               <p className="hint">TX at ({tx.x.toFixed(1)}, {tx.y.toFixed(1)}) drawing units — run the simulation.</p>
+            )}
+            {preview && (
+              <div className="row" style={{ maxWidth: 320 }}>
+                <div>
+                  <label htmlFor="tx-x">TX X (drawing units)</label>
+                  <input id="tx-x" type="number" value={tx?.x ?? ''}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (Number.isFinite(v)) { setTx({ x: v, y: tx?.y ?? 0 }); setResult(null); }
+                    }} />
+                </div>
+                <div>
+                  <label htmlFor="tx-y">TX Y</label>
+                  <input id="tx-y" type="number" value={tx?.y ?? ''}
+                    onChange={(e) => {
+                      const v = parseFloat(e.target.value);
+                      if (Number.isFinite(v)) { setTx({ x: tx?.x ?? 0, y: v }); setResult(null); }
+                    }} />
+                </div>
+              </div>
             )}
           </div>
         </div>

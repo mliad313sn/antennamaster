@@ -15,7 +15,6 @@ from ..services.dxf.georef import build_georef
 from ..services.dxf.gridder import build_grid
 from ..services.dxf.overlay import footprint_lonlat, hillshade_png
 from ..services.dxf.store import get_dxf_store
-from ..services.terrain.fusion import TerrainFusionService
 
 router = APIRouter(prefix="/api/dxf", tags=["dxf"])
 
@@ -48,15 +47,19 @@ class GeorefRequest(BaseModel):
 
 # ---------------------------------------------------------------- endpoints
 @router.post("/upload")
-async def upload_dxf(file: UploadFile = File(...)) -> dict:
-    """Store the DXF and return its id + full layer inventory."""
+async def upload_dxf(file: UploadFile = File(...),
+                     user: dict | None = Depends(current_user)) -> dict:
+    """Store the DXF and return its id + full layer inventory.
+    Authenticated uploads are bound to the uploader: only the owner may
+    re-georeference or delete them."""
     if not (file.filename or "").lower().endswith(".dxf"):
         raise HTTPException(400, "Only .dxf files are accepted")
     content = await file.read()
     if len(content) > MAX_DXF_BYTES:
         raise HTTPException(413, f"DXF exceeds the {MAX_DXF_BYTES // (1024*1024)} MB upload limit")
 
-    session = get_dxf_store().create(file.filename or "upload.dxf", content)
+    session = get_dxf_store().create(file.filename or "upload.dxf", content,
+                                     owner_id=user["id"] if user else None)
     try:
         doc = session.document()
     except Exception as exc:  # noqa: BLE001 - surface parse errors to the client
@@ -117,6 +120,7 @@ def georeference(dxf_id: str, req: GeorefRequest,
     and run the SRTM cross-validation."""
     require_feature(user, "dxf_fusion")   # Pro-tier capability in SaaS mode
     session = _session_or_404(dxf_id)
+    _check_owner(session, user)           # only the uploader may mutate
 
     # 1) Build the coordinate transform for the requested mode.
     params = req.model_dump(exclude_none=True)
@@ -139,8 +143,10 @@ def georeference(dxf_id: str, req: GeorefRequest,
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 
-    # 4) Validate against the SRTM base over the same footprint.
-    fusion = TerrainFusionService()
+    # 4) Validate against the SRTM base over the same footprint (reuse the
+    #    process-wide service so the DEM caches are shared).
+    from .routes_terrain import get_fusion_service
+    fusion = get_fusion_service()
     try:
         validation = fusion.validate_against_srtm(grid, georef)
     except Exception as exc:  # DEM download failure must not kill georeferencing
@@ -177,15 +183,24 @@ def overlay_png(dxf_id: str,
     session = _session_or_404(dxf_id)
     if not session.ensure_ready():
         raise HTTPException(409, "DXF has not been georeferenced yet")
-    if session.overlay_png is None or alpha != 0.62:
+    if alpha != 0.62:
+        # Custom alpha renders are NOT cached - caching them would poison
+        # the default-alpha response for every later caller.
+        png, _bounds = hillshade_png(session.grid, session.georef, alpha=alpha)
+        return Response(content=png, media_type="image/png",
+                        headers={"Cache-Control": "no-cache"})
+    if session.overlay_png is None:
         session.overlay_png, session.overlay_bounds = hillshade_png(
-            session.grid, session.georef, alpha=alpha)
+            session.grid, session.georef)
     return Response(content=session.overlay_png, media_type="image/png",
                     headers={"Cache-Control": "no-cache"})
 
 
 @router.delete("/{dxf_id}")
-def delete_dxf(dxf_id: str) -> dict:
+def delete_dxf(dxf_id: str, user: dict | None = Depends(current_user)) -> dict:
+    session = get_dxf_store().get(dxf_id)
+    if session is not None:
+        _check_owner(session, user)
     get_dxf_store().delete(dxf_id)
     return {"deleted": dxf_id}
 
@@ -195,6 +210,14 @@ def _session_or_404(dxf_id: str):
     if session is None:
         raise HTTPException(404, f"Unknown DXF id: {dxf_id}")
     return session
+
+
+def _check_owner(session, user: dict | None) -> None:
+    """Mutations on an owned DXF require the owning account; anonymous
+    uploads stay open (self-hosted mode)."""
+    if session.owner_id is not None and (
+            user is None or user["id"] != session.owner_id):
+        raise HTTPException(403, "This DXF belongs to another account")
 
 
 @router.get("/{dxf_id}/state")

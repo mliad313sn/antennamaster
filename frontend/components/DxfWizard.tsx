@@ -37,9 +37,12 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
   const [bearing, setBearing] = useState('0');
   const [originX, setOriginX] = useState('0');
   const [originY, setOriginY] = useState('0');
-  const [cps, setCps] = useState<ControlPointPair[]>([
-    { dxf_x: 0, dxf_y: 0, lat: 47, lon: 15 },
-    { dxf_x: 1000, dxf_y: 0, lat: 47, lon: 15.013 },
+  // Kept as raw strings so users can type '-', '.', or partial decimals
+  // (southern/western coordinates were impossible with numeric state).
+  type CpDraft = { dxf_x: string; dxf_y: string; lat: string; lon: string };
+  const [cps, setCps] = useState<CpDraft[]>([
+    { dxf_x: '0', dxf_y: '0', lat: '47', lon: '15' },
+    { dxf_x: '1000', dxf_y: '0', lat: '47', lon: '15.013' },
   ]);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -106,7 +109,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
         mode === 'known_crs'
           ? { mode, ...base, crs, z_scale: unitScale }
           : mode === 'control_points'
-            ? { mode, ...base, control_points: cps, z_scale: unitScale }
+            ? { mode, ...base, control_points: parsedCps(), z_scale: unitScale }
             : {
                 mode, ...base,
                 origin_lat: parseFloat(originLat), origin_lon: parseFloat(originLon),
@@ -123,13 +126,20 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
     }
   }
 
-  function setCp(i: number, key: keyof ControlPointPair, v: string) {
-    setCps((prev) => prev.map((p, j) => (j === i ? { ...p, [key]: parseFloat(v) || 0 } : p)));
+  function setCp(i: number, key: keyof CpDraft, v: string) {
+    setCps((prev) => prev.map((p, j) => (j === i ? { ...p, [key]: v } : p)));
   }
+
+  const parsedCps = (): ControlPointPair[] => cps.map((p) => ({
+    dxf_x: parseFloat(p.dxf_x), dxf_y: parseFloat(p.dxf_y),
+    lat: parseFloat(p.lat), lon: parseFloat(p.lon),
+  }));
+  const cpsValid = cps.every((p) =>
+    [p.dxf_x, p.dxf_y, p.lat, p.lon].every((v) => Number.isFinite(parseFloat(v))));
 
   const georefValid =
     selected.size > 0 &&
-    (mode !== 'control_points' || (cps.length >= 2 && cps.length <= 3));
+    (mode !== 'control_points' || (cps.length >= 2 && cps.length <= 3 && cpsValid));
 
   // --------------------------------------------------------------- render
   return (
@@ -137,7 +147,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>Import DXF terrain</h2>
-          <button onClick={onClose}>✕</button>
+          <button onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-body">
           <div className="steps">
@@ -253,7 +263,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                   ))}
                   <button
                     disabled={cps.length >= 3}
-                    onClick={() => setCps((prev) => [...prev, { dxf_x: 0, dxf_y: 0, lat: 47, lon: 15 }])}
+                    onClick={() => setCps((prev) => [...prev, { dxf_x: '0', dxf_y: '0', lat: '47', lon: '15' }])}
                   >+ Add control point</button>
                 </div>
               )}

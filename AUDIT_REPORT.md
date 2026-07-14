@@ -2,7 +2,7 @@
 
 Role: Senior RF Systems Architect & Principal QA Engineer.
 Scope: 4-phase deterministic audit → implementation cycle over the full stack
-(25 endpoints, 6 propagation + 4 confined-space models, Next.js frontend).
+(47 endpoints, 6 propagation + 4 confined-space models, Next.js frontend).
 
 ## Phase 1 — Capability & limits audit (measured, not estimated)
 
@@ -63,7 +63,7 @@ Scope: 4-phase deterministic audit → implementation cycle over the full stack
 - OpenAPI: tag metadata + endpoint docstrings; interactive docs at `/docs`.
 - Frontend: strict TypeScript, all API DTOs typed in `lib/types.ts`,
   production build clean.
-- Test suite: **60 tests** (physics reference values hand-computed,
+- Test suite: **90 test functions / 100 cases** (physics reference values hand-computed,
   restart/multi-worker simulations, deep-pit and foliage/rain behavior).
 
 ## Residual known limits (deliberate, documented)

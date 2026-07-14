@@ -40,8 +40,9 @@ existing disk stores; the DB holds identity + metadata only.
 
 Enforcement is a per-endpoint dependency (`require_feature`,
 `check_preset_allowed`, project quota check) returning **402** — the same
-hook a billing provider's webhook would toggle. Plan changes are self-serve
-via `POST /api/auth/tier` (stand-in for the billing callback).
+hook a billing provider's webhook would toggle. Plan changes via
+`POST /api/auth/tier` are self-serve in open mode only; SaaS mode requires
+the billing-webhook secret (see §8).
 
 ## 4. Role-based UX (Next.js routes)
 
@@ -72,7 +73,7 @@ via `POST /api/auth/tier` (stand-in for the billing callback).
   coordinates → suggest *known CRS* mode; elevation statistics → suggest
   feet vs meters (pre-fills the wizard, shown as an editable suggestion).
 - Inline glossary tooltips (ⓘ) for Fresnel, FSPL, k-factor, fade margin,
-  downtilt, Deygout, sensitivity, EIRP, Helmert, provenance.
+  downtilt, Deygout, sensitivity and Helmert residuals.
 
 ## 7. API surface added (all under OpenAPI tag `saas`)
 
@@ -84,9 +85,26 @@ GET  /api/saas/costs    POST /api/saas/report.pdf
 POST /api/saas/coverage/async    GET /api/saas/jobs/{job_id}
 ```
 
-## 8. Production notes
+## 8. Security posture (implemented)
 
-Swap SQLite → PostgreSQL by replacing `_conn()`; put a billing provider
-(Stripe) webhook behind `POST /api/auth/tier`; session tokens are opaque
-DB-backed bearers (revocable); passwords PBKDF2-SHA256; logos validated by
-magic bytes and size-capped; share links are unguessable capability tokens.
+- Passwords: PBKDF2-HMAC-SHA256, 200k iterations, per-user salt,
+  constant-time compare. Login lockout: 8 failures / 15 min per account.
+- Tokens: 32-byte opaque bearers; session tokens expire after 30 days;
+  `POST /api/auth/logout` revokes; API tokens (Enterprise) are long-lived
+  but revocable. Tokens never appear in the audit log.
+- Tier changes: self-serve only in open mode; in SaaS mode
+  (`AM_SAAS_MODE=1`) they require the `X-Billing-Secret` header matching
+  `AM_BILLING_SECRET` — the stand-in for the billing provider's webhook.
+- Audit log: tenant-scoped in SaaS mode (a manager sees only their org).
+- Resource ownership: authenticated DXF uploads and antenna patterns are
+  bound to the uploader (mutations 403 for other accounts; antenna listings
+  are owner-filtered). Project access is strictly owner-checked; shared
+  links are unguessable capability tokens and never echo the token back.
+- DoS bounds: 4 concurrent background simulations (429 beyond), Pydantic
+  resolution caps on every sim, upload size caps, LRU-bounded caches.
+
+## 9. Production notes
+
+Swap SQLite → PostgreSQL by replacing `_conn()`; wire the billing provider
+(Stripe) webhook to `POST /api/auth/tier` with the shared secret; add
+per-user disk quotas and per-IP rate limiting at the reverse proxy.

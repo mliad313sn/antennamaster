@@ -6,13 +6,15 @@ mine gallery layout (this module) — the user decides per study.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ..services import results_store
 from ..services.dxf.store import get_dxf_store
 from ..services.indoor.engine import simulate_indoor
+from ..services.saas.tiers import require_feature
+from .routes_auth import current_user
 from ..services.indoor.floorplan import extract_walls, render_preview
 from ..services.indoor.materials import guess_material, list_materials
 from ..services.rf.technologies import get_technology
@@ -82,8 +84,10 @@ def floorplan_preview(dxf_id: str, layers: str = Query("")) -> Response:
 
 
 @router.post("/coverage")
-def indoor_coverage(req: IndoorCoverageRequest) -> dict:
+def indoor_coverage(req: IndoorCoverageRequest,
+                    user: dict | None = Depends(current_user)) -> dict:
     """COST-231 multi-wall coverage heatmap over the uploaded floor plan."""
+    require_feature(user, "indoor_studio")   # Pro-tier capability in SaaS mode
     session = _session_or_404(req.dxf_id)
     walls = extract_walls(session.document(), req.layer_materials)
 

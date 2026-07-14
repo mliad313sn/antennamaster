@@ -1,8 +1,10 @@
 # AntennaMaster — Complete Functionality, Capability & Capacity Reference
 
-Verified against the codebase (25 REST endpoints, ~3,900 Python + ~2,600
-TypeScript lines, 51 automated tests). Companion to `ASSESSMENT.md`
-(benchmark & review history).
+Verified against the codebase: **47 REST endpoints** (27 simulation +
+20 SaaS/accounts), **90 backend test functions (100 cases)** + 10 frontend
+component tests, 90% backend line coverage. Companion docs: `ASSESSMENT.md`
+(benchmark & review history), `SaaS_ARCHITECTURE.md` (accounts, tiers,
+workspaces, monetization).
 
 ## 1. Terrain engine
 
@@ -137,15 +139,26 @@ indoor heatmap PNG.
 | Result retention | last 200 raster results on disk (auto-pruned) |
 | Upload caps | DXF ≤100 MB (`AM_MAX_DXF_MB`), antenna files ≤2 MB |
 | Simulation caps | radius ≤150 km, 720 radials × 400 steps, 2,048 profile samples, 8 sites/composite, indoor grid ≤400 px |
-| Config | 8 `AM_*` env vars (data dir, DEM URL/zoom, cache budget, CORS, upload cap, feather, validation threshold) |
+| Config | 11 `AM_*` env vars (data dir, DEM URL/zoom, DEM cache budget, CORS, upload cap, feather, validation threshold, SaaS mode, billing secret) |
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
-| Tests | 51 offline tests (fake DEM world; physics reference values hand-checked; restart simulation; API workflows) |
+| Tests | 90 test functions / 100 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier regression; API workflows) |
 
-## 7. Known limits (honest boundaries)
+## 7. SaaS & workspace layer
+
+Accounts (PBKDF2, revocable session tokens with 30-day TTL, login lockout),
+three roles with tailored dashboards (Command Center / Tactical / Pitch),
+project workspaces (save/duplicate/share via capability links), tier
+entitlements (basic/pro/enterprise, billing-webhook-gated in SaaS mode),
+tenant-scoped audit log, CAPEX/OPEX estimator, branded PDF reports with
+white-labeling, async jobs with live progress (4 concurrent cap), and
+resource ownership on DXFs and antenna patterns. Full detail:
+`SaaS_ARCHITECTURE.md`.
+
+## 8. Known limits (honest boundaries)
 
 Median empirical models + knife-edge diffraction (no ITM/P.1546/P.452 yet);
 no clutter/land-use losses; single-floor indoor; no rain fade (P.530) for
-PtP; no SINR/interference (best-server is power-based); no user accounts or
-saved multi-study projects; Nominatim search requires internet; DEM is
+PtP; no SINR/interference (best-server is power-based); Nominatim search
+requires internet; DEM is
 surface-agnostic (no buildings in outdoor coverage).

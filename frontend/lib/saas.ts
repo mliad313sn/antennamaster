@@ -114,9 +114,15 @@ export async function setTier(tier: string): Promise<User> {
     method: 'POST', body: JSON.stringify({ tier }) })).user;
 }
 
-export async function fetchAudit(): Promise<{ action: string; detail: string;
-  email: string | null; ts: number }[]> {
-  return (await call<{ entries: never[] }>('/api/auth/audit')).entries;
+export interface AuditEntry {
+  action: string;
+  detail: string;
+  email: string | null;
+  ts: number;
+}
+
+export async function fetchAudit(): Promise<AuditEntry[]> {
+  return (await call<{ entries: AuditEntry[] }>('/api/auth/audit')).entries;
 }
 
 export async function uploadLogo(file: File): Promise<void> {
@@ -124,7 +130,11 @@ export async function uploadLogo(file: File): Promise<void> {
   form.append('file', file);
   const resp = await fetch('/api/auth/logo', {
     method: 'POST', body: form, headers: authHeaders() });
-  if (!resp.ok) throw new Error((await resp.json()).detail ?? resp.statusText);
+  if (!resp.ok) {
+    let detail = resp.statusText;
+    try { detail = (await resp.json()).detail ?? detail; } catch { /* non-JSON */ }
+    throw new Error(detail);
+  }
 }
 
 // --------------------------------------------------------------- projects
@@ -183,7 +193,11 @@ export async function downloadReportPdf(body: Record<string, unknown>): Promise<
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
   });
-  if (!resp.ok) throw new Error((await resp.json()).detail ?? resp.statusText);
+  if (!resp.ok) {
+    let detail = resp.statusText;
+    try { detail = (await resp.json()).detail ?? detail; } catch { /* non-JSON */ }
+    throw new Error(detail);
+  }
   const blob = await resp.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

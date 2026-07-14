@@ -91,12 +91,16 @@ def test_wall_extraction_and_crossing_loss(tmp_path):
                           grid_px=80, raster_px=200)
     assert res.png[:8] == b"\x89PNG\r\n\x1a\n"
     assert res.stats["walls"] == 5
-    # The TX side of the partition must be better served than the far side:
-    # rebuild the margin from a paired run without walls to compare.
-    free = simulate_indoor(extract_walls(doc, {}), tx_x=5.0, tx_y=5.0,
-                           freq_mhz=2442.0, grid_px=80, raster_px=200)
-    assert free.stats["min_rx_power_dbm"] > res.stats["min_rx_power_dbm"]
-    assert res.stats["served_area_fraction"] <= free.stats["served_area_fraction"] + 1e-9
+    # More walls => weaker worst-case signal: shell-only vs shell+partition.
+    shell_only = simulate_indoor(extract_walls(doc, {"SHELL": "concrete"}),
+                                 tx_x=5.0, tx_y=5.0, freq_mhz=2442.0,
+                                 grid_px=80, raster_px=200)
+    assert shell_only.stats["min_rx_power_dbm"] > res.stats["min_rx_power_dbm"]
+    # No structural layers selected -> ITU-R P.1238 fallback, with a warning.
+    p1238 = simulate_indoor(extract_walls(doc, {}), tx_x=5.0, tx_y=5.0,
+                            freq_mhz=2442.0, grid_px=80, raster_px=200)
+    assert any("P.1238" in w for w in p1238.warnings)
+    assert p1238.stats["walls"] == 0
 
 
 # --------------------------------------------------------------- API layer

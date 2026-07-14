@@ -11,12 +11,16 @@ from __future__ import annotations
 
 import json
 import threading
+from collections import OrderedDict
 from pathlib import Path
 
 from ..config import RESULTS_DIR
 
 _MAX_RESULTS = 200
-_mem: dict[str, tuple[bytes, dict]] = {}
+# In-process hot cache is LRU-bounded: each entry holds a full raster PNG,
+# so an unbounded dict is a slow per-worker memory leak.
+_MEM_CAP = 32
+_mem: "OrderedDict[str, tuple[bytes, dict]]" = OrderedDict()
 _lock = threading.Lock()
 
 
@@ -26,12 +30,19 @@ def _paths(result_id: str, kind: str) -> tuple[Path, Path]:
     return base.with_suffix(".png"), base.with_suffix(".json")
 
 
+def _mem_put(key: str, value: tuple[bytes, dict]) -> None:
+    with _lock:
+        _mem[key] = value
+        _mem.move_to_end(key)
+        while len(_mem) > _MEM_CAP:
+            _mem.popitem(last=False)
+
+
 def save(kind: str, result_id: str, png: bytes, meta: dict) -> None:
     png_path, meta_path = _paths(result_id, kind)
     png_path.write_bytes(png)
     meta_path.write_text(json.dumps(meta))
-    with _lock:
-        _mem[f"{kind}-{result_id}"] = (png, meta)
+    _mem_put(f"{kind}-{result_id}", (png, meta))
     _prune()
 
 
@@ -39,6 +50,8 @@ def load(kind: str, result_id: str) -> tuple[bytes, dict] | None:
     key = f"{kind}-{result_id}"
     with _lock:
         hit = _mem.get(key)
+        if hit is not None:
+            _mem.move_to_end(key)
     if hit is not None:
         return hit
     png_path, meta_path = _paths(result_id, kind)
@@ -46,8 +59,7 @@ def load(kind: str, result_id: str) -> tuple[bytes, dict] | None:
         return None
     png = png_path.read_bytes()
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-    with _lock:
-        _mem[key] = (png, meta)
+    _mem_put(key, (png, meta))
     return png, meta
 
 

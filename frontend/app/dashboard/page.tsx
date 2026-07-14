@@ -15,7 +15,8 @@ import {
 } from '@/lib/saas';
 
 export default function Dashboard() {
-  const [user, setUser] = useState<User | null>(null);
+  // undefined = still loading, null = signed out, User = signed in.
+  const [user, setUser] = useState<User | null | undefined>(undefined);
   const [projects, setProjects] = useState<Project[]>([]);
   const [audit, setAudit] = useState<{ action: string; detail: string;
     email: string | null; ts: number }[]>([]);
@@ -38,6 +39,14 @@ export default function Dashboard() {
     fetchCosts(costTech, costSites).then(setCosts).catch(() => {});
   }, [costTech, costSites]);
 
+  if (user === undefined) {
+    return (
+      <div className="dash-shell">
+        <DashNav active="dashboard" />
+        <p className="hint" style={{ padding: 24 }}>Loading your workspace…</p>
+      </div>
+    );
+  }
   if (user === null) {
     return (
       <div className="dash-shell">
@@ -115,7 +124,10 @@ export default function Dashboard() {
               <div>
                 <label>Sites</label>
                 <input type="number" min={1} max={500} value={costSites}
-                  onChange={(e) => setCostSites(parseInt(e.target.value, 10) || 1)} />
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (Number.isFinite(v) && v >= 1) setCostSites(v);
+                  }} />
               </div>
             </div>
             {costs && (

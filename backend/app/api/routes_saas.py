@@ -33,10 +33,10 @@ def cost_estimate(technology: str = Query("custom"),
 class ReportRequest(BaseModel):
     title: str = Field("RF Coverage Study", max_length=140)
     # Point-to-point section (optional):
-    lat1: float | None = None
-    lon1: float | None = None
-    lat2: float | None = None
-    lon2: float | None = None
+    lat1: float | None = Field(None, ge=-90, le=90)
+    lon1: float | None = Field(None, ge=-180, le=180)
+    lat2: float | None = Field(None, ge=-90, le=90)
+    lon2: float | None = Field(None, ge=-180, le=180)
     tx_height_m: float = 20.0
     rx_height_m: float = 10.0
     technology: str | None = None
@@ -45,8 +45,8 @@ class ReportRequest(BaseModel):
     rain_rate_mm_h: float = 0.0
     # Coverage section (optional): a previously computed raster.
     coverage_id: str | None = None
-    served_area_fraction: float | None = None
-    max_rx_power_dbm: float | None = None
+    served_area_fraction: float | None = Field(None, ge=0, le=1)
+    max_rx_power_dbm: float | None = Field(None, ge=-200, le=100)
     # Equipment section (optional):
     include_costs: bool = True
     sites: int = Field(1, ge=1, le=500)
@@ -72,7 +72,8 @@ def report_pdf(req: ReportRequest,
             tx_power_dbm=None, tx_gain_dbi=None, rx_gain_dbi=None,
             losses_db=None, rx_sensitivity_dbm=None,
             foliage_depth_m=req.foliage_depth_m,
-            rain_rate_mm_h=req.rain_rate_mm_h)
+            rain_rate_mm_h=req.rain_rate_mm_h,
+            user=user)
         study, rf = data["study"], data["rf"]
         points, distance = data["points"], data["distance_m"]
 
@@ -118,7 +119,10 @@ def coverage_async(req: CoverageRequest,
     def _run() -> dict:
         return run_coverage(req, progress_cb=lambda f: jobs.set_progress(job_id, f))
 
-    jobs.run_in_thread(job_id, _run)
+    try:
+        jobs.run_in_thread(job_id, _run)
+    except jobs.JobsBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
     if user:
         db.log_action(user["id"], "coverage_async",
                       f"{req.technology} r={req.radius_km}km")

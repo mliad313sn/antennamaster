@@ -86,11 +86,16 @@ export default function Home() {
     const pid = params.get('project');
     if (pid) {
       fetch(`/api/projects/${pid}`, { headers: authHeaders() })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((body) => {
-          if (body?.project?.data) {
-            localStorage.setItem(STORE_KEY, JSON.stringify(body.project.data));
-            window.location.replace('/');   // reload cleanly with the session
+        .then(async (r) => {
+          if (r.ok) {
+            const body = await r.json();
+            if (body?.project?.data) {
+              localStorage.setItem(STORE_KEY, JSON.stringify(body.project.data));
+              window.location.replace('/');   // reload cleanly with the session
+            }
+          } else if (r.status === 401) {
+            setAuthOpen(true);                 // must sign in to open a project
+            setSaveMsg('Sign in to open this shared project link.');
           }
         }).catch(() => {});
     }
@@ -106,7 +111,10 @@ export default function Home() {
       await createProject(name, raw ? JSON.parse(raw) : {});
       setSaveMsg(`Saved “${name}” — manage it in the Command Center.`);
       setTimeout(() => setSaveMsg(null), 5000);
-    } catch (e) { setSaveMsg((e as Error).message); }
+    } catch (e) {
+      setSaveMsg((e as Error).message);
+      setTimeout(() => setSaveMsg(null), 8000);
+    }
   }
 
   // Theme: 'auto' follows the OS; explicit choice stamps <html data-theme>.
@@ -168,9 +176,24 @@ export default function Home() {
     }
   }, [placing]);
 
-  function setEndpointCoord(which: 'tx' | 'rx', axis: 'lat' | 'lng', value: string) {
+  // Coordinate fields hold raw strings while editing (no toFixed snapping
+  // mid-keystroke); they sync FROM tx/rx whenever the map/GPS changes them.
+  const [coordDraft, setCoordDraft] = useState({ txLat: '', txLng: '', rxLat: '', rxLng: '' });
+  useEffect(() => {
+    setCoordDraft((d) => ({ ...d,
+      txLat: tx ? tx.lat.toFixed(5) : '', txLng: tx ? tx.lng.toFixed(5) : '' }));
+  }, [tx]);
+  useEffect(() => {
+    setCoordDraft((d) => ({ ...d,
+      rxLat: rx ? rx.lat.toFixed(5) : '', rxLng: rx ? rx.lng.toFixed(5) : '' }));
+  }, [rx]);
+
+  function editCoord(field: keyof typeof coordDraft, value: string) {
+    setCoordDraft((d) => ({ ...d, [field]: value }));
     const v = parseFloat(value);
     if (!Number.isFinite(v)) return;
+    const which = field.startsWith('tx') ? 'tx' : 'rx';
+    const axis = field.endsWith('Lat') ? 'lat' : 'lng';
     const setter = which === 'tx' ? setTx : setRx;
     const current = which === 'tx' ? tx : rx;
     setter({ lat: axis === 'lat' ? v : current?.lat ?? 0,
@@ -185,11 +208,17 @@ export default function Home() {
   }
 
   function useMyLocation() {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setSaveMsg('This device does not expose GPS/geolocation.');
+      return;
+    }
     navigator.geolocation.getCurrentPosition((pos) => {
       const p = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       if (placing === 'rx') setRx(p); else { setTx(p); setPlacing('rx'); }
       setFlyTarget({ ...p, zoom: 14, seq: flySeq.current++ });
+    }, (err) => {
+      setSaveMsg(`GPS unavailable: ${err.message}`);
+      setTimeout(() => setSaveMsg(null), 8000);
     });
   }
 
@@ -314,25 +343,25 @@ export default function Home() {
             <div className="row">
               <div>
                 <label>TX lat</label>
-                <input type="number" step="0.00001" value={tx?.lat.toFixed(5) ?? ''}
-                  onChange={(e) => setEndpointCoord('tx', 'lat', e.target.value)} />
+                <input type="number" step="0.00001" value={coordDraft.txLat}
+                  onChange={(e) => editCoord('txLat', e.target.value)} />
               </div>
               <div>
                 <label>TX lon</label>
-                <input type="number" step="0.00001" value={tx?.lng.toFixed(5) ?? ''}
-                  onChange={(e) => setEndpointCoord('tx', 'lng', e.target.value)} />
+                <input type="number" step="0.00001" value={coordDraft.txLng}
+                  onChange={(e) => editCoord('txLng', e.target.value)} />
               </div>
             </div>
             <div className="row">
               <div>
                 <label>RX lat</label>
-                <input type="number" step="0.00001" value={rx?.lat.toFixed(5) ?? ''}
-                  onChange={(e) => setEndpointCoord('rx', 'lat', e.target.value)} />
+                <input type="number" step="0.00001" value={coordDraft.rxLat}
+                  onChange={(e) => editCoord('rxLat', e.target.value)} />
               </div>
               <div>
                 <label>RX lon</label>
-                <input type="number" step="0.00001" value={rx?.lng.toFixed(5) ?? ''}
-                  onChange={(e) => setEndpointCoord('rx', 'lng', e.target.value)} />
+                <input type="number" step="0.00001" value={coordDraft.rxLng}
+                  onChange={(e) => editCoord('rxLng', e.target.value)} />
               </div>
             </div>
             {endA && endB && (
@@ -379,7 +408,7 @@ export default function Home() {
                 <div className="stat-line"><span className="k">Grid</span><span className="v">{georef.grid.nx}×{georef.grid.ny} @ {georef.grid.cell_size_m.toFixed(1)} m</span></div>
                 {typeof transform.rms_residual_m === 'number' && (
                   <div className="stat-line">
-                    <span className="k">Helmert RMS residual</span>
+                    <span className="k">Helmert RMS residual<Help term="helmert" /></span>
                     <span className="v" style={{ color: transform.rms_residual_m > 10 ? 'var(--status-critical)' : 'var(--status-good)' }}>
                       {transform.rms_residual_m.toFixed(2)} m
                     </span>
@@ -464,6 +493,7 @@ export default function Home() {
                   dxfId: georef?.dxf_id ?? null,
                   txHeight: num(txHeight, 20), rxHeight: num(rxHeight, 10),
                   freqMhz: num(freqMhz, 446), technology, model, environment,
+                  foliageDepthM: foliageDepth, rainRateMmH: rainRate,
                 })}
                 download
               >

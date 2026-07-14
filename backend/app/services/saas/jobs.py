@@ -22,6 +22,14 @@ JOBS_DIR.mkdir(parents=True, exist_ok=True)
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 _MAX_JOBS = 100
+# Hard cap on LIVE worker threads: excess submissions are rejected (429)
+# instead of letting anonymous callers saturate the CPU with simulations.
+MAX_RUNNING = 4
+_running = 0
+
+
+class JobsBusyError(RuntimeError):
+    """Raised when the concurrent-job cap is reached."""
 
 
 def create_job(kind: str) -> str:
@@ -67,12 +75,24 @@ def get_job(job_id: str) -> dict | None:
 
 def run_in_thread(job_id: str, fn: Callable[..., dict], *args: Any,
                   **kwargs: Any) -> None:
-    """Execute fn(*args, **kwargs) in a daemon thread bound to the job."""
+    """Execute fn(*args, **kwargs) in a daemon thread bound to the job.
+    Raises JobsBusyError when MAX_RUNNING jobs are already live."""
+    global _running
+    with _lock:
+        if _running >= MAX_RUNNING:
+            _jobs.pop(job_id, None)
+            raise JobsBusyError(
+                f"{MAX_RUNNING} simulations already running - retry shortly")
+        _running += 1
 
     def _run() -> None:
+        global _running
         try:
             finish_job(job_id, fn(*args, **kwargs))
         except Exception as exc:  # noqa: BLE001 - job errors surface via status
             finish_job(job_id, None, error=str(exc))
+        finally:
+            with _lock:
+                _running -= 1
 
     threading.Thread(target=_run, daemon=True).start()

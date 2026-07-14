@@ -21,7 +21,9 @@ against SPLAT!, Radio Mobile, CloudRF and commercial suites.
   **Deygout** diffraction (k=4/3 curved fused profile) is added on top.
 * **Technology presets** (all overridable): GSM 900/1800 · UMTS 900/2100 ·
   LTE 800/1800/2600 · 5G NR n28/n78/n257 (28 GHz mmWave) · TETRA · PMR446 ·
-  FM · DVB-T · Wi-Fi 2.4/5.8 · LoRaWAN 868 · 18 GHz PtP · custom.
+  FM · DVB-T · Wi-Fi 2.4/5.8 · LoRaWAN 868 · 18 GHz PtP · **Private LTE
+  B48/CBRS · Private 5G NR n77 · NB-IoT/LTE-M · VHF land mobile 150 MHz**
+  · custom — 23 presets, operator-extensible via `technologies.json`.
 * **Point-to-point link budget**: per-sample RX power along the profile,
   path loss + diffraction split, margin vs receiver sensitivity.
 * **Area coverage**: polar-sweep simulation from the TX (omni or 3GPP
@@ -57,7 +59,10 @@ backend/  (Python / FastAPI)
                          3 georeferencing modes, scipy gridding, hillshade overlay
   app/services/terrain/  Fusion engine: DXF patch + 3-cell feather blending,
                          50 m mean-elevation validation vs SRTM
-  app/services/rf/       k=4/3 earth curvature, Fresnel radii, knife-edge loss
+  app/services/rf/       k=4/3 curvature, Fresnel, Deygout, environmental
+                         losses (foliage/rain/gases), MSI antenna patterns
+  app/services/indoor/   floor-plan multi-wall engine, material library
+  app/services/saas/     accounts, tiers, projects, jobs, PDF reports, costs
   app/api/               FastAPI routes
 frontend/ (Next.js / React-Leaflet / Recharts)
   components/DxfWizard   Upload → layer select → georeferencing modal
@@ -90,7 +95,24 @@ frontend/ (Next.js / React-Leaflet / Recharts)
 | Control points | 2–3 (DXF X/Y ↔ Lat/Lon) pairs | least-squares 2D Helmert (scale+rotation+translation) in a local AEQD plane; per-point + RMS residuals returned in meters |
 | Origin + rotation | origin Lat/Lon, bearing of the +Y axis, unit scale | analytic similarity transform |
 
+## SaaS & workspaces (optional layer)
+
+Accounts, role dashboards (Command Center / Tactical / Pitch), saved &
+shareable projects, tier entitlements, CAPEX/OPEX estimates, branded PDF
+reports, async jobs with progress. Self-hosted installs keep every feature
+free by default; `AM_SAAS_MODE=1` activates tier gating. Endpoints under
+`/api/auth`, `/api/projects`, `/api/saas` — full schema and tier matrix in
+`SaaS_ARCHITECTURE.md`.
+
 ## Running
+
+One command (backend :8000 + frontend :3000):
+
+```bash
+./start.sh              # or: ./start.sh --check  (full test+benchmark gate)
+```
+
+Manual setup:
 
 Backend (Python ≥ 3.11):
 

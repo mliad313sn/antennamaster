@@ -74,9 +74,10 @@ def test_composite_best_server(fake_store):
                                      n_radials=48, n_steps=30)
         sites.append({"lat": la, "lon": lo, "name": f"S{i+1}",
                       "radius_m": 6000.0, "polar": polar})
-    png, bounds, stats = composite_best_server(sites, raster_px=192)
+    png, bounds, stats, served_frac = composite_best_server(sites, raster_px=192)
     assert png[:4] == b"\x89PNG"
     assert len(stats) == 2
+    assert 0.0 < served_frac <= 1.0
     shares = [s["best_server_share"] for s in stats]
     assert sum(shares) == pytest.approx(1.0, abs=0.01)
     assert min(shares) > 0.2                     # both sites win territory

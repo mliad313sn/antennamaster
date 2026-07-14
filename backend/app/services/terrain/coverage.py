@@ -299,7 +299,7 @@ SITE_COLORS = [
 
 
 def composite_best_server(sites: list[dict], raster_px: int = 768,
-                          ) -> tuple[bytes, list[list[float]], list[dict]]:
+                          ) -> tuple[bytes, list[list[float]], list[dict], float]:
     """Composite several sites' polar fields into one best-server raster.
 
     ``sites``: [{lat, lon, radius_m, name, polar}] where ``polar`` is the
@@ -307,7 +307,9 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
     in the color of the site delivering the strongest RX power there,
     provided that site's fade-margin test passes (else transparent).
 
-    Returns (png, [[south, west], [north, east]], per_site_stats).
+    Returns (png, [[south, west], [north, east]], per_site_stats,
+    served_area_fraction) where the fraction is served pixels over pixels
+    inside at least one site's coverage disc.
     """
     # Union bounding box of all coverage discs.
     boxes = []
@@ -371,4 +373,6 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
 
     buf = io.BytesIO()
     Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
-    return buf.getvalue(), [[south, west], [north, east]], stats
+    inside_any = np.isfinite(best_rx)
+    served_frac = round(float(served.sum()) / max(int(inside_any.sum()), 1), 4)
+    return buf.getvalue(), [[south, west], [north, east]], stats, served_frac

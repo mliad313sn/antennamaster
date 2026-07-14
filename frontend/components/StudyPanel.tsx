@@ -253,7 +253,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 </select>
               </div>
             </div>
-            {sector && (
+            {(sector || antennaId) && (
               <div className="row">
                 <div>
                   <label>Azimuth (°)</label>
@@ -404,6 +404,10 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <div className="stat-line">
                   <span className="k">TX ground</span>
                   <span className="v">{props.coverage.stats.tx_elevation_m.toFixed(0)} m ASL</span>
+                </div>
+                <div className="stat-line">
+                  <span className="k">Radius</span>
+                  <span className="v">{(props.coverage.stats.radius_m / 1000).toFixed(0)} km</span>
                 </div>
                 <div className="stat-line">
                   <span className="k">Peak RX power</span>

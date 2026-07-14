@@ -94,11 +94,6 @@ def gaseous_attenuation_db_per_km(freq_mhz: float,
     return float(gamma_o + gamma_w)
 
 
-def gaseous_loss_db(freq_mhz: float, dist_m: float) -> float:
-    """Total atmospheric gas absorption over the path (dB)."""
-    return gaseous_attenuation_db_per_km(freq_mhz) * dist_m / 1000.0
-
-
 def thermal_sensitivity_dbm(bandwidth_mhz: float, noise_figure_db: float,
                             target_sinr_db: float) -> float:
     """Receiver sensitivity from first principles:

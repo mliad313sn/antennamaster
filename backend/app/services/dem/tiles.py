@@ -73,25 +73,38 @@ class TerrariumTileStore:
         tmp.write_bytes(resp.content)
         tmp.replace(path)
         # Every 100 downloads, sweep the disk cache back under its budget so
-        # long-running installs cannot fill the data volume.
-        self._downloads += 1
-        if self._downloads % 100 == 0:
+        # long-running installs cannot fill the data volume.  The counter is
+        # guarded - unlocked increments under concurrency lose updates.
+        with self._lock:
+            self._downloads += 1
+            sweep = self._downloads % 100 == 0
+        if sweep:
             self.evict_disk_cache()
         return resp.content
 
     def evict_disk_cache(self, budget_mb: int = DEM_CACHE_BUDGET_MB) -> int:
         """Delete oldest tiles (by mtime) until the cache fits the budget.
-        Returns the number of tiles removed."""
-        tiles = sorted(self.cache_dir.glob("*/*/*.png"),
-                       key=lambda p: p.stat().st_mtime)
-        total = sum(p.stat().st_size for p in tiles)
+        Returns the number of tiles removed.  Tolerates files vanishing
+        mid-sweep (sibling workers evicting concurrently)."""
+        entries = []
+        for p in self.cache_dir.glob("*/*/*.png"):
+            try:
+                st = p.stat()
+            except FileNotFoundError:
+                continue
+            entries.append((st.st_mtime, st.st_size, p))
+        entries.sort()
+        total = sum(size for _, size, _ in entries)
         removed = 0
         budget = budget_mb * 1024 * 1024
-        for p in tiles:
+        for _, size, p in entries:
             if total <= budget:
                 break
-            total -= p.stat().st_size
-            p.unlink(missing_ok=True)
+            try:
+                p.unlink()
+            except FileNotFoundError:
+                pass
+            total -= size
             removed += 1
         return removed
 

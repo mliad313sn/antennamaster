@@ -1,7 +1,7 @@
 """Elevation-profile and link-analysis endpoints over the fused terrain."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 import numpy as np
 
@@ -9,7 +9,9 @@ from ..services.dxf.store import get_dxf_store
 from ..services.rf.models import MODEL_INFO, deygout_loss_db, path_loss_db
 from ..services.rf.physics import analyze_path, apply_earth_curvature
 from ..services.rf.technologies import get_technology, link_budget
+from ..services.saas.tiers import require_feature
 from ..services.terrain.fusion import TerrainFusionService
+from .routes_auth import current_user
 
 # Process-wide fusion service (shares the DEM tile cache across requests).
 _fusion = TerrainFusionService()
@@ -24,11 +26,13 @@ router = APIRouter(prefix="/api/terrain", tags=["terrain"])
 @router.get("/elevation")
 def point_elevation(lat: float = Query(ge=-90, le=90),
                     lon: float = Query(ge=-180, le=180),
-                    dxf_id: str | None = None) -> dict:
+                    dxf_id: str | None = None,
+                    user: dict | None = Depends(current_user)) -> dict:
     """Fused elevation at a single point (SRTM, or DXF where available)."""
     fusion = get_fusion_service()
     grid = georef = None
     if dxf_id:
+        require_feature(user, "dxf_fusion")   # fusion is Pro in SaaS mode
         session = get_dxf_store().get(dxf_id)
         if session and session.ensure_ready():
             grid, georef = session.grid, session.georef
@@ -61,6 +65,7 @@ def terrain_profile(
     # Environmental excess losses (foliage clutter / weather for PtP):
     foliage_depth_m: float = Query(0.0, ge=0, le=400),
     rain_rate_mm_h: float = Query(0.0, ge=0, le=150),
+    user: dict | None = Depends(current_user),
 ) -> dict:
     """TX->RX elevation profile over the fused terrain, plus RF link analysis.
 
@@ -73,6 +78,7 @@ def terrain_profile(
     grid = georef = None
     dxf_active = False
     if dxf_id:
+        require_feature(user, "dxf_fusion")   # fusion is Pro in SaaS mode
         session = get_dxf_store().get(dxf_id)
         if session is None:
             raise HTTPException(404, f"Unknown DXF id: {dxf_id}")
@@ -107,12 +113,15 @@ def terrain_profile(
     rx_power_per_point: np.ndarray | None = None
     if technology is not None:
         tech = tech_preview  # already resolved above
+        # NOTE: heights use explicit None checks - a legitimate 0 m height
+        # must reach the model, not silently fall back to the preset.
         overrides = {"model": model, "environment": environment,
                      "tx_power_dbm": tx_power_dbm, "tx_gain_dbi": tx_gain_dbi,
                      "rx_gain_dbi": rx_gain_dbi, "losses_db": losses_db,
                      "rx_sensitivity_dbm": rx_sensitivity_dbm,
-                     "freq_mhz": freq_mhz, "h_bs_m": tx_height_m or None,
-                     "h_ut_m": rx_height_m or None}
+                     "freq_mhz": freq_mhz,
+                     "h_bs_m": tx_height_m if tx_height_m is not None else None,
+                     "h_ut_m": rx_height_m if rx_height_m is not None else None}
         for key, val in overrides.items():
             if val is not None:
                 tech[key] = val
@@ -214,6 +223,14 @@ def terrain_profile_csv(
     technology: str | None = Query(None),
     model: str | None = Query(None),
     environment: str | None = Query(None),
+    tx_power_dbm: float | None = Query(None),
+    tx_gain_dbi: float | None = Query(None),
+    rx_gain_dbi: float | None = Query(None),
+    losses_db: float | None = Query(None),
+    rx_sensitivity_dbm: float | None = Query(None),
+    foliage_depth_m: float = Query(0.0, ge=0, le=400),
+    rain_rate_mm_h: float = Query(0.0, ge=0, le=150),
+    user: dict | None = Depends(current_user),
 ):
     """The elevation/link profile as CSV - the deliverable engineers attach
     to reports and load into Excel/GIS.  Same parameters as /profile."""
@@ -224,9 +241,11 @@ def terrain_profile_csv(
         dxf_id=dxf_id, tx_height_m=tx_height_m, rx_height_m=rx_height_m,
         freq_mhz=freq_mhz, k_factor=k_factor, technology=technology,
         model=model, environment=environment,
-        tx_power_dbm=None, tx_gain_dbi=None, rx_gain_dbi=None,
-        losses_db=None, rx_sensitivity_dbm=None,
-        foliage_depth_m=0.0, rain_rate_mm_h=0.0)
+        tx_power_dbm=tx_power_dbm, tx_gain_dbi=tx_gain_dbi,
+        rx_gain_dbi=rx_gain_dbi, losses_db=losses_db,
+        rx_sensitivity_dbm=rx_sensitivity_dbm,
+        foliage_depth_m=foliage_depth_m, rain_rate_mm_h=rain_rate_mm_h,
+        user=user)
 
     has_rx = data["points"] and "rx_power_dbm" in data["points"][0]
     header = ["distance_m", "lat", "lon", "elevation_m", "elevation_curved_m",
