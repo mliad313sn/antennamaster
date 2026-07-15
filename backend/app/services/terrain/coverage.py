@@ -145,11 +145,13 @@ class CoverageEngine:
         elev_angle = np.degrees(np.arctan2(dh, dist_g))         # (R, S)
 
         if antenna_pattern is not None:
-            # Measured MSI pattern: sum-of-cuts H(az offset) + V(elev offset)
-            # about a boresight tilted down by mechanical + electrical tilt.
+            # Measured MSI pattern: sum-of-cuts H(az offset) + V(elev offset).
+            # The boresight is tilted by the MECHANICAL downtilt only - a
+            # measured vertical cut already has the electrical tilt baked into
+            # its shape (the main lobe sits at the e-tilt angle), so the TILT
+            # header is metadata, not an extra offset to apply here.
             from ..rf.antenna import pattern_attenuation
-            boresight = -(downtilt_deg
-                          + float(antenna_pattern.get("electrical_tilt_deg", 0.0)))
+            boresight = -downtilt_deg
             az_off = (az - (antenna_azimuth_deg or 0.0))[:, None]  # (R, 1)
             elev_off = boresight - elev_angle                      # (R, S)
             ant_gain = -pattern_attenuation(antenna_pattern,

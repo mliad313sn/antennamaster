@@ -99,11 +99,16 @@ def analyze_path(distances_m: np.ndarray, elevations_m: np.ndarray,
     loss_db = float(knife_edge_loss_db(worst_v))
 
     clearance = los - terrain
-    min_clear_i = int(np.argmin(clearance[interior])) + 1
-    # Fraction of first-Fresnel-zone clearance at the tightest point (>= 0.6
-    # is the classic "clear path" rule of thumb).
-    f1_at = f1[min_clear_i] if f1[min_clear_i] > 0 else 1.0
-    fresnel_clearance_ratio = float(clearance[min_clear_i] / f1_at)
+    # Fresnel clearance ratio = clearance / F1 at its WORST (minimum) point.
+    # This must be the minimum of the *ratio*, not the clearance at the point
+    # of minimum *absolute* clearance: F1 shrinks toward the endpoints, so a
+    # near-end sample with small clearance but large F1-ratio would otherwise
+    # mask a mid-path obstruction and let the 60%-F1 rule pass when it fails.
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio_arr = np.where(f1[interior] > 0,
+                             clearance[interior] / f1[interior], np.inf)
+    min_ratio_i = int(np.argmin(ratio_arr)) + 1
+    fresnel_clearance_ratio = float(ratio_arr[min_ratio_i - 1])
 
     return {
         "terrain_curved_m": terrain,

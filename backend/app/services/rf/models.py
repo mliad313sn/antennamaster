@@ -266,22 +266,30 @@ def deygout_loss_db(distances_m: np.ndarray, elevations_m: np.ndarray,
     e[-1] += rx_h_m
     d = np.asarray(distances_m, dtype=np.float64)
 
-    def recurse(i0: int, i1: int, budget: int) -> float:
-        if budget <= 0 or i1 - i0 < 2:
+    # ``max_edges`` is a TOTAL edge count, not a recursion depth: the two
+    # sub-paths share one budget (decremented once per evaluated edge), so
+    # max_edges=3 sums exactly the principal edge + up to two secondaries -
+    # the classic Deygout construction.  A per-branch budget would instead
+    # admit up to 2^n-1 edges and over-predict loss in rugged terrain.
+    remaining = max_edges
+
+    def recurse(i0: int, i1: int) -> float:
+        nonlocal remaining
+        if remaining <= 0 or i1 - i0 < 2:
             return 0.0
         v = _v_params(d, e, i0, i1, lam)
         k = int(np.argmax(v))
         v_max = float(v[k])
         if v_max <= -0.78:
             return 0.0
+        remaining -= 1                       # this edge is spent
         loss = _ke_loss(v_max)
         # Only split around a genuinely obstructing edge (v > 0).  Recursing
         # on marginal grazing edges piles up spurious sub-path losses.
         if v_max <= 0.0:
             return loss
         edge = i0 + 1 + k
-        return (loss
-                + recurse(i0, edge, budget - 1)
-                + recurse(edge, i1, budget - 1))
+        # Left sub-path first, then right, drawing from the shared budget.
+        return loss + recurse(i0, edge) + recurse(edge, i1)
 
-    return recurse(0, len(d) - 1, max_edges)
+    return recurse(0, len(d) - 1)

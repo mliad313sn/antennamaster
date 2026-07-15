@@ -95,9 +95,19 @@ def gaseous_attenuation_db_per_km(freq_mhz: float,
     """Sea-level specific gaseous attenuation (dry air + water vapour),
     simplified ITU-R P.676 fits, valid ~1-100 GHz away from line centers."""
     f = max(freq_mhz / 1000.0, 0.1)              # GHz
-    # Dry air (oxygen): flat ~0.0067 below 10 GHz rising into the 60 GHz line.
-    gamma_o = (7.2 / (f ** 2 + 0.34) + 0.62 / ((54.0 - f) ** 1.16 + 0.83)) \
-        * f ** 2 * 1e-3 if f < 54 else 15.0      # inside the O2 complex: huge
+    # Dry air (oxygen).  Below 54 GHz: the ITU-R P.676 low-frequency fit
+    # (non-resonant term + lower wing of the 60 GHz complex).  At/above
+    # 54 GHz that fit diverges, so model the 60 GHz oxygen complex as a
+    # Lorentzian peaking at ~15 dB/km and decaying on both sides - this
+    # restores the correct ~0.3-0.6 dB/km through the 71-86 GHz E-band
+    # window instead of clamping every high band to the 60 GHz peak.
+    if f < 54.0:
+        gamma_o = (7.2 / (f ** 2 + 0.34)
+                   + 0.62 / ((54.0 - f) ** 1.16 + 0.83)) * f ** 2 * 1e-3
+    else:
+        # Half-width ~3.35 GHz reproduces P.676: ~15 @60, ~3 @54/66,
+        # ~0.6 @80, ~0.4 @94 GHz; +0.27 non-resonant high-band floor.
+        gamma_o = 0.27 + 14.9 * 11.2 / ((f - 60.0) ** 2 + 11.2)
     # Water vapour (rho = 7.5 g/m3 standard), 22.235 GHz line dominant.
     rho = water_vapour_g_m3
     gamma_w = (0.046 + 0.0019 * rho
