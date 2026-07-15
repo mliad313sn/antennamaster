@@ -1,0 +1,44 @@
+# AntennaMaster RF Simulator — systemd service (Linux production servers).
+#
+# Runs the platform as a persistent, auto-restarting background service using
+# the bare-metal install (install.sh).  For Docker deployments use
+# `docker compose up -d` instead (compose already restarts on failure/boot).
+#
+# Install:
+#   1. Deploy the project to /opt/antennamaster (or edit the paths below).
+#   2. Run install.sh there so backend/.venv and frontend/.next exist.
+#   3. Create a dedicated user:   sudo useradd -r -s /usr/sbin/nologin antenna
+#      and:  sudo chown -R antenna:antenna /opt/antennamaster
+#   4. sudo cp deploy/rf-simulator.service /etc/systemd/system/
+#   5. sudo systemctl daemon-reload && sudo systemctl enable --now rf-simulator
+#   6. Check:  systemctl status rf-simulator   journalctl -u rf-simulator -f
+
+[Unit]
+Description=AntennaMaster RF Coverage Simulator
+Documentation=file:/opt/antennamaster/DEPLOYMENT_GUIDE.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=antenna
+Group=antenna
+WorkingDirectory=/opt/antennamaster
+# --service = foreground, no browser; the wrapper starts both servers and
+# waits, so systemd supervises the process group.
+ExecStart=/opt/antennamaster/launch_simulator.sh --service
+# Persist runtime data (SQLite DB, DEM cache, DXFs) outside the code tree if
+# you prefer:  Environment=AM_DATA_DIR=/var/lib/antennamaster
+Environment=HOST_BIND=0.0.0.0
+Environment=FRONTEND_PORT=3000
+Environment=BACKEND_PORT=8000
+Restart=always
+RestartSec=5
+# Hardening (relax if a step is blocked in your environment).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

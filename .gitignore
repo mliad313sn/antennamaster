@@ -22,3 +22,8 @@ npm-debug.log*
 
 # Coverage/QA artifacts
 backend/.coverage
+
+# Deployment / packaging artifacts
+*.tar
+antennamaster-offline.tar
+backend/.venv/

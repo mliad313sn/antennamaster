@@ -1,0 +1,15 @@
+# Keep the build context tiny and secrets/artifacts out of the image.
+data/
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+benchmarks/results.json
+Dockerfile
+.dockerignore

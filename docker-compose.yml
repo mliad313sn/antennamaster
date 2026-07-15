@@ -1,0 +1,76 @@
+# AntennaMaster — full-stack orchestration.
+#
+#   docker compose up -d --build     start the platform (http://localhost:3000)
+#   docker compose down              stop it (data volume is preserved)
+#   docker compose down -v           stop and DELETE all data
+#
+# The app uses an embedded SQLite database (accounts, projects, audit) stored
+# on the `am_data` volume alongside the DEM tile cache and uploaded DXFs — no
+# separate database server is required.  The frontend reaches the backend over
+# the private `amnet` network by service name; only the ports you publish are
+# exposed to the host / LAN.
+name: antennamaster
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: antennamaster-backend:latest
+    restart: unless-stopped
+    environment:
+      # Override any AM_* setting here (see backend/app/config.py).
+      AM_DATA_DIR: /data
+      AM_DEM_CACHE_MB: "2048"
+      # Lock down cross-origin access in production; '*' is dev-friendly.
+      AM_CORS_ORIGINS: "*"
+      UVICORN_WORKERS: "2"
+    volumes:
+      - am_data:/data
+    networks:
+      - amnet
+    # Publish 8000 only if you want direct API/`/docs` access from the host.
+    # For a locked-down deployment, comment this out — the frontend proxies
+    # everything the browser needs.
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Next bakes the /api proxy target at build time (see frontend/Dockerfile).
+        BACKEND_URL: http://backend:8000
+    image: antennamaster-frontend:latest
+    restart: unless-stopped
+    environment:
+      # Server-side proxy target — the browser only ever talks to the frontend.
+      BACKEND_URL: http://backend:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - amnet
+    # Change to "3000:3000" to serve the whole LAN, or keep 127.0.0.1 to
+    # restrict to the host and front it with a reverse proxy.
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  am_data:
+    driver: local
+
+networks:
+  amnet:
+    driver: bridge
