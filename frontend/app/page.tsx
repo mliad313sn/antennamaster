@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import AdvancedStudies from '@/components/AdvancedStudies';
 import AuthPanel from '@/components/AuthPanel';
 import BatchPanel from '@/components/BatchPanel';
 import DxfWizard from '@/components/DxfWizard';
@@ -64,6 +65,7 @@ export default function Home() {
 
   const [wizardOpen, setWizardOpen] = useState(false);
   const [indoorOpen, setIndoorOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [georef, setGeoref] = useState<GeorefResponse | null>(null);
   const [showOverlay, setShowOverlay] = useState(true);
 
@@ -568,6 +570,14 @@ export default function Home() {
             </button>
           </div>
 
+          <div className="panel">
+            <h3>{t('advanced.panelTitle')}</h3>
+            <p className="hint">{t('advanced.panelHint')}</p>
+            <button style={{ width: '100%' }} onClick={() => setAdvancedOpen(true)}>
+              {t('advanced.open')}
+            </button>
+          </div>
+
           {validation?.warning && (
             <div className="warning-box">
               <b>⚠ Terrain validation warning</b><br />
@@ -685,6 +695,12 @@ export default function Home() {
         />
       )}
       {indoorOpen && <IndoorStudio onClose={() => setIndoorOpen(false)} />}
+      {advancedOpen && (
+        <AdvancedStudies
+          tx={tx} rx={rx} technology={technology}
+          onClose={() => setAdvancedOpen(false)}
+        />
+      )}
       {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} onUser={setUser} />}
     </div>
   );

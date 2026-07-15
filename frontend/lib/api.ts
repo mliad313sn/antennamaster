@@ -394,3 +394,33 @@ export async function fetchEquipment(): Promise<{ equipment: Equipment[]; catego
     await fetch('/api/rf/equipment'));
   return { equipment: body.equipment ?? [], categories: body.categories ?? [] };
 }
+
+// ------------------------------------------------- advanced studies
+async function postJson<T>(path: string, body: object): Promise<T> {
+  return jsonOrThrow<T>(await fetch(path, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }));
+}
+
+// Two-way LMR talk-back link.
+export async function twowayLink(body: object): Promise<any> {
+  return postJson('/api/rf/twoway/link', body);
+}
+
+// EMF exposure compliance (ICNIRP / FCC).
+export async function emfCompliance(body: object): Promise<any> {
+  return postJson('/api/rf/compliance', body);
+}
+
+// Longley-Rice ITM path loss with a reliability quantile.
+export async function itmStudy(params: Record<string, string | number>): Promise<any> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])));
+  return jsonOrThrow(await fetch(`/api/terrain/itm?${q.toString()}`));
+}
+
+// Copilot engine-driven link diagnosis.
+export async function copilotAnalyzeLink(body: object): Promise<any> {
+  return postJson('/api/copilot/analyze/link', body);
+}
