@@ -25,6 +25,7 @@ from .api.routes_projects import router as projects_router
 from .api.routes_rf import router as rf_router
 from .api.routes_saas import router as saas_router
 from .api.routes_terrain import router as terrain_router
+from .api.routes_copilot import router as copilot_router
 from .api.routes_twoway import router as twoway_router
 
 app = FastAPI(
@@ -123,6 +124,7 @@ app.include_router(projects_router)
 app.include_router(saas_router)
 app.include_router(basemap_router)
 app.include_router(twoway_router)
+app.include_router(copilot_router)
 
 
 @app.get("/api/health")
