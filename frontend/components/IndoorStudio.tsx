@@ -16,15 +16,16 @@ import {
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import {
-  fetchMaterials, fetchPlanPreview, fetchTteStudy, fetchTunnelStudy,
-  fetchUndergroundPresets, simulateIndoorCoverage, uploadDxf,
+  fetchEquipment, fetchMaterials, fetchPlanPreview, fetchTteStudy,
+  fetchTunnelStudy, fetchUndergroundPresets, leakyFeederStudy,
+  simulateIndoorCoverage, uploadDxf,
 } from '@/lib/api';
 import type {
-  IndoorCoverageResponse, Material, TteResponse, TunnelResponse,
+  Equipment, IndoorCoverageResponse, Material, TteResponse, TunnelResponse,
   UndergroundPresets, UploadResponse,
 } from '@/lib/types';
 
-type Tab = 'plan' | 'tunnel' | 'tte';
+type Tab = 'plan' | 'tunnel' | 'feeder' | 'tte';
 
 export default function IndoorStudio({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -45,10 +46,12 @@ export default function IndoorStudio({ onClose }: { onClose: () => void }) {
           <div className="mode-tabs">
             <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>{t('indoor.tabPlan')}</button>
             <button className={tab === 'tunnel' ? 'active' : ''} onClick={() => setTab('tunnel')}>{t('indoor.tabTunnel')}</button>
+            <button className={tab === 'feeder' ? 'active' : ''} onClick={() => setTab('feeder')}>{t('indoor.tabFeeder')}</button>
             <button className={tab === 'tte' ? 'active' : ''} onClick={() => setTab('tte')}>{t('indoor.tabTte')}</button>
           </div>
           {tab === 'plan' && <PlanStudy />}
           {tab === 'tunnel' && <TunnelStudy />}
+          {tab === 'feeder' && <FeederStudy />}
           {tab === 'tte' && <TteStudy />}
         </div>
       </div>
@@ -361,6 +364,149 @@ function TunnelStudy() {
                 <ReferenceLine y={sensitivity} stroke="var(--status-critical)"
                   strokeDasharray="6 4"
                   label={{ value: t('indoor.sensitivityLine'), fontSize: 11, fill: 'var(--status-critical)', position: 'insideBottomLeft' }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+      {error && <div className="error-box">{error}</div>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------- leaky-feeder tab
+/**
+ * Radiating-cable (leaky feeder) design — the real metro/mine tunnel solution.
+ * Picking a catalog cable + frequency point autofills the physics (longitudinal
+ * attenuation, coupling loss) from real vendor specs; the engine solves inline
+ * amplifier spacing and reports served length / worst gap.
+ */
+function FeederStudy() {
+  const { t } = useTranslation();
+  const [cables, setCables] = useState<Equipment[]>([]);
+  const [cableId, setCableId] = useState('');
+  const [pointIdx, setPointIdx] = useState(0);
+  const [freq, setFreq] = useState(450);
+  const [atten, setAtten] = useState(2.0);
+  const [coupling, setCoupling] = useState(65);
+  const [length, setLength] = useState(2000);
+  const [lateral, setLateral] = useState(2);
+  const [txPower, setTxPower] = useState(20);
+  const [sensitivity, setSensitivity] = useState(-95);
+  const [margin, setMargin] = useState(10);
+  const [ampGain, setAmpGain] = useState(30);
+  const [result, setResult] = useState<any>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchEquipment().then(({ equipment }) => {
+      setCables(equipment.filter((e) => e.equipment_class === 'leaky_feeder'
+        && e.leaky_feeder_specs?.points?.length));
+    }).catch(() => {});
+  }, []);
+
+  const cable = cables.find((c) => c.id === cableId) ?? null;
+
+  function applyPoint(c: Equipment | null, idx: number) {
+    const pt = c?.leaky_feeder_specs?.points?.[idx];
+    if (!pt) return;
+    setFreq(pt.freq_mhz);
+    setAtten(pt.atten_db_per_100m);
+    setCoupling(pt.coupling_db_50);
+  }
+
+  async function run() {
+    setBusy(true); setError(null);
+    try {
+      setResult(await leakyFeederStudy({
+        freq_mhz: freq, length_m: length, cable_atten_db_per_100m: atten,
+        coupling_ref_db: coupling,
+        coupling_ref_m: cable?.leaky_feeder_specs?.coupling_ref_m ?? 2.0,
+        lateral_m: lateral, tx_power_dbm: txPower,
+        rx_sensitivity_dbm: sensitivity, system_margin_db: margin,
+        amp_gain_db: ampGain,
+      }));
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div>
+      <p className="hint">{t('indoor.feederIntro')}</p>
+      <div className="row">
+        <div>
+          <label>{t('indoor.feederCable')}</label>
+          <select value={cableId} onChange={(e) => {
+            setCableId(e.target.value); setPointIdx(0);
+            applyPoint(cables.find((c) => c.id === e.target.value) ?? null, 0);
+          }}>
+            <option value="">{t('indoor.feederManual')}</option>
+            {cables.map((c) => (
+              <option key={c.id} value={c.id}>{c.vendor} — {c.model}</option>
+            ))}
+          </select>
+        </div>
+        {cable && (
+          <div>
+            <label>{t('indoor.feederBand')}</label>
+            <select value={pointIdx} onChange={(e) => {
+              const i = parseInt(e.target.value, 10);
+              setPointIdx(i); applyPoint(cable, i);
+            }}>
+              {cable.leaky_feeder_specs!.points.map((p, i) => (
+                <option key={i} value={i}>
+                  {p.freq_mhz} MHz — {p.atten_db_per_100m} dB/100m
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+      </div>
+      {cable?.spec_confidence && cable.spec_confidence !== 'datasheet' && (
+        <p className="hint">⚠ {t('indoor.feederConfidence')}</p>
+      )}
+      <div className="row">
+        <div><label>{t('indoor.frequencyMhz')}</label><input type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
+        <div><label>{t('indoor.feederAtten')}</label><input type="number" step="0.01" value={atten} onChange={(e) => setAtten(parseFloat(e.target.value) || 2)} /></div>
+        <div><label>{t('indoor.feederCoupling')}</label><input type="number" value={coupling} onChange={(e) => setCoupling(parseFloat(e.target.value) || 65)} /></div>
+        <div><label>{t('indoor.lengthM')}</label><input type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 2000)} /></div>
+      </div>
+      <div className="row">
+        <div><label>{t('indoor.feederLateral')}</label><input type="number" value={lateral} onChange={(e) => setLateral(parseFloat(e.target.value) || 2)} /></div>
+        <div><label>{t('indoor.txPower')}</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} /></div>
+        <div><label>{t('indoor.sensitivity')}</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -95)} /></div>
+        <div><label>{t('indoor.feederMargin')}</label><input type="number" value={margin} onChange={(e) => setMargin(parseFloat(e.target.value) || 0)} /></div>
+        <div><label>{t('indoor.feederAmpGain')}</label><input type="number" value={ampGain} onChange={(e) => setAmpGain(parseFloat(e.target.value) || 0)} /></div>
+      </div>
+      <button className="primary" disabled={busy} onClick={run}>
+        {busy ? t('indoor.computing') : t('indoor.computeFeeder')}
+      </button>
+      {result && (
+        <>
+          <div className="row" style={{ marginTop: 10 }}>
+            {result.amp_spacing_m != null && (
+              <div className="stat-line"><span className="k">{t('indoor.feederAmpSpacing')}</span><span className="v">{result.amp_spacing_m.toFixed(0)} m × {result.amps_required}</span></div>
+            )}
+            <div className="stat-line"><span className="k">{t('indoor.feederServed')}</span><span className="v">{(result.served_length_fraction * 100).toFixed(1)} %</span></div>
+            <div className="stat-line"><span className="k">{t('indoor.feederWorstGap')}</span><span className="v">{result.worst_gap_m.toFixed(0)} m</span></div>
+          </div>
+          <div style={{ height: 240 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={result.points} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+                <XAxis dataKey="x_m" type="number" domain={['dataMin', 'dataMax']}
+                  tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} stroke="var(--baseline)"
+                  label={{ value: 'm', position: 'insideBottomRight', offset: -2, fontSize: 11, fill: 'var(--ink-muted)' }} />
+                <YAxis width={52} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} stroke="var(--baseline)"
+                  label={{ value: 'dBm', position: 'insideTopLeft', offset: 4, fontSize: 11, fill: 'var(--ink-muted)' }} />
+                <Tooltip formatter={(v: number) => [`${Number(v).toFixed(1)} dBm`, t('indoor.feederField')]}
+                  labelFormatter={(l) => `${l} m`} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Area dataKey="field_dbm" name={t('indoor.feederField')} stroke="#12b3a6"
+                  fill="#12b3a6" fillOpacity={0.3} strokeWidth={2} dot={false}
+                  isAnimationActive={false} />
+                <ReferenceLine y={result.required_field_dbm} stroke="var(--status-critical)"
+                  strokeDasharray="6 4"
+                  label={{ value: t('indoor.feederRequired'), fontSize: 11, fill: 'var(--status-critical)', position: 'insideBottomLeft' }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

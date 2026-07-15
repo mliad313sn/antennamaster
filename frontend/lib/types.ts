@@ -305,6 +305,13 @@ export interface ScenarioResolved {
   shadow_margin_db: number;
 }
 
+export interface LeakyFeederPoint {
+  freq_mhz: number;
+  atten_db_per_100m: number;
+  coupling_db_50: number;
+  coupling_db_95?: number;
+}
+
 export interface Equipment {
   id: string;
   vendor: string;
@@ -320,4 +327,14 @@ export interface Equipment {
   antenna_gain_dbi: number;
   beamwidth_deg: number;
   bandwidth_mhz?: number;
+  // Rich catalog fields (present on ingested entries).
+  equipment_class?: string;
+  spec_confidence?: string;
+  provenance?: string;
+  also_sold_as?: string[];
+  leaky_feeder_specs?: {
+    diameter_in?: number;
+    coupling_ref_m?: number;
+    points: LeakyFeederPoint[];
+  };
 }

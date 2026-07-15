@@ -425,6 +425,11 @@ export async function copilotAnalyzeLink(body: object): Promise<any> {
   return postJson('/api/copilot/analyze/link', body);
 }
 
+// Leaky-feeder (radiating cable) tunnel study.
+export async function leakyFeederStudy(body: object): Promise<any> {
+  return postJson('/api/indoor/leaky-feeder', body);
+}
+
 // Drone LiDAR / point-cloud DSM upload.
 export async function uploadLidar(file: File, epsg?: string, cellM = 2): Promise<any> {
   const form = new FormData();

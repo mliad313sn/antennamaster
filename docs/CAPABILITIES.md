@@ -1,7 +1,7 @@
 # AntennaMaster — Complete Functionality, Capability & Capacity Reference
 
 Verified against the codebase: **79 REST/stream endpoints** (59 simulation +
-20 SaaS/accounts), **190 backend test functions (200 cases)** + 13 frontend
+20 SaaS/accounts), **199 backend test functions (209 cases)** + 13 frontend
 component tests. Companion docs: `VISION_ARCHITECTURE.md` (3D digital twin, live
 telemetry, LiDAR), `ROADMAP.md` (five-layer capability model & delivered
 phases), `ASSESSMENT.md` (benchmark & review history), `SaaS_ARCHITECTURE.md`
@@ -230,10 +230,16 @@ Earth / QGIS / ArcGIS), coverage PNG + **GeoTIFF (EPSG:4326)** + KMZ
 GroundOverlay, indoor heatmap PNG, hardware **BOM CSV** (fleet-scaled),
 branded PDF report. An "Export to GIS" menu surfaces the geospatial formats.
 
-**Hardware Catalog:** 13+ real equipment profiles (Wi-Fi, Private LTE, PTP
-microwave, PMR) with frequency band, TX power, RX sensitivity, antenna gain
-and beamwidth; an Equipment Selector auto-fills the RF parameters (still
-editable). Extensible via `AM_DATA_DIR/hardware_catalog.json`.
+**Hardware Catalog:** 52 equipment profiles across 12 classes (macro antennas,
+Massive-MIMO radios, PtP/mmWave, **leaky feeders with real attenuation/coupling
+curves**, LMR/TETRA repeaters, tunnel antennas, Wi-Fi 6/6E, LoRaWAN/IoT, GNSS)
+from real vendors on 5 continents, each tagged with `provenance` and
+`spec_confidence` (datasheet / published_typical / class_reference); an
+Equipment Selector auto-fills the RF parameters, and the leaky-feeder studio
+autofills cable physics from the catalog. Ingestion pipeline with
+evidence-based OEM-rebrand dedup (`tools/ingest_catalog.py`); extensible via
+`catalog_sources/` or `AM_DATA_DIR/hardware_catalog.json`. Audit:
+`GLOBAL_INVENTORY_AUDIT.md`.
 
 **Field-ready (PWA + offline maps):** installable web app with an offline
 service worker (app shell, map tiles, last API results) **plus a local
