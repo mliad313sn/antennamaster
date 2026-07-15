@@ -112,6 +112,11 @@ def terrain_profile(
     the DXF patch (for provenance color-coding).  `terrain_curved_m` has the
     k-factor earth bulge applied and is what the LOS/Fresnel numbers use.
     """
+    # Internal callers (CSV export, SaaS report) invoke this as a plain
+    # function without the newer params; a FastAPI Query default would then
+    # leak as a sentinel object — normalize it.
+    if not isinstance(clutter_source, str):
+        clutter_source = "none"
     fusion = resolve_fusion(surface)
 
     grid = georef = None

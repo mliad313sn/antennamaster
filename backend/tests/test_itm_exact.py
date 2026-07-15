@@ -99,3 +99,26 @@ def test_p1812_clutter_increases_loss():
 def test_p1812_rejects_out_of_band():
     with pytest.raises(ValueError):
         _p1812_case(freq=18_000.0)
+
+
+@needs_p1812
+def test_p1812_api_with_worldcover_clutter(fake_store, monkeypatch):
+    """C1 x C2 synergy at the API: WorldCover heights feed P.1812's R input."""
+    import app.api.routes_terrain as rt
+    import app.services.terrain.fusion as fm
+    from app.services.terrain.fusion import TerrainFusionService
+    from fastapi.testclient import TestClient
+    from app.main import app
+    import app.services.clutter.worldcover as wc
+    from tests.test_clutter import FakeWorldCover
+    monkeypatch.setattr(fm, "get_tile_store", lambda: fake_store)
+    monkeypatch.setattr(rt, "_fusion", TerrainFusionService(store=fake_store))
+    monkeypatch.setattr(wc, "_STORE", FakeWorldCover())
+    c = TestClient(app)
+    common = {"lat1": 47.0, "lon1": 15.0, "lat2": 47.0, "lon2": 15.08,
+              "freq_mhz": 900, "h_tx_m": 20, "h_rx_m": 3, "samples": 96}
+    bare = c.get("/api/terrain/p1812", params=common).json()
+    clut = c.get("/api/terrain/p1812",
+                 params={**common, "clutter_source": "worldcover"}).json()
+    assert clut["clutter_applied"] is True
+    assert clut["path_loss_db"] >= bare["path_loss_db"]
