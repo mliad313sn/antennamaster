@@ -824,3 +824,203 @@ def repeater_design(req: RepeaterDesignRequest) -> dict:
         arrangement=req.arrangement, stability_margin_db=req.stability_margin_db,
         reliable_range_m=req.reliable_range_m, overlap_fraction=req.overlap_fraction,
         tx_gain_dbi=req.tx_gain_dbi, rx_gain_dbi=req.rx_gain_dbi)
+
+
+# ===================================================================== #
+#  Phase 5 — EMF compliance, ITM propagation, drive-test calibration
+# ===================================================================== #
+from fastapi import Query  # noqa: E402
+from ..services.rf import emf as _emf  # noqa: E402
+from ..services.rf import itm as _itm  # noqa: E402
+from ..services.rf import calibration as _calib  # noqa: E402
+
+
+class EmfRequest(BaseModel):
+    technology: str | None = None
+    freq_mhz: float | None = Field(None, gt=0)
+    tx_power_dbm: float | None = None
+    gain_dbi: float | None = None
+    losses_db: float = Field(0.0, ge=0)
+    mount_height_m: float = Field(15.0, gt=0, le=500)
+    standard: str = Field("fcc", pattern="^(fcc|icnirp)$")
+    reflection_factor: float = Field(2.56, ge=1.0, le=4.0)
+
+
+@router.post("/emf-compliance")
+def emf_compliance(req: EmfRequest) -> dict:
+    """FCC OET-65 / ICNIRP RF-exposure compliance: MPE limits and the
+    occupational vs public exclusion-zone distances (slant + ground extent)
+    around a transmitter — the permitting deliverable."""
+    freq = req.freq_mhz
+    power = req.tx_power_dbm
+    gain = req.gain_dbi
+    if req.technology:
+        try:
+            tech = get_technology(req.technology)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        freq = freq if freq is not None else tech["freq_mhz"]
+        power = power if power is not None else tech["tx_power_dbm"]
+        gain = gain if gain is not None else tech["tx_gain_dbi"]
+    if freq is None or power is None or gain is None:
+        raise HTTPException(422, "Provide technology, or freq_mhz + "
+                                 "tx_power_dbm + gain_dbi.")
+    return _emf.exposure_zones(
+        float(freq), float(power), float(gain), losses_db=req.losses_db,
+        mount_height_m=req.mount_height_m, standard=req.standard,
+        reflection_factor=req.reflection_factor)
+
+
+class ItmRequest(BaseModel):
+    lat1: float = Field(ge=-90, le=90)
+    lon1: float = Field(ge=-180, le=180)
+    lat2: float = Field(ge=-90, le=90)
+    lon2: float = Field(ge=-180, le=180)
+    freq_mhz: float = Field(900.0, gt=0)
+    h_tx_m: float = Field(30.0, gt=0)
+    h_rx_m: float = Field(1.5, gt=0)
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    dxf_id: str | None = None
+    surface: bool = False
+    samples: int = Field(256, ge=32, le=1024)
+
+
+@router.post("/itm-profile")
+def itm_profile(req: ItmRequest,
+                user: dict | None = Depends(current_user)) -> dict:
+    """Longley-Rice / ITM-family loss over the fused terrain profile, returned
+    alongside the Deygout diffraction loss for the same path so the two
+    methods can be compared directly."""
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+    fusion = resolve_fusion(req.surface)
+    try:
+        with jobs.sim_slot():
+            prof = fusion.profile(req.lat1, req.lon1, req.lat2, req.lon2,
+                                  n_samples=req.samples, grid=grid, georef=georef)
+            d, elev = prof.distances_m, prof.elevations_m
+            itm_res = _itm.itm_point_to_point(
+                d, elev, req.freq_mhz, req.h_tx_m, req.h_rx_m, k=req.k_factor)
+            from ..services.rf.physics import apply_earth_curvature
+            from ..services.rf.models import deygout_loss_db, fspl_db
+            curved = apply_earth_curvature(d, elev, k=req.k_factor)
+            deygout = float(deygout_loss_db(d, curved, req.h_tx_m, req.h_rx_m,
+                                            req.freq_mhz))
+            fspl = float(fspl_db(np.array([d[-1]]), req.freq_mhz)[0])
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"ITM study failed: {exc}") from exc
+    return {
+        "itm": itm_res,
+        "deygout": {"model": "deygout", "free_space_db": round(fspl, 1),
+                    "diffraction_db": round(deygout, 1),
+                    "loss_db": round(fspl + deygout, 1)},
+        "difference_db": round(itm_res["loss_db"] - (fspl + deygout), 1),
+    }
+
+
+class CalibrateMeasurement(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    measured_dbm: float
+
+
+class CalibrateRequest(BaseModel):
+    tx_lat: float = Field(ge=-90, le=90)
+    tx_lon: float = Field(ge=-180, le=180)
+    technology: str = "custom"
+    measurements: list[CalibrateMeasurement] = Field(..., min_length=2, max_length=5000)
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    dxf_id: str | None = None
+    surface: bool = False
+    freq_mhz: float | None = Field(None, gt=0)
+    model: str | None = None
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+
+
+def _predict_and_fit(req, rows, user):
+    try:
+        tech = get_technology(req.technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "tx_power_dbm", "tx_gain_dbi", "h_bs_m"):
+        v = getattr(req, f, None)
+        if v is not None:
+            tech[f] = v
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+    from ..services.rf.planning import evaluate_receiver
+    fusion = resolve_fusion(req.surface)
+    predicted, measured, distances = [], [], []
+    with jobs.sim_slot():
+        for r in rows:
+            res = evaluate_receiver(fusion, dict(tech), req.tx_lat, req.tx_lon,
+                                    r["lat"], r["lon"], k=req.k_factor,
+                                    grid=grid, georef=georef)
+            predicted.append(res["rx_power_dbm"])
+            measured.append(r["measured_dbm"])
+            distances.append(res["distance_m"])
+    fit = _calib.fit_correction(predicted, measured, distances)
+    return {"technology": {**tech, "key": req.technology}, "calibration": fit}
+
+
+@router.post("/calibrate")
+def calibrate(req: CalibrateRequest,
+              user: dict | None = Depends(current_user)) -> dict:
+    """Fit an empirical model correction (offset + distance slope) from
+    measured RSSI so predictions match reality; reports RMSE/MAE before/after."""
+    rows = [{"lat": m.lat, "lon": m.lon, "measured_dbm": m.measured_dbm}
+            for m in req.measurements]
+    try:
+        return _predict_and_fit(req, rows, user)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Calibration failed: {exc}") from exc
+
+
+@router.post("/calibrate/upload")
+async def calibrate_upload(
+        tx_lat: float = Query(..., ge=-90, le=90),
+        tx_lon: float = Query(..., ge=-180, le=180),
+        technology: str = Query("custom"),
+        k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
+        dxf_id: str | None = Query(None),
+        file: UploadFile = File(...),
+        user: dict | None = Depends(current_user)) -> dict:
+    """Upload a drive-test CSV or GPX (lat, lon, RSSI) and fit the correction.
+    CSV needs lat/lon/rssi columns; GPX reads RSSI from the point comment."""
+    data = (await file.read()).decode("utf-8", errors="replace")
+    name = (file.filename or "").lower()
+    try:
+        rows = _calib.parse_gpx(data) if name.endswith(".gpx") \
+            else _calib.parse_csv(data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if len(rows) < 2:
+        raise HTTPException(422, "Need at least 2 measured points with lat, "
+                                 "lon and RSSI.")
+
+    class _Req:
+        pass
+    r = _Req()
+    r.tx_lat, r.tx_lon, r.technology = tx_lat, tx_lon, technology
+    r.k_factor, r.dxf_id, r.surface = k_factor, dxf_id, False
+    r.freq_mhz = r.model = r.tx_power_dbm = r.tx_gain_dbi = r.h_bs_m = None
+    try:
+        result = _predict_and_fit(r, rows, user)
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Calibration failed: {exc}") from exc
+    result["points_used"] = len(rows)
+    return result

@@ -11,3 +11,6 @@ pytest>=8.0
 reportlab>=4.0
 email-validator>=2.0
 pytest-cov>=5.0
+gpxpy>=1.6           # drive-test GPX ingestion (Phase 5 calibration)
+# Optional: `mcp` enables the stdio MCP server (backend/mcp_server.py); the
+# Copilot itself needs only httpx (above) + an AM_ANTHROPIC_API_KEY.

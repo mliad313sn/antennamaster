@@ -12,7 +12,7 @@ Baseline at kickoff: **139 backend tests passing**.
 | **2** | Metro/Mine leaky feeder (radiating cable) | 🟢 Complete |
 | **3** | Automated AP/site placement solver | 🟢 Complete |
 | **4** | Intelligent Copilot & MCP integration | 🟢 Complete |
-| **5** | Compliance (EMF), ITM & drive-test calibration | ⬜ Not started |
+| **5** | Compliance (EMF), ITM & drive-test calibration | 🟢 Complete |
 
 ---
 
@@ -91,4 +91,36 @@ Deliverables:
 **Configuration:** set `AM_ANTHROPIC_API_KEY` (or `ANTHROPIC_API_KEY`);
 optional `AM_COPILOT_MODEL` (default `claude-sonnet-5`), `AM_LLM_BASE_URL`
 (local/proxy endpoint), `AM_COPILOT_MAX_TOKENS`.
-## Phase 5 — Compliance, ITM & Calibration  *(pending)*
+## Phase 5 — Compliance, ITM & Calibration
+
+**Goal:** the permitting + trust layer — RF-exposure compliance, an ITM
+propagation alternative, and measurement-driven model tuning.
+
+Deliverables:
+- [x] `services/rf/emf.py`: FCC OET-65 & ICNIRP MPE limits (frequency-dependent),
+      EIRP, boresight power density, occupational/public exclusion-zone
+      distances (slant + ground extent) with ground-reflection factor.
+- [x] `services/rf/itm.py`: Longley-Rice / ITM-family model — interdecile Δh
+      terrain characterisation, smooth-earth horizon distances, LOS/diffraction/
+      troposcatter regime blending on the fused profile; auditable component
+      breakdown, selectable alternative to Deygout.
+- [x] `services/rf/calibration.py`: CSV/GPX drive-test ingestion + least-squares
+      correction fit (offset + distance slope), RMSE/MAE before/after.
+- [x] EMF added to the Copilot tool registry.
+- [x] API: `POST /api/rf/emf-compliance`, `POST /api/rf/itm-profile`,
+      `POST /api/rf/calibrate`, `POST /api/rf/calibrate/upload`.
+- [x] Tests: `tests/test_compliance_itm_calibration.py` (16 tests).
+
+---
+
+## Summary
+
+All 5 phases complete. Backend test suite: **202 passing** (139 baseline + 63
+new across the five phases). New dependencies: `scikit-learn`, `gpxpy`
+(both installed); the Copilot uses `httpx` (existing) — no SDK dependency, and
+degrades gracefully when no LLM key is configured.
+
+New modules: `talkback.py`, `apsolver.py`, `emf.py`, `itm.py`,
+`calibration.py`, `services/ai/{tools,copilot}.py`, `mcp_server.py`; leaky
+feeder added to `underground.py`. New routes: `routes_ai.py` + Phase 1/2/3/5
+additions to `routes_rf.py` / `routes_indoor.py`.

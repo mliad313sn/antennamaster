@@ -21,6 +21,7 @@ from ..rf.technologies import (TECHNOLOGIES, get_technology, link_budget)
 from ..rf.models import MODEL_INFO
 from ..rf import talkback as _tb
 from ..rf import underground as _ug
+from ..rf import emf as _emf
 
 
 # --------------------------------------------------------------------------- #
@@ -82,6 +83,15 @@ def _h_tunnel_link(args: dict) -> dict:
         float(args["length_m"]), eps_r=eps,
         tx_power_dbm=float(args.get("tx_power_dbm", 30.0)),
         rx_sensitivity_dbm=float(args.get("rx_sensitivity_dbm", -100.0)))
+
+
+def _h_emf_compliance(args: dict) -> dict:
+    return _emf.exposure_zones(
+        float(args["freq_mhz"]), float(args["tx_power_dbm"]),
+        float(args["gain_dbi"]), losses_db=float(args.get("losses_db", 0.0)),
+        mount_height_m=float(args.get("mount_height_m", 15.0)),
+        standard=args.get("standard", "fcc"),
+        reflection_factor=float(args.get("reflection_factor", 2.56)))
 
 
 def _h_tte_link(args: dict) -> dict:
@@ -158,6 +168,13 @@ TOOLS: dict[str, dict] = {t["name"]: t for t in [
            "tx_power_dbm": _NUM, "system_gain_db": _NUM,
            "rx_sensitivity_dbm": _NUM},
           ["freq_hz", "depth_m"], _h_tte_link),
+    _tool("emf_compliance",
+          "FCC OET-65 / ICNIRP RF-exposure compliance: MPE limits and the "
+          "occupational vs public exclusion-zone distances around a TX.",
+          {"freq_mhz": _NUM, "tx_power_dbm": _NUM, "gain_dbi": _NUM,
+           "losses_db": _NUM, "mount_height_m": _NUM, "standard": _STR,
+           "reflection_factor": _NUM},
+          ["freq_mhz", "tx_power_dbm", "gain_dbi"], _h_emf_compliance),
 ]}
 
 

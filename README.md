@@ -204,6 +204,10 @@ cd backend && python -m pytest tests/ -q
 | `POST /api/rf/batch` | qualify ≤200 receiver locations against one TX (JSON or CSV) |
 | `POST /api/rf/site-search` | rank an n×n grid of candidate TX sites by served fraction |
 | `GET /api/terrain/optimize-heights` | minimum TX/RX heights for LOS and 60% Fresnel |
+| `POST /api/rf/emf-compliance` | **FCC OET-65 / ICNIRP RF-exposure** MPE limits + occupational/public exclusion-zone distances |
+| `POST /api/rf/itm-profile` | **Longley-Rice / ITM** irregular-terrain loss over the fused profile, compared side-by-side with Deygout |
+| `POST /api/rf/calibrate` | fit an empirical model correction (offset + distance slope) from measured RSSI; RMSE/MAE before/after |
+| `POST /api/rf/calibrate/upload` | same, from an uploaded drive-test **CSV or GPX** walk-test file |
 | `GET /api/saas/bom.csv` | fleet-scaled hardware bill of materials (CSV) |
 | `GET /api/indoor/materials` | wall material attenuation library |
 | `GET /api/indoor/presets` | tunnel wall permittivity + earth conductivity presets |
