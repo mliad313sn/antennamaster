@@ -258,6 +258,52 @@ def terrain_profile(
     }
 
 
+@router.get("/itm")
+def itm_study(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    h_tx_m: float = Query(30.0, ge=0, le=500),
+    h_rx_m: float = Query(10.0, ge=0, le=500),
+    freq_mhz: float | None = Query(None, gt=0),
+    technology: str | None = Query(None),
+    reliability: float = Query(0.5, gt=0, lt=1),
+    confidence: float = Query(0.5, gt=0, lt=1),
+    samples: int = Query(256, ge=16, le=2048),
+    dxf_id: str | None = None, surface: bool = Query(False),
+    k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
+    user: dict | None = Depends(current_user),
+) -> dict:
+    """Longley-Rice-family Irregular Terrain Model over the fused profile: a
+    median reference loss plus a reliability quantile (time/situation), the one
+    statistical model the DEM reference tools have that empirical curves lack."""
+    eff_freq = freq_mhz
+    if technology is not None:
+        try:
+            eff_freq = freq_mhz or get_technology(technology)["freq_mhz"]
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+    eff_freq = eff_freq or 446.0
+
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+    try:
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=samples,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    from ..services.rf.itm import itm_point_to_point
+    return {"freq_mhz": eff_freq,
+            **itm_point_to_point(prof.distances_m, prof.elevations_m,
+                                 h_tx_m, h_rx_m, eff_freq,
+                                 reliability=reliability, confidence=confidence,
+                                 k=k_factor)}
+
+
 @router.get("/optimize-heights")
 def optimize_heights(
     lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),

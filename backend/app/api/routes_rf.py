@@ -257,6 +257,96 @@ def coverage_kmz(coverage_id: str) -> Response:
                  f'attachment; filename="coverage-{coverage_id}.kmz"'})
 
 
+# -------------------------------------------------------- EMF compliance
+class ComplianceRequest(BaseModel):
+    freq_mhz: float = Field(gt=0)
+    tx_power_dbm: float = Field(ge=-30, le=90)
+    antenna_gain_dbi: float = Field(ge=-10, le=60)
+    losses_db: float = Field(0.0, ge=0, le=30)
+    ground_reflection: bool = False
+    standard: str = Field("icnirp")
+    assess_distance_m: float | None = Field(None, gt=0, le=10_000)
+
+
+@router.post("/compliance")
+def emf_compliance(req: ComplianceRequest) -> dict:
+    """RF-exposure (EMF) compliance: ICNIRP or FCC OET-65 public/occupational
+    exclusion-zone distances for an antenna - the permitting gate."""
+    if req.standard.lower() not in ("icnirp", "fcc"):
+        raise HTTPException(422, "standard must be 'icnirp' or 'fcc'")
+    from ..services.rf.compliance import assess_exposure
+    return assess_exposure(
+        req.freq_mhz, req.tx_power_dbm, req.antenna_gain_dbi,
+        losses_db=req.losses_db, ground_reflection=req.ground_reflection,
+        standard=req.standard, assess_distance_m=req.assess_distance_m)
+
+
+# --------------------------------------------------- drive-test calibration
+class MeasurementIn(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    rssi_dbm: float = Field(le=0)
+
+
+class CalibrateRequest(BaseModel):
+    tx_lat: float = Field(ge=-90, le=90)
+    tx_lon: float = Field(ge=-180, le=180)
+    technology: str = "custom"
+    points: list[MeasurementIn] = Field(min_length=2, max_length=2000)
+    dxf_id: str | None = None
+    surface: bool = False
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    # Link-budget overrides (same semantics as /coverage):
+    freq_mhz: float | None = Field(None, gt=0)
+    model: str | None = None
+    environment: str | None = None
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    rx_gain_dbi: float | None = None
+    losses_db: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+    h_ut_m: float | None = Field(None, gt=0)
+
+
+@router.post("/calibrate")
+def calibrate(req: CalibrateRequest,
+              user: dict | None = Depends(current_user)) -> dict:
+    """Fit a model correction (offset / offset+slope) from measured RSSI vs
+    prediction and report RMS error before/after - turning predictions into
+    calibrated, site-tuned predictions."""
+    try:
+        tech = get_technology(req.technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "environment", "tx_power_dbm", "tx_gain_dbi",
+              "rx_gain_dbi", "losses_db", "h_bs_m", "h_ut_m"):
+        v = getattr(req, f)
+        if v is not None:
+            tech[f] = v
+    if tech["model"] not in MODEL_INFO:
+        raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+
+    from ..services.rf.calibration import calibrate_drive_test
+    try:
+        with jobs.sim_slot():
+            return calibrate_drive_test(
+                resolve_fusion(req.surface), tech, req.tx_lat, req.tx_lon,
+                [p.model_dump() for p in req.points], k=req.k_factor,
+                grid=grid, georef=georef)
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Calibration failed: {exc}") from exc
+
+
 # ----------------------------------------------------------- antennas (MSI)
 @router.post("/antenna")
 async def upload_antenna(file: UploadFile = File(...),
