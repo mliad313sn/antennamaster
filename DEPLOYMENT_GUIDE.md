@@ -99,8 +99,8 @@ For a single workstation (Linux, macOS or Windows). No Docker required.
 
 **Linux / macOS:**
 ```bash
-./install.sh            # creates backend/.venv, installs deps, builds frontend
-./launch_simulator.sh   # starts both servers, waits for health, opens the browser
+./install.sh            # scans host, auto-installs missing runtimes, builds
+./launch.sh             # starts both servers, waits for health, opens the browser
 ```
 
 **Windows:**

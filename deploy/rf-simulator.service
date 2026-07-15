@@ -26,7 +26,7 @@ Group=antenna
 WorkingDirectory=/opt/antennamaster
 # --service = foreground, no browser; the wrapper starts both servers and
 # waits, so systemd supervises the process group.
-ExecStart=/opt/antennamaster/launch_simulator.sh --service
+ExecStart=/opt/antennamaster/launch.sh --service
 # Persist runtime data (SQLite DB, DEM cache, DXFs) outside the code tree if
 # you prefer:  Environment=AM_DATA_DIR=/var/lib/antennamaster
 Environment=HOST_BIND=0.0.0.0

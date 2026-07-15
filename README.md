@@ -130,15 +130,22 @@ Three supported ways to run it — full instructions in
 [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md):
 
 ```bash
-docker compose up -d --build   # Docker (servers, air-gapped sites)
-./install.sh && ./launch_simulator.sh   # local install (Linux/macOS; .bat on Windows)
+docker compose up -d --build       # Docker (servers, air-gapped sites)
+./install.sh && ./launch.sh        # macOS/Linux: self-bootstrapping install + launch
+# Windows: powershell -ExecutionPolicy Bypass -File .\install.ps1  then  .\launch.ps1
 ```
+
+The installer (`install.sh` / `install.ps1`) scans the host, auto-installs any
+missing Python/Node/Git via the native package manager, builds everything, and
+fails gracefully with copy-paste fixes; `launch.sh` / `launch.ps1` boot both
+servers, wait for health, open the browser, and stop cleanly on Ctrl-C. Full
+walkthrough in [`INSTALL_GUIDE.md`](INSTALL_GUIDE.md).
 
 - **Docker** — multi-stage images, private network, persistent `am_data`
   volume (embedded SQLite, no separate DB); `deploy/package_offline.sh`
   exports a `.tar` for air-gapped sites.
-- **Local installer** — `install.sh`/`install.bat` (prereq checks → venv →
-  deps → build); `launch_simulator.*` boots both servers, waits for health
+- **Local installer** — `install.sh`/`install.ps1` (system scan → auto-install
+  missing runtimes → venv → deps → build); `launch.sh`/`launch.ps1` boot both servers, wait for health
   and opens the browser.
 - **systemd** — `deploy/rf-simulator.service` for a persistent Linux service.
 
