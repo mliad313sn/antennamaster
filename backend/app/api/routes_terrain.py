@@ -5,11 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 import numpy as np
 
-from ..services.dxf.store import get_dxf_store
 from ..services.rf.models import MODEL_INFO, deygout_loss_db, path_loss_db
 from ..services.rf.physics import analyze_path, apply_earth_curvature
 from ..services.rf.technologies import get_technology, link_budget
-from ..services.saas.tiers import require_feature
 from ..services.terrain.fusion import TerrainFusionService
 from .routes_auth import current_user
 
@@ -63,10 +61,9 @@ def point_elevation(lat: float = Query(ge=-90, le=90),
     fusion = get_fusion_service()
     grid = georef = None
     if dxf_id:
-        require_feature(user, "dxf_fusion")   # fusion is Pro in SaaS mode
-        session = get_dxf_store().get(dxf_id)
-        if session and session.ensure_ready():
-            grid, georef = session.grid, session.georef
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)   # 404/403/402/409 as needed
+        grid, georef = session.grid, session.georef
     elev, w = fusion.fused_elevations(np.array([lat]), np.array([lon]), grid, georef)
     return {"lat": lat, "lon": lon, "elevation_m": float(elev[0]),
             "source": "dxf" if w[0] >= 0.5 else ("blend" if w[0] > 0 else "srtm")}
@@ -115,12 +112,8 @@ def terrain_profile(
     grid = georef = None
     dxf_active = False
     if dxf_id:
-        require_feature(user, "dxf_fusion")   # fusion is Pro in SaaS mode
-        session = get_dxf_store().get(dxf_id)
-        if session is None:
-            raise HTTPException(404, f"Unknown DXF id: {dxf_id}")
-        if not session.ensure_ready():
-            raise HTTPException(409, "DXF has not been georeferenced yet")
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
         grid, georef = session.grid, session.georef
         dxf_active = True
 
@@ -143,6 +136,12 @@ def terrain_profile(
     rf = analyze_path(prof.distances_m, prof.elevations_m,
                       tx_height_m=tx_height_m, rx_height_m=rx_height_m,
                       freq_mhz=eff_freq, k=k_factor)
+
+    # Dual-k refraction reliability (microwave practice: 100% F1 at k=4/3
+    # AND 60% F1 at k=2/3 sub-refraction) - cheap, always reported.
+    from ..services.rf.planning import refraction_reliability
+    refraction = refraction_reliability(prof.distances_m, prof.elevations_m,
+                                        tx_height_m, rx_height_m, eff_freq)
 
     # Optional technology study: model path loss + Deygout diffraction on the
     # curved profile -> per-sample RX power + link budget at the RX end.
@@ -254,7 +253,68 @@ def terrain_profile(
             "freq_mhz": eff_freq,
             "tx_height_m": tx_height_m,
             "rx_height_m": rx_height_m,
+            "refraction": refraction,
         },
+    }
+
+
+@router.get("/optimize-heights")
+def optimize_heights(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    samples: int = Query(256, ge=16, le=2048),
+    dxf_id: str | None = None,
+    surface: bool = Query(False),
+    tx_height_m: float = Query(20.0, ge=0),
+    rx_height_m: float = Query(10.0, ge=0),
+    freq_mhz: float | None = Query(None, gt=0),
+    technology: str | None = Query(None),
+    k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
+    max_height_m: float = Query(120.0, gt=1, le=500),
+    user: dict | None = Depends(current_user),
+) -> dict:
+    """Minimum antenna heights that clear the path: for each end (holding
+    the other at its current height), the smallest height achieving bare
+    LOS and the 60% first-Fresnel clearance rule.  null = not achievable
+    within ``max_height_m``."""
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+
+    if technology is not None:
+        try:
+            tech = get_technology(technology)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        eff_freq = freq_mhz if freq_mhz is not None else tech["freq_mhz"]
+    else:
+        eff_freq = freq_mhz if freq_mhz is not None else 446.0
+
+    try:
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=samples,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    from ..services.rf.planning import min_height_m
+    d, e = prof.distances_m, prof.elevations_m
+    out = {}
+    for crit in ("los", "f1_60"):
+        out[crit] = {
+            "min_tx_height_m": min_height_m(
+                d, e, eff_freq, rx_height_m, "tx", crit, k_factor, max_height_m),
+            "min_rx_height_m": min_height_m(
+                d, e, eff_freq, tx_height_m, "rx", crit, k_factor, max_height_m),
+        }
+    return {
+        "freq_mhz": eff_freq, "k_factor": k_factor,
+        "current": {"tx_height_m": tx_height_m, "rx_height_m": rx_height_m},
+        "max_height_m": max_height_m,
+        "criteria": out,
+        "note": "each minimum holds the other end at its current height",
     }
 
 

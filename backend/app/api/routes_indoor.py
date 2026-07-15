@@ -67,14 +67,15 @@ def underground_presets() -> dict:
 
 # ------------------------------------------------------------- floor plans
 @router.get("/{dxf_id}/preview.png")
-def floorplan_preview(dxf_id: str, layers: str = Query("")) -> Response:
+def floorplan_preview(dxf_id: str, layers: str = Query(""),
+                      user: dict | None = Depends(current_user)) -> Response:
     """Wall linework preview so the user can click a TX position.
 
     ``layers`` is a comma-separated list; empty = all layers.  The DXF-unit
     bounds of the image are returned in the X-Plan-Bounds header
     (``x0,y0,x1,y1``) for click-coordinate mapping.
     """
-    session = _session_or_404(dxf_id)
+    session = _session_or_404(dxf_id, user)
     wanted = [l for l in layers.split(",") if l] or [
         l["name"] for l in (session.layers or [])]
     layer_materials = {name: guess_material(name) for name in wanted}
@@ -94,7 +95,7 @@ def indoor_coverage(req: IndoorCoverageRequest,
                     user: dict | None = Depends(current_user)) -> dict:
     """COST-231 multi-wall coverage heatmap over the uploaded floor plan."""
     require_feature(user, "indoor_studio")   # Pro-tier capability in SaaS mode
-    session = _session_or_404(req.dxf_id)
+    session = _session_or_404(req.dxf_id, user)
     walls = extract_walls(session.document(), req.layer_materials)
 
     # Link parameters: technology preset (if any) overridden per request.
@@ -199,10 +200,14 @@ def tte_study(
     }
 
 
-def _session_or_404(dxf_id: str):
+def _session_or_404(dxf_id: str, user: dict | None = None):
     session = get_dxf_store().get(dxf_id)
     if session is None:
         raise HTTPException(404, f"Unknown DXF id: {dxf_id}")
+    # Cross-tenant guard: a floor plan uploaded by an account is private to
+    # it (its wall geometry is confidential); ownerless plans stay open.
+    from .routes_dxf import _check_owner
+    _check_owner(session, user)
     if not session.layers:
         from ..services.dxf import parser
         session.layers = parser.list_layers(session.document())

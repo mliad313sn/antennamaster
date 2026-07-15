@@ -25,6 +25,8 @@ FEATURES: dict[str, str] = {
     "ptp_backhaul": "pro",         # PtP/PtMP presets + rain/gas nuances
     "pdf_export": "pro",
     "indoor_studio": "pro",
+    "batch_analysis": "pro",       # batch receiver qualification (WISP)
+    "site_search": "pro",          # best-site candidate ranking
     "private_networks": "enterprise",  # private LTE/5G presets
     "multi_site": "enterprise",
     "api_access": "enterprise",    # long-lived API tokens
@@ -48,7 +50,8 @@ TIER_INFO = [
                     "3 saved projects"]},
     {"key": "pro", "label": "Pro", "price_month_usd": 79,
      "highlights": ["DXF terrain fusion", "PtP/PtMP backhaul with rain & gas",
-                    "Indoor/underground studio", "Branded PDF reports",
+                    "Indoor/underground studio", "Batch receiver analysis",
+                    "Best-site search", "Branded PDF reports",
                     "25 saved projects"]},
     {"key": "enterprise", "label": "Enterprise", "price_month_usd": 299,
      "highlights": ["Private LTE/5G models", "Multi-site best-server",

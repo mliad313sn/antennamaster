@@ -131,18 +131,32 @@ def save_antenna(text: str, owner_id: int | None = None) -> dict:
             "v_beamwidth_deg": _beamwidth(pattern["vertical"])}
 
 
-def load_antenna(antenna_id: str) -> dict | None:
+class AntennaAccessError(PermissionError):
+    """Raised when a caller requests another tenant's private pattern."""
+
+
+def load_antenna(antenna_id: str, owner_id: int | None = None) -> dict | None:
+    """Load a pattern by id, enforcing owner scoping.
+
+    A pattern with a non-null ``owner_id`` is private: only its owner may
+    load it (mirrors ``list_antennas``' visibility rule).  Passing the
+    wrong/no owner for a private pattern raises ``AntennaAccessError`` so
+    the API can answer 403 instead of leaking the model.  ``None``-owner
+    (anonymous / open-mode) patterns stay readable by anyone.
+    """
     with _lock:
         hit = _mem.get(antenna_id)
-    if hit is not None:
-        return hit
-    path = ANTENNA_DIR / f"{''.join(c for c in antenna_id if c.isalnum())}.json"
-    if not path.exists():
-        return None
-    pattern = json.loads(path.read_text())
-    with _lock:
-        _mem[antenna_id] = pattern
-    return pattern
+    if hit is None:
+        path = ANTENNA_DIR / f"{''.join(c for c in antenna_id if c.isalnum())}.json"
+        if not path.exists():
+            return None
+        hit = json.loads(path.read_text())
+        with _lock:
+            _mem[antenna_id] = hit
+    pat_owner = hit.get("owner_id")
+    if pat_owner is not None and pat_owner != owner_id:
+        raise AntennaAccessError("This antenna pattern belongs to another account")
+    return hit
 
 
 def list_antennas(owner_id: int | None = None) -> list[dict]:

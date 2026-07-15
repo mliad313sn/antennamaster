@@ -8,6 +8,7 @@ sibling worker still resolves once the job completes.
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import threading
 import time
@@ -32,16 +33,27 @@ class JobsBusyError(RuntimeError):
     """Raised when the concurrent-job cap is reached."""
 
 
-def create_job(kind: str) -> str:
+def create_job(kind: str, owner_id: int | None = None) -> str:
     job_id = uuid.uuid4().hex[:12]
+    snapshot = {"id": job_id, "kind": kind, "status": "queued",
+                "progress": 0.0, "result": None, "error": None,
+                "owner_id": owner_id, "created_at": time.time()}
     with _lock:
-        _jobs[job_id] = {"id": job_id, "kind": kind, "status": "queued",
-                         "progress": 0.0, "result": None, "error": None,
-                         "created_at": time.time()}
+        _jobs[job_id] = snapshot
         while len(_jobs) > _MAX_JOBS:
             oldest = min(_jobs, key=lambda k: _jobs[k]["created_at"])
             _jobs.pop(oldest)
+    # Sidecar at creation time too, so a poll landing on a sibling worker
+    # resolves (as "running") before the job finishes - the module contract.
+    try:
+        (JOBS_DIR / f"{job_id}.json").write_text(json.dumps(dict(snapshot)))
+    except OSError:
+        pass
     return job_id
+
+
+def owner_of(job: dict) -> int | None:
+    return job.get("owner_id")
 
 
 def set_progress(job_id: str, fraction: float) -> None:
@@ -96,3 +108,34 @@ def run_in_thread(job_id: str, fn: Callable[..., dict], *args: Any,
                 _running -= 1
 
     threading.Thread(target=_run, daemon=True).start()
+
+
+# Concurrency cap for SYNCHRONOUS heavy simulations (coverage / multi /
+# batch / site-search).  The async path is bounded by MAX_RUNNING above; the
+# inline path had no cap, so a handful of max-resolution requests could pin
+# every CPU.  This bounds in-flight sync sims to MAX_SYNC and answers 429
+# past that.  Best-effort per worker (like the login lockout), which is the
+# right granularity: it protects each worker's own CPU.
+MAX_SYNC = 6
+_sync_running = 0
+
+
+class SimBusyError(RuntimeError):
+    """Raised when the synchronous-simulation concurrency cap is reached."""
+
+
+@contextlib.contextmanager
+def sim_slot():
+    """Acquire a synchronous-simulation slot or raise SimBusyError."""
+    global _sync_running
+    with _lock:
+        if _sync_running >= MAX_SYNC:
+            raise SimBusyError(
+                f"{MAX_SYNC} simulations already running on this worker - "
+                "retry shortly or use POST /api/saas/coverage/async")
+        _sync_running += 1
+    try:
+        yield
+    finally:
+        with _lock:
+            _sync_running -= 1

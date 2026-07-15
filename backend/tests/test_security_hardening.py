@@ -140,3 +140,110 @@ def test_dxf_fusion_gated_on_terrain_endpoints_in_saas_mode(client, site_dxf,
     assert client.get("/api/terrain/profile", params={
         "lat1": 47.0, "lon1": 14.99, "lat2": 47.005, "lon2": 15.005,
         "samples": 32}).status_code == 200
+
+
+# --------------------------- consumer-path authz (IDOR/tier-gate regressions)
+def _owned_georef_dxf(client, site_dxf, hdrs):
+    """Upload + georeference a DXF as an owning (Pro) account, return its id."""
+    client.post("/api/auth/tier", json={"tier": "pro"}, headers=hdrs)
+    with open(site_dxf, "rb") as fh:
+        dxf_id = client.post("/api/dxf/upload",
+                             files={"file": ("s.dxf", fh, "application/dxf")},
+                             headers=hdrs).json()["dxf_id"]
+    r = client.post(f"/api/dxf/{dxf_id}/georeference", json={
+        "mode": "origin_bearing", "layers": ["SURVEY_POINTS"],
+        "origin_lat": 47.0, "origin_lon": 15.0}, headers=hdrs)
+    assert r.status_code == 200, r.text
+    return dxf_id
+
+
+def test_dxf_consumer_paths_enforce_ownership(client, site_dxf):
+    """A DXF is readable only by its owner across EVERY consuming endpoint,
+    not just georeference/delete."""
+    hdrs_o = _register(client, f"cown{time.time_ns()}@x.io")
+    dxf_id = _owned_georef_dxf(client, site_dxf, hdrs_o)
+    hdrs_x = _register(client, f"cx{time.time_ns()}@x.io")
+    client.post("/api/auth/tier", json={"tier": "enterprise"}, headers=hdrs_x)
+
+    prof = {"lat1": 47.0, "lon1": 14.99, "lat2": 47.005, "lon2": 15.005,
+            "samples": 32, "dxf_id": dxf_id}
+    assert client.get("/api/terrain/profile", params=prof,
+                      headers=hdrs_x).status_code == 403
+    assert client.get("/api/terrain/elevation",
+                      params={"lat": 47.0, "lon": 15.0, "dxf_id": dxf_id},
+                      headers=hdrs_x).status_code == 403
+    assert client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20, "dxf_id": dxf_id},
+        headers=hdrs_x).status_code == 403
+    assert client.post("/api/indoor/coverage", json={
+        "dxf_id": dxf_id, "layer_materials": {}, "tx_x": 0, "tx_y": 0},
+        headers=hdrs_x).status_code == 403
+    assert client.get(f"/api/indoor/{dxf_id}/preview.png",
+                      headers=hdrs_x).status_code == 403
+    # The owner still reaches them (200, or 422/409 for study reasons - never 403).
+    assert client.get("/api/terrain/profile", params=prof,
+                      headers=hdrs_o).status_code == 200
+
+
+def test_dxf_fusion_gate_on_coverage_in_saas_mode(client, site_dxf, monkeypatch):
+    """/api/rf/coverage must apply the Pro dxf_fusion gate like the terrain
+    endpoints - previously it skipped it (user never threaded through).
+
+    Use an OWNERLESS DXF (uploaded anonymously in open mode) so the owner
+    check passes and the tier gate is what we're actually exercising."""
+    with open(site_dxf, "rb") as fh:
+        dxf_id = client.post("/api/dxf/upload",
+                             files={"file": ("s.dxf", fh, "application/dxf")}
+                             ).json()["dxf_id"]
+    client.post(f"/api/dxf/{dxf_id}/georeference", json={
+        "mode": "origin_bearing", "layers": ["SURVEY_POINTS"],
+        "origin_lat": 47.0, "origin_lon": 15.0})
+    monkeypatch.setenv("AM_SAAS_MODE", "1")
+    # Anonymous (basic) DXF-fused coverage is now blocked at the tier gate.
+    assert client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20, "dxf_id": dxf_id}).status_code == 402
+    # Plain SRTM coverage stays open.
+    assert client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20}).status_code == 200
+
+
+def test_antenna_load_is_owner_scoped(client):
+    """A private pattern cannot be USED by another tenant (not just hidden
+    from their list)."""
+    msi = ("NAME SECRET-ANT\nGAIN 15 dBi\nHORIZONTAL 360\n"
+           + "\n".join(f"{a} 1.0" for a in range(360))
+           + "\nVERTICAL 360\n" + "\n".join(f"{a} 1.0" for a in range(360)))
+    hdrs_a = _register(client, f"la{time.time_ns()}@x.io")
+    aid = client.post("/api/rf/antenna",
+                      files={"file": ("p.msi", msi.encode(), "text/plain")},
+                      headers=hdrs_a).json()["antenna_id"]
+    hdrs_b = _register(client, f"lb{time.time_ns()}@x.io")
+    r = client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20, "antenna_id": aid,
+        "antenna_azimuth_deg": 90}, headers=hdrs_b)
+    assert r.status_code == 403                    # cannot use another's pattern
+    # The owner can.
+    assert client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20, "antenna_id": aid,
+        "antenna_azimuth_deg": 90}, headers=hdrs_a).status_code == 200
+
+
+def test_async_job_is_owner_scoped(client):
+    """An account's async job result is not readable by another account or
+    anonymously - job ids must not be a data-exfil oracle."""
+    hdrs_a = _register(client, f"ja{time.time_ns()}@x.io")
+    jid = client.post("/api/saas/coverage/async", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 3,
+        "n_radials": 36, "n_steps": 20}, headers=hdrs_a).json()["job_id"]
+    # Owner sees it; a stranger and anonymous get 404 (not 403 - no oracle).
+    assert client.get(f"/api/saas/jobs/{jid}", headers=hdrs_a).status_code == 200
+    hdrs_b = _register(client, f"jb{time.time_ns()}@x.io")
+    assert client.get(f"/api/saas/jobs/{jid}", headers=hdrs_b).status_code == 404
+    assert client.get(f"/api/saas/jobs/{jid}").status_code == 404
+    body = client.get(f"/api/saas/jobs/{jid}", headers=hdrs_a).json()
+    assert "owner_id" not in body                  # internal field not leaked

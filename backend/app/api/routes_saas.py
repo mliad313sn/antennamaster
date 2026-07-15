@@ -117,10 +117,11 @@ def coverage_async(req: CoverageRequest,
     """Queue a coverage simulation as a background job with live progress -
     keeps the UI responsive for heavy (high-res / long-radius) runs."""
     check_preset_allowed(user, req.technology)   # entitlements before queueing
-    job_id = jobs.create_job("coverage")
+    job_id = jobs.create_job("coverage", owner_id=user["id"] if user else None)
 
     def _run() -> dict:
-        return run_coverage(req, progress_cb=lambda f: jobs.set_progress(job_id, f))
+        return run_coverage(req, progress_cb=lambda f: jobs.set_progress(job_id, f),
+                            user=user)
 
     try:
         jobs.run_in_thread(job_id, _run)
@@ -133,8 +134,15 @@ def coverage_async(req: CoverageRequest,
 
 
 @router.get("/jobs/{job_id}")
-def job_status(job_id: str) -> dict:
+def job_status(job_id: str,
+               user: dict | None = Depends(current_user)) -> dict:
     job = jobs.get_job(job_id)
     if job is None:
         raise HTTPException(404, "Unknown job")
-    return job
+    # Owner-scoped: a job created by an account is visible only to that
+    # account (404, not 403, so ids can't be probed).  Ownerless jobs
+    # (anonymous / open-mode) stay public.
+    owner = jobs.owner_of(job)
+    if owner is not None and (user is None or user["id"] != owner):
+        raise HTTPException(404, "Unknown job")
+    return {k: v for k, v in job.items() if k != "owner_id"}

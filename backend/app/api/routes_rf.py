@@ -7,10 +7,10 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ..services import results_store
-from ..services.dxf.store import get_dxf_store
 from ..services.rf import antenna as antenna_store
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
+from ..services.saas import jobs
 from ..services.saas.tiers import check_preset_allowed, require_feature
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
 from .routes_auth import current_user
@@ -94,27 +94,40 @@ def simulate_coverage(req: CoverageRequest,
                       user: dict | None = Depends(current_user)) -> dict:
     """Run an area coverage simulation from a TX site over the fused terrain."""
     check_preset_allowed(user, req.technology)
-    return run_coverage(req)
+    try:
+        with jobs.sim_slot():
+            return run_coverage(req, user=user)
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
 
 
-def run_coverage(req: CoverageRequest, progress_cb=None) -> dict:
+def _load_pattern(antenna_id: str, user: dict | None) -> dict:
+    """Owner-scoped antenna load: 404 unknown, 403 another tenant's private
+    pattern (never leak that it exists to a non-owner)."""
+    try:
+        pattern = antenna_store.load_antenna(
+            antenna_id, owner_id=user["id"] if user else None)
+    except antenna_store.AntennaAccessError:
+        raise HTTPException(403, "This antenna pattern belongs to another account")
+    if pattern is None:
+        raise HTTPException(404, f"Unknown antenna id: {antenna_id}")
+    return pattern
+
+
+def run_coverage(req: CoverageRequest, progress_cb=None,
+                 user: dict | None = None) -> dict:
     """Shared implementation for the sync endpoint and background jobs."""
     tech = _resolve_tech(req)
 
     grid = georef = None
     if req.dxf_id:
-        session = get_dxf_store().get(req.dxf_id)
-        if session is None:
-            raise HTTPException(404, f"Unknown DXF id: {req.dxf_id}")
-        if not session.ensure_ready():
-            raise HTTPException(409, "DXF has not been georeferenced yet")
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)   # owner + dxf_fusion gate
         grid, georef = session.grid, session.georef
 
     pattern = None
     if req.antenna_id:
-        pattern = antenna_store.load_antenna(req.antenna_id)
-        if pattern is None:
-            raise HTTPException(404, f"Unknown antenna id: {req.antenna_id}")
+        pattern = _load_pattern(req.antenna_id, user)
         # A measured pattern carries its own gain; use it unless overridden.
         if req.tx_gain_dbi is None:
             tech["tx_gain_dbi"] = float(pattern.get("gain_dbi", tech["tx_gain_dbi"]))
@@ -223,6 +236,180 @@ def list_antennas(user: dict | None = Depends(current_user)) -> dict:
         owner_id=user["id"] if user else None)}
 
 
+# ------------------------------------------------ batch receiver analysis
+class ReceiverIn(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    name: str | None = Field(None, max_length=80)
+    rx_height_m: float | None = Field(None, gt=0, le=500)
+
+
+class BatchRequest(BaseModel):
+    lat: float = Field(ge=-90, le=90)          # TX
+    lon: float = Field(ge=-180, le=180)
+    receivers: list[ReceiverIn] = Field(min_length=1, max_length=200)
+    technology: str = "custom"
+    dxf_id: str | None = None
+    surface: bool = False
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    foliage_depth_m: float = Field(0.0, ge=0, le=400)
+    rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    # Link budget overrides (same semantics as /coverage):
+    freq_mhz: float | None = Field(None, gt=0)
+    model: str | None = None
+    environment: str | None = None
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    rx_gain_dbi: float | None = None
+    losses_db: float | None = None
+    rx_sensitivity_dbm: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+    h_ut_m: float | None = Field(None, gt=0)
+
+
+@router.post("/batch")
+def batch_receivers(req: BatchRequest, format: str = "json",
+                    user: dict | None = Depends(current_user)) -> Response:
+    """Qualify up to 200 receiver locations against one TX in a single call
+    - the WISP/fixed-wireless workflow (per-receiver fused profile, Deygout
+    diffraction, environmental losses, margin verdict).  ``?format=csv``
+    returns the table as CSV for spreadsheets/CRMs."""
+    require_feature(user, "batch_analysis")
+    check_preset_allowed(user, req.technology)
+    try:
+        tech = get_technology(req.technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "environment", "tx_power_dbm", "tx_gain_dbi",
+              "rx_gain_dbi", "losses_db", "rx_sensitivity_dbm", "h_bs_m", "h_ut_m"):
+        v = getattr(req, f)
+        if v is not None:
+            tech[f] = v
+    if tech["model"] not in MODEL_INFO:
+        raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+
+    from ..services.rf.planning import evaluate_receiver
+    fusion = resolve_fusion(req.surface)
+    rows = []
+    try:
+        with jobs.sim_slot():
+            for i, r in enumerate(req.receivers):
+                t = dict(tech)
+                if r.rx_height_m is not None:
+                    t["h_ut_m"] = r.rx_height_m
+                res = evaluate_receiver(
+                    fusion, t, req.lat, req.lon, r.lat, r.lon,
+                    k=req.k_factor, foliage_depth_m=req.foliage_depth_m,
+                    rain_rate_mm_h=req.rain_rate_mm_h,
+                    clutter_pct=req.clutter_pct, grid=grid, georef=georef)
+                rows.append({"name": r.name or f"RX {i + 1}",
+                             "lat": r.lat, "lon": r.lon, **res})
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Batch analysis failed: {exc}") from exc
+
+    served = sum(1 for r in rows if r["served"])
+    if format == "csv":
+        header = ["name", "lat", "lon", "distance_m", "rx_power_dbm",
+                  "margin_db", "served", "los_clear",
+                  "fresnel_clearance_ratio", "path_loss_db",
+                  "diffraction_loss_db", "environment_loss_db"]
+        lines = [",".join(header)]
+        for r in rows:
+            lines.append(",".join(str(r[h]) for h in header))
+        return Response(
+            content="\n".join(lines) + "\n", media_type="text/csv",
+            headers={"Content-Disposition":
+                     'attachment; filename="batch-receivers.csv"'})
+    from fastapi.responses import JSONResponse
+    return JSONResponse({
+        "tx": {"lat": req.lat, "lon": req.lon},
+        "technology": {**tech, "key": req.technology},
+        "receivers": rows,
+        "summary": {"total": len(rows), "served": served,
+                    "served_fraction": round(served / len(rows), 4)},
+    })
+
+
+# ------------------------------------------------------- best-site search
+class SiteSearchRequest(BaseModel):
+    south: float = Field(ge=-90, le=90)
+    west: float = Field(ge=-180, le=180)
+    north: float = Field(ge=-90, le=90)
+    east: float = Field(ge=-180, le=180)
+    grid_n: int = Field(5, ge=2, le=7)
+    technology: str = "custom"
+    radius_km: float = Field(8.0, gt=0.1, le=50.0)
+    shadow_margin_db: float = Field(0.0, ge=0, le=30)
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    dxf_id: str | None = None
+    surface: bool = False
+    # Link budget overrides:
+    freq_mhz: float | None = Field(None, gt=0)
+    model: str | None = None
+    environment: str | None = None
+    tx_power_dbm: float | None = None
+    rx_sensitivity_dbm: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+    h_ut_m: float | None = Field(None, gt=0)
+
+
+@router.post("/site-search")
+def best_site_search(req: SiteSearchRequest,
+                     user: dict | None = Depends(current_user)) -> dict:
+    """Rank an n x n grid of candidate TX positions over a bounding box by
+    coarse served-area fraction - "where should the mast go?".  Re-run the
+    winner through /coverage at full resolution."""
+    require_feature(user, "site_search")
+    check_preset_allowed(user, req.technology)
+    if not (req.north > req.south and req.east > req.west):
+        raise HTTPException(422, "north/east must exceed south/west")
+    try:
+        tech = get_technology(req.technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "environment", "tx_power_dbm",
+              "rx_sensitivity_dbm", "h_bs_m", "h_ut_m"):
+        v = getattr(req, f)
+        if v is not None:
+            tech[f] = v
+    if tech["model"] not in MODEL_INFO:
+        raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+
+    from ..services.rf.planning import site_search
+    engine = CoverageEngine(resolve_fusion(req.surface))
+    try:
+        with jobs.sim_slot():
+            candidates = site_search(
+                engine, tech, req.south, req.west, req.north, req.east,
+                grid_n=req.grid_n, radius_m=req.radius_km * 1000.0,
+                shadow_margin_db=req.shadow_margin_db,
+                clutter_pct=req.clutter_pct, k=req.k_factor,
+                grid=grid, georef=georef)
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Site search failed: {exc}") from exc
+    return {"candidates": candidates,
+            "technology": {**tech, "key": req.technology},
+            "note": "coarse 36x24 sweeps - re-run the winner via /coverage"}
+
+
 # --------------------------------------------------------- multi-site study
 class SiteIn(BaseModel):
     lat: float = Field(ge=-90, le=90)
@@ -289,19 +476,14 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
 
     pattern = None
     if req.antenna_id:
-        pattern = antenna_store.load_antenna(req.antenna_id)
-        if pattern is None:
-            raise HTTPException(404, f"Unknown antenna id: {req.antenna_id}")
+        pattern = _load_pattern(req.antenna_id, user)
         if req.tx_gain_dbi is None:
             tech["tx_gain_dbi"] = float(pattern.get("gain_dbi", tech["tx_gain_dbi"]))
 
     grid = georef = None
     if req.dxf_id:
-        session = get_dxf_store().get(req.dxf_id)
-        if session is None:
-            raise HTTPException(404, f"Unknown DXF id: {req.dxf_id}")
-        if not session.ensure_ready():
-            raise HTTPException(409, "DXF has not been georeferenced yet")
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
         grid, georef = session.grid, session.georef
 
     engine = CoverageEngine(resolve_fusion(req.surface))
@@ -309,23 +491,26 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
     computed = []
     warnings: list[str] = []
     try:
-        for s in req.sites:
-            polar = engine.compute_polar(
-                s.lat, s.lon, dict(tech), radius_m=radius_m,
-                n_radials=req.n_radials, n_steps=req.n_steps,
-                antenna_azimuth_deg=s.antenna_azimuth_deg,
-                antenna_beamwidth_deg=req.antenna_beamwidth_deg,
-                downtilt_deg=s.downtilt_deg,
-                vertical_beamwidth_deg=req.vertical_beamwidth_deg,
-                antenna_pattern=pattern,
-                shadow_margin_db=req.shadow_margin_db,
-                foliage_depth_m=req.foliage_depth_m,
-                rain_rate_mm_h=req.rain_rate_mm_h,
-                clutter_pct=req.clutter_pct,
-                k=req.k_factor, grid=grid, georef=georef)
-            warnings.extend(w for w in polar["warnings"] if w not in warnings)
-            computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
-                             "radius_m": radius_m, "polar": polar})
+        with jobs.sim_slot():
+            for s in req.sites:
+                polar = engine.compute_polar(
+                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    n_radials=req.n_radials, n_steps=req.n_steps,
+                    antenna_azimuth_deg=s.antenna_azimuth_deg,
+                    antenna_beamwidth_deg=req.antenna_beamwidth_deg,
+                    downtilt_deg=s.downtilt_deg,
+                    vertical_beamwidth_deg=req.vertical_beamwidth_deg,
+                    antenna_pattern=pattern,
+                    shadow_margin_db=req.shadow_margin_db,
+                    foliage_depth_m=req.foliage_depth_m,
+                    rain_rate_mm_h=req.rain_rate_mm_h,
+                    clutter_pct=req.clutter_pct,
+                    k=req.k_factor, grid=grid, georef=georef)
+                warnings.extend(w for w in polar["warnings"] if w not in warnings)
+                computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
+                                 "radius_m": radius_m, "polar": polar})
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
     except Exception as exc:
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
 

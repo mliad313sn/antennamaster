@@ -220,6 +220,27 @@ def _check_owner(session, user: dict | None) -> None:
         raise HTTPException(403, "This DXF belongs to another account")
 
 
+def resolve_dxf(dxf_id: str, user: dict | None, *, gate: bool = True,
+                require_ready: bool = True):
+    """Shared access guard for every endpoint that CONSUMES a DXF by id.
+
+    Enforces, in order: existence (404), cross-tenant ownership (403), the
+    Pro ``dxf_fusion`` entitlement (402 in SaaS mode) and — by default —
+    that the DXF has been georeferenced (409).  Returns the session so the
+    caller can read ``session.grid`` / ``session.georef``.  Centralizing
+    this closes the IDOR/tier-bypass class where read paths skipped the
+    checks the mutation paths applied.
+    """
+    from ..services.saas.tiers import require_feature
+    session = _session_or_404(dxf_id)
+    _check_owner(session, user)
+    if gate:
+        require_feature(user, "dxf_fusion")
+    if require_ready and not session.ensure_ready():
+        raise HTTPException(409, "DXF has not been georeferenced yet")
+    return session
+
+
 @router.get("/{dxf_id}/state")
 def dxf_state(dxf_id: str) -> dict:
     """Restore a previously georeferenced DXF (e.g. after a page reload):
