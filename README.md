@@ -167,6 +167,11 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/rf/models` | propagation models with validity ranges |
 | `POST /api/rf/coverage` | area coverage simulation from a TX site (radius, sector antenna, resolution, DXF fusion); returns raster URL + legend + stats |
 | `GET /api/rf/coverage/{id}.png` | coverage raster overlay (RGBA, transparent where unserved) |
+| `GET /api/rf/coverage/{id}.tif` | georeferenced GeoTIFF (EPSG:4326) for QGIS/ArcGIS/Atoll |
+| `POST /api/rf/batch` | qualify ≤200 receiver locations against one TX (JSON or CSV) |
+| `POST /api/rf/site-search` | rank an n×n grid of candidate TX sites by served fraction |
+| `GET /api/terrain/optimize-heights` | minimum TX/RX heights for LOS and 60% Fresnel |
+| `GET /api/saas/bom.csv` | fleet-scaled hardware bill of materials (CSV) |
 | `GET /api/indoor/materials` | wall material attenuation library |
 | `GET /api/indoor/presets` | tunnel wall permittivity + earth conductivity presets |
 | `GET /api/indoor/{dxf_id}/preview.png` | floor-plan linework preview (bounds in `X-Plan-Bounds` header) |

@@ -148,8 +148,14 @@ indoor/underground studio (3 tabs). Session fully persisted (localStorage +
 server-side DXF state restore); dark/light/auto theming; responsive ≤800 px;
 debounced recomputes; Escape/aria on modals.
 
-**Exports:** profile CSV, coverage PNG + KMZ (Google Earth GroundOverlay),
-indoor heatmap PNG.
+**Exports:** profile CSV, batch-receiver CSV, coverage PNG + **GeoTIFF
+(EPSG:4326, GIS-native)** + KMZ (Google Earth GroundOverlay), indoor heatmap
+PNG, hardware **BOM CSV** (fleet-scaled), branded PDF report.
+
+**Field-ready (PWA):** installable web app with an offline service worker —
+app shell (stale-while-revalidate), map tiles (cache-first, 800-tile cap) and
+last API results (network-first with cache fallback) stay available off-grid;
+the tactical view shows a live online/offline indicator.
 
 ## 6. Operations & scale
 

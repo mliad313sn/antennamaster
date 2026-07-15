@@ -300,7 +300,8 @@ margin-classed raster on the map.
   where unserved; legend included.
 - **Served-area fraction**, area-weighted (annulus-correct, not pixel-count).
 - Peak/edge statistics: TX ground elevation, strongest RX power, radius.
-- **Exports**: PNG (georeferenced bounds) and **KMZ** (Google Earth
+- **Exports**: PNG (georeferenced bounds), **GeoTIFF** (EPSG:4326, imports
+  directly into QGIS / ArcGIS / Atoll / Pathloss) and **KMZ** (Google Earth
   GroundOverlay).
 
 Per-step terrain diffraction uses the vectorized single-strongest-edge
@@ -489,11 +490,25 @@ loss lines), the terrain profile chart, coverage raster and a
 CAPEX/OPEX/5-year-TCO bill of materials. Enterprise accounts with an uploaded
 logo (PNG/JPEG ≤ 1 MB) get **white-label** branding.
 
-### Cost estimator
+### Cost estimator & hardware BOM
 
 `GET /api/saas/costs?technology=…&sites=…` — per-technology BOM (radio,
 antenna, install, licensing…) with CAPEX, yearly OPEX and 5-year TCO used by
-the dashboard and pitch ROI views.
+the dashboard and pitch ROI views. The Command Center's **Bill of materials
+(CSV)** link (`GET /api/saas/bom.csv`) downloads the same BOM with line items
+scaled to the fleet plus CAPEX/OPEX/TCO summary rows — the procurement
+deliverable for a purchase order.
+
+### Field use & offline (PWA)
+
+AntennaMaster is an installable progressive web app. A service worker caches
+the app shell, every map tile you've viewed, and your last API results, so the
+tool keeps working **off-grid** — the decisive requirement for open-pit,
+underground and remote last-mile sites. The **Tactical view** (`/field`) shows
+a live **online / offline** indicator; when offline it falls back to cached
+tiles and results. Add it to a phone's home screen from the browser's
+"Install app" / "Add to Home Screen" menu. (The service worker activates in
+production builds only.)
 
 ### Async jobs
 
