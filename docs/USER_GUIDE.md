@@ -5,9 +5,11 @@ each one means. All numbers in this guide are taken directly from the code.
 
 Companion documents:
 - `README.md` — quick overview and architecture
+- `INSTALL_GUIDE.md` — cross-platform install & launch (Windows/macOS/Linux)
 - `docs/CAPABILITIES.md` — condensed capability/capacity matrix
+- `docs/ROADMAP.md` — five-layer capability model & delivered phases
+- `VISION_ARCHITECTURE.md` — 3D digital twin, live telemetry, drone LiDAR
 - `SaaS_ARCHITECTURE.md` — multi-tenant/SaaS internals
-- `QA_BENCHMARK_REPORT.md` — test and performance evidence
 - `http://localhost:8000/docs` — live interactive OpenAPI reference
 
 ---
@@ -33,12 +35,22 @@ Companion documents:
 17. [Server configuration (environment variables)](#17-server-configuration-environment-variables)
 18. [Limits & capacities](#18-limits--capacities)
 19. [Troubleshooting](#19-troubleshooting)
+20. [Advanced modules, 3D digital twin & live operations](#20-advanced-modules-3d-digital-twin--live-operations)
 
 ---
 
 ## 1. Getting started
 
 ### One-command start
+
+```bash
+./install.sh          # macOS/Linux: scan the host, install missing runtimes, build
+./launch.sh           # boot both servers, wait for health, open the browser
+```
+
+On Windows use `install.ps1` / `launch.ps1` (PowerShell). The installer
+auto-resolves Python 3.10+, Node 18+ and any build tools; see `INSTALL_GUIDE.md`
+for the full matrix. For development you can still use:
 
 ```bash
 ./start.sh            # installs deps if needed, starts backend :8000 + frontend :3000
@@ -848,3 +860,103 @@ clutter is statistical (ITU-R P.2108), not a per-pixel land-use database;
 SINR assumes worst-case co-channel reuse-1 (no frequency plan / scheduler);
 multi-floor is a penetration term, not per-floor wall maps; building
 obstruction needs a user-supplied DSM tile source (`AM_DSM_URL`).
+
+---
+
+## 20. Advanced modules, 3D digital twin & live operations
+
+Beyond predicting coverage, AntennaMaster now *designs*, *certifies* and
+*operates*. Open **Advanced studies** from the planner for the link-level tools;
+the 3D view, Live Operations and LiDAR are described below. Full endpoint
+reference: `VISION_ARCHITECTURE.md` and the OpenAPI page.
+
+### Two-way "talk-back" (land-mobile radio)
+
+A radio system is limited by the *weaker* of two directions. The two-way tool
+computes **talk-out** (base → portable) *and* **talk-in** (portable → base),
+grades each in **DAQ** (Delivered Audio Quality, TIA-4046) and reports the
+limiting direction and the reliable talk-back area. It models portable **body
+loss** and a **penetration class** (on-street / in-vehicle / in-building /
+underground), and a **repeater-cascade** solver returns the spacing and count
+for continuous corridor coverage.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/rf/twoway/link` | bidirectional link verdict (talk-out/talk-in, DAQ, limiting direction) |
+| `POST /api/rf/twoway/coverage` | area study: talk-out / talk-in / reliable-both served fractions |
+| `POST /api/rf/twoway/repeater-cascade` | repeater count & spacing for a corridor |
+
+### Leaky feeder & distributed antennas (metro / mine)
+
+The real way tunnels are covered — a **radiating (leaky) coaxial cable** or a
+**distributed antenna system**. The tool models cable longitudinal + coupling
+loss, solves **inline-amplifier spacing**, adds bend loss, and reports served
+length and worst uncovered gap; the DAS designer turns the Emslie single-antenna
+reach into an antenna count and spacing.
+`POST /api/indoor/leaky-feeder` · `GET /api/indoor/tunnel-das`.
+
+### Automated AP placement (campus / warehouse)
+
+The inverse of the heatmap: given a floor plan and a coverage (and optional
+capacity) target, `POST /api/indoor/auto-place` returns **how many** access
+points, **where**, and on **which channel** — greedy maximum-coverage placement
+over the same multi-wall engine, a graph-colour channel plan (2.4 / 5 / 6 GHz),
+a users × throughput capacity floor and a −67 dBm roaming-overlap check.
+
+### RF-exposure / EMF compliance
+
+`POST /api/rf/compliance` computes **ICNIRP** or **FCC OET-65** public and
+occupational exclusion-zone distances and the exposure ratio at a given
+distance — the permitting gate before an antenna is switched on.
+
+### Longley-Rice (ITM) with a reliability quantile
+
+`GET /api/terrain/itm` adds an **Irregular Terrain Model** path loss that
+delivers a *reliability quantile* (fraction of time and situations), not just a
+median — the statistical model empirical curves lack. It combines the validated
+Deygout diffraction with the Longley-Rice terrain-roughness statistic and the
+ITM time/situation variability.
+
+### Drive-test calibration
+
+`POST /api/rf/calibrate` fits an offset (and optional distance-slope) correction
+from **measured RSSI** versus prediction and reports the RMS error before and
+after — turning predictions into site-tuned, trusted predictions.
+
+### AI design copilot
+
+`POST /api/copilot/analyze/link` runs the profile **and** the height optimizer,
+then explains the result as ranked, actionable findings with a **quantified
+fix** (raise the mast to X m, add Y dB, change band, add a repeater). It is
+deterministic and works offline; an optional Claude narrator adds prose when an
+API key is present. `GET /api/copilot/tools` publishes a machine-readable tool
+catalog so an external agent can drive the simulator.
+
+### 3D digital twin (CesiumJS)
+
+A seamless **2D / 3D** toggle on the map renders the fused SRTM+DXF terrain in a
+WebGL globe — fed by the platform's own heightmap tiles
+(`GET /api/terrain/heightmap/{z}/{x}/{y}.bin`, no Cesium Ion key, offline-capable).
+It draws a glowing 3D **Fresnel tube** along the true line of sight, red markers
+where terrain slices into the Fresnel zone, and drapes the coverage heatmap over
+the 3D relief.
+
+### Live Operations (digital-twin telemetry)
+
+The **Live Operations** dashboard (`/live`) ingests real-time asset positions
+from fleet-management or IoT feeds (`POST /api/telemetry/ingest`, WebSocket
+`/api/telemetry/ws`) and streams the live twin over Server-Sent Events
+(`/api/telemetry/stream`). Each asset is correlated against the RF prediction:
+it flashes **yellow** on entering a predicted **dead zone**, and an
+**RF-disconnect** event is logged (with whether the last position was in a dead
+zone) when it stops transmitting. Bind the prediction with
+`POST /api/telemetry/coverage-context`.
+
+### Drone LiDAR / point-cloud ingestion
+
+`POST /api/lidar/upload` ingests a `.las`/`.laz` survey and rasterises it into a
+**Digital Surface Model** that overrides the statistical clutter, so diffraction
+is computed against the **real surveyed buildings, trees and machinery**.
+`GET /api/lidar/{id}/profile` returns a surveyed-surface-vs-bare-terrain
+comparison (validated: a 50 m building raised a link's modelled diffraction from
+40 dB to 114 dB).
