@@ -22,6 +22,7 @@ import BatchPanel from '@/components/BatchPanel';
 import DxfWizard from '@/components/DxfWizard';
 import Help from '@/components/Help';
 import IndoorStudio from '@/components/IndoorStudio';
+import LidarPanel from '@/components/LidarPanel';
 import LocaleSwitcher from '@/components/LocaleSwitcher';
 import ProfileChart from '@/components/ProfileChart';
 import SimpleMode from '@/components/SimpleMode';
@@ -579,6 +580,8 @@ export default function Home() {
               {t('advanced.open')}
             </button>
           </div>
+
+          <LidarPanel tx={tx} rx={rx} freqMhz={Number(freqMhz) || 2400} />
 
           {validation?.warning && (
             <div className="warning-box">

@@ -419,5 +419,20 @@
     "evDisconnect": "Déconnexion RF",
     "evOnline": "Actif en ligne",
     "evReconnect": "Reconnecté"
+  },
+  "lidar": {
+    "title": "LiDAR drone (relevé 3D)",
+    "hint": "Importez un nuage de points .las/.laz pour remplacer le clutter statistique par de vrais bâtiments, arbres et engins 3D pour la diffraction.",
+    "upload": "Importer un nuage (.las/.laz)",
+    "parsing": "Analyse…",
+    "points": "Points",
+    "surface": "Plage de surface",
+    "objHeight": "Hauteur d objet max",
+    "runProfile": "Diffraction vs terrain nu",
+    "needMarkers": "Placez émetteur et récepteur pour la comparaison.",
+    "surfaceDiff": "Diffraction (surface relevée)",
+    "bareDiff": "Diffraction (terrain nu)",
+    "extraLoss": "Perte supplémentaire de surface",
+    "maxObstruction": "Obstruction max"
   }
 }

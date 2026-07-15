@@ -419,5 +419,20 @@
     "evDisconnect": "RF disconnect",
     "evOnline": "Asset online",
     "evReconnect": "Reconnected"
+  },
+  "lidar": {
+    "title": "Drone LiDAR (3D survey)",
+    "hint": "Upload a .las/.laz point cloud to replace statistical clutter with real 3D buildings, trees and machinery for diffraction.",
+    "upload": "Upload point cloud (.las/.laz)",
+    "parsing": "Parsing…",
+    "points": "Points",
+    "surface": "Surface range",
+    "objHeight": "Max object height",
+    "runProfile": "Diffraction vs bare terrain",
+    "needMarkers": "Place TX and RX to run the comparison.",
+    "surfaceDiff": "Diffraction (surveyed surface)",
+    "bareDiff": "Diffraction (bare terrain)",
+    "extraLoss": "Extra loss from surface",
+    "maxObstruction": "Max obstruction"
   }
 }

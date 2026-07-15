@@ -26,6 +26,7 @@ from .api.routes_rf import router as rf_router
 from .api.routes_saas import router as saas_router
 from .api.routes_terrain import router as terrain_router
 from .api.routes_copilot import router as copilot_router
+from .api.routes_lidar import router as lidar_router
 from .api.routes_telemetry import router as telemetry_router
 from .api.routes_twoway import router as twoway_router
 
@@ -156,6 +157,7 @@ app.include_router(basemap_router)
 app.include_router(twoway_router)
 app.include_router(copilot_router)
 app.include_router(telemetry_router)
+app.include_router(lidar_router)
 
 
 @app.get("/api/health")

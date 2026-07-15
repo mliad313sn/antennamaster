@@ -424,3 +424,19 @@ export async function itmStudy(params: Record<string, string | number>): Promise
 export async function copilotAnalyzeLink(body: object): Promise<any> {
   return postJson('/api/copilot/analyze/link', body);
 }
+
+// Drone LiDAR / point-cloud DSM upload.
+export async function uploadLidar(file: File, epsg?: string, cellM = 2): Promise<any> {
+  const form = new FormData();
+  form.append('file', file);
+  if (epsg) form.append('epsg', epsg);
+  form.append('cell_m', String(cellM));
+  return jsonOrThrow(await fetch('/api/lidar/upload', { method: 'POST', body: form }));
+}
+
+// Profile whose diffraction is computed against the surveyed 3D surface.
+export async function lidarProfile(dsmId: string, params: Record<string, string | number>): Promise<any> {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])));
+  return jsonOrThrow(await fetch(`/api/lidar/${dsmId}/profile?${q.toString()}`));
+}

@@ -222,6 +222,12 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .event-list li.enter_dead_zone { border-left: 3px solid #e5b100; }
 .event-list li.rf_disconnect { border-left: 3px solid #e74c3c; }
 .event-list li.muted { color: var(--ink-muted); background: none; }
+
+.file-btn {
+  display: inline-block; width: 100%; text-align: center; cursor: pointer;
+  padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 13px;
+  background: var(--accent, #2a78d6); color: #fff;
+}
 .chart-wrap {
   height: 300px; flex-shrink: 0; background: var(--surface-1);
   border-top: 1px solid var(--hairline); padding: 8px 12px 4px;
