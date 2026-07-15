@@ -190,6 +190,9 @@ cd backend && python -m pytest tests/ -q
 | `POST /api/rf/coverage/multi` | best-server composite over up to 8 sites (per-site colors + shares) |
 | `GET /api/rf/technologies` | all radio-study presets (2G→5G, PMR, broadcast, WLAN, IoT, PtP) |
 | `GET /api/rf/scenarios` | plain-language Simple-Mode scenarios → preset mapping |
+| `GET /api/rf/equipment` | hardware catalog (Wi-Fi/Private LTE/PTP/PMR) for the Equipment Selector |
+| `GET /api/terrain/profile.kml` | line-of-sight KML/KMZ (TX/RX + LoS + terrain) for Google Earth/GIS |
+| `GET /api/basemap/{z}/{x}/{y}.png` | local OSM base-map tile server (offline fallback) |
 | `GET /api/rf/models` | propagation models with validity ranges |
 | `POST /api/rf/coverage` | area coverage simulation from a TX site (radius, sector antenna, resolution, DXF fusion); returns raster URL + legend + stats |
 | `GET /api/rf/coverage/{id}.png` | coverage raster overlay (RGBA, transparent where unserved) |

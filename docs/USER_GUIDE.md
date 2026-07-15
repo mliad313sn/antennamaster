@@ -782,6 +782,7 @@ edits needed.
 | `AM_DEM_URL` | AWS Terrarium template | any Terrarium-encoded XYZ elevation source |
 | `AM_DEM_ZOOM` | 12 (≈ 38 m/px) | DEM tile zoom; higher = finer + more tiles |
 | `AM_DSM_URL` | unset | optional Terrarium-encoded **surface model** source (buildings/canopy); enables `surface=true` on profiles and coverage |
+| `AM_BASEMAP_URL` | OSM | source for the local base-map tile server (`/api/basemap`) used for offline maps |
 | `AM_DEM_CACHE_MB` | 2048 | disk budget for the tile cache (LRU-evicted) |
 | `AM_FEATHER_CELLS` | 3.0 | width of the DXF↔SRTM blending band, in grid cells |
 | `AM_VALIDATION_DIFF_M` | 50.0 | mean-elevation mismatch that triggers the strict warning |

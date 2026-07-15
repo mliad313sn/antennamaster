@@ -164,14 +164,29 @@ debounced recomputes; Escape/aria on modals.
 - **Glossary tooltips** (Radix Tooltip, keyboard-accessible) on every
   technical parameter — plain-language, equation-free, translated.
 
-**Exports:** profile CSV, batch-receiver CSV, coverage PNG + **GeoTIFF
-(EPSG:4326, GIS-native)** + KMZ (Google Earth GroundOverlay), indoor heatmap
-PNG, hardware **BOM CSV** (fleet-scaled), branded PDF report.
+**Exports / GIS interoperability:** profile CSV, batch-receiver CSV,
+line-of-sight **KML/KMZ** (TX/RX placemarks + LoS path + terrain, for Google
+Earth / QGIS / ArcGIS), coverage PNG + **GeoTIFF (EPSG:4326)** + KMZ
+GroundOverlay, indoor heatmap PNG, hardware **BOM CSV** (fleet-scaled),
+branded PDF report. An "Export to GIS" menu surfaces the geospatial formats.
 
-**Field-ready (PWA):** installable web app with an offline service worker —
-app shell (stale-while-revalidate), map tiles (cache-first, 800-tile cap) and
-last API results (network-first with cache fallback) stay available off-grid;
-the tactical view shows a live online/offline indicator.
+**Hardware Catalog:** 13+ real equipment profiles (Wi-Fi, Private LTE, PTP
+microwave, PMR) with frequency band, TX power, RX sensitivity, antenna gain
+and beamwidth; an Equipment Selector auto-fills the RF parameters (still
+editable). Extensible via `AM_DATA_DIR/hardware_catalog.json`.
+
+**Field-ready (PWA + offline maps):** installable web app with an offline
+service worker (app shell, map tiles, last API results) **plus a local
+base-map tile server** (`/api/basemap`) with a pre-download utility
+(`tools/download_basemap.py --bbox …`) — the map keeps rendering from cached
+OSM tiles when the browser is offline (seamless auto-fallback). The tactical
+view shows a live online/offline indicator.
+
+**OT/IT security:** centralized audit middleware records every critical
+action (logins, uploads, project changes, all exports) with user id + client
+IP to an append-only `audit.log` (0600) and the tenant-scoped DB; confidential
+site CAD (`dxf_store/`) and results are stored owner-only (0700), the
+credential/audit DB 0600. Full posture: `SECURITY_COMPLIANCE.md`.
 
 ## 6. Operations & scale
 
@@ -181,10 +196,11 @@ the tactical view shows a live online/offline indicator.
 | Result retention | last 200 raster results on disk (auto-pruned) |
 | Upload caps | DXF ≤100 MB (`AM_MAX_DXF_MB`), antenna files ≤2 MB |
 | Simulation caps | radius ≤150 km, 720 radials × 400 steps, 2,048 profile samples, 8 sites/composite, indoor grid ≤400 px |
-| Config | 12 `AM_*` env vars (data dir, DEM/DSM URLs, DEM zoom, cache budget, CORS, upload cap, feather, validation threshold, SaaS mode, billing secret) |
+| Config | 13 `AM_*` env vars (data dir, DEM/DSM/basemap URLs, DEM zoom, cache budget, CORS, upload cap, feather, validation threshold, SaaS mode, billing secret) |
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
-| Tests | 113 test functions / 123 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier + consumer-path IDOR regression; planning tools; API workflows) |
+| Audit | centralized middleware → append-only `audit.log` (0600) + tenant-scoped DB, stamped with user id + client IP |
+| Tests | 129 test functions / 139 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit regression; planning tools; API workflows) |
 
 ## 7. SaaS & workspace layer
 
