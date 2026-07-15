@@ -179,3 +179,42 @@ describe('Study & Indoor panels render', () => {
       .toBeEnabled();
   });
 });
+
+describe('Internationalization', () => {
+  it('LocaleSwitcher switches language and translates the header nav', async () => {
+    const i18n = (await import('@/lib/i18n')).default;
+    await i18n.changeLanguage('en');
+    const { default: LocaleSwitcher } = await import('@/components/LocaleSwitcher');
+    const { default: DashNav } = await import('@/components/DashNav');
+    render(<><DashNav active="planner" /><LocaleSwitcher /></>);
+    expect(screen.getAllByText('Command Center').length).toBeGreaterThan(0);
+    // Click FR — nav labels must become French.
+    fireEvent.click(screen.getAllByRole('button', { name: 'FR' })[0]);
+    expect(await screen.findByText('Centre de commande')).toBeInTheDocument();
+    await i18n.changeLanguage('en');
+  });
+
+  it('SimpleMode lists outcome scenarios from the backend', async () => {
+    const i18n = (await import('@/lib/i18n')).default;
+    await i18n.changeLanguage('en');
+    globalThis.fetch = vi.fn(async (url: string) => ({
+      ok: true, status: 200, headers: new Headers(),
+      json: async () => (String(url).includes('/scenarios') ? {
+        scenarios: [
+          { id: 'buildings_ptp', label: 'scenario.buildings_ptp.label',
+            blurb: 'scenario.buildings_ptp.blurb', icon: '🏢', study: 'profile',
+            technology: 'wifi5800', technology_label: 'Wi-Fi 5.8 GHz PtMP', defaults: {} },
+          { id: 'fleet_wifi', label: 'scenario.fleet_wifi.label',
+            blurb: 'scenario.fleet_wifi.blurb', icon: '🚚', study: 'coverage',
+            technology: 'wifi2400', technology_label: 'Wi-Fi 2.4 GHz outdoor', defaults: {} },
+        ],
+      } : {}),
+      blob: async () => new Blob(), text: async () => '',
+    })) as unknown as typeof fetch;
+    const { default: SimpleMode } = await import('@/components/SimpleMode');
+    render(<SimpleMode onApply={() => {}} onExpert={() => {}} />);
+    expect(await screen.findByText('Connect two buildings')).toBeInTheDocument();
+    expect(screen.getByText('Wi-Fi for a vehicle fleet')).toBeInTheDocument();
+    expect(screen.getByText(/What are you trying to connect/)).toBeInTheDocument();
+  });
+});
