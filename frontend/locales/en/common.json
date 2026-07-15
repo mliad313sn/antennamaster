@@ -434,5 +434,15 @@
     "bareDiff": "Diffraction (bare terrain)",
     "extraLoss": "Extra loss from surface",
     "maxObstruction": "Max obstruction"
+  },
+  "legend": {
+    "title": "Signal quality (received power)",
+    "excellent": "Excellent",
+    "veryGood": "Very good",
+    "good": "Good",
+    "fair": "Fair",
+    "marginal": "Marginal",
+    "none": "No coverage",
+    "peak": "Peak"
   }
 }

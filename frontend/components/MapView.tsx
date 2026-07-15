@@ -206,7 +206,12 @@ export default function MapView({
           Click the map to place the {placing === 'tx' ? 'transmitter (TX)' : 'receiver (RX)'}
         </div>
       )}
-      <MapContainer center={view.center} zoom={view.zoom} scrollWheelZoom>
+      {/* preferCanvas: render vector layers (receiver/asset markers, polylines)
+          on a single canvas instead of one DOM node each, so thousands of
+          points pan/zoom smoothly. The coverage heatmap is already a
+          server-rendered raster ImageOverlay (cheaper than any client-side
+          point cloud). */}
+      <MapContainer center={view.center} zoom={view.zoom} scrollWheelZoom preferCanvas>
         <LayersControl position="topright">
           {BASE_LAYERS.map((l, i) => (
             <LayersControl.BaseLayer key={l.name} name={l.name} checked={i === 0}>

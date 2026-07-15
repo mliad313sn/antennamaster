@@ -14,6 +14,7 @@ import {
 import { fetchTechnologies } from '@/lib/api';
 import type { Technology } from '@/lib/types';
 import DashNav from '@/components/DashNav';
+import SignalLegend from '@/components/SignalLegend';
 
 interface Scenario {
   label: string;
@@ -136,6 +137,7 @@ export default function Pitch() {
             <div className="kpi"><div className="kpi-v">{roi(costs).payback}</div><div className="kpi-k">payback</div></div>
             <div className="kpi"><div className="kpi-v">{roi(costs).y5}</div><div className="kpi-k">5-yr net</div></div>
           </div>
+          <SignalLegend peakDbm={sc.result.peak} />
           <button style={{ width: '100%' }} onClick={() => exportPdf(sc)}>
             ⤓ Executive PDF
           </button>

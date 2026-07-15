@@ -157,7 +157,7 @@ export default function LiveOps() {
         </ul>
       </div>
       <div className="liveops-map">
-        <MapContainer center={center} zoom={11} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={center} zoom={11} preferCanvas style={{ height: '100%', width: '100%' }}>
           <TileLayer url="/api/basemap/{z}/{x}/{y}.png" />
           {assets.map((a) => (
             <Marker key={a.asset_id} position={[a.lat, a.lon]} icon={assetIcon(a)} />

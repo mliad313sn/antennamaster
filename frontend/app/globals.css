@@ -228,6 +228,31 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 13px;
   background: var(--accent, #2a78d6); color: #fff;
 }
+
+/* dBm → quality legend (pre-sales) */
+.signal-legend { margin: 10px 0; font-size: 12px; }
+.signal-legend-title { font-weight: 650; margin-bottom: 6px; }
+.signal-legend-bands { display: flex; flex-direction: column; gap: 2px; }
+.signal-band { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 5px; }
+.signal-band.active { background: rgba(120,160,220,.14); font-weight: 650; }
+.signal-band .swatch { width: 16px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+.signal-band .grade { flex: 1; }
+.signal-band .range { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.signal-legend-peak { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--hairline); }
+
+/* Field technician: larger touch targets + higher contrast on small screens */
+@media (max-width: 820px) {
+  .field-shell button, .field-shell .file-btn, .field-shell input, .field-shell select {
+    min-height: 46px; font-size: 15px;
+  }
+  .field-shell .preset-btn { min-height: 52px; }
+}
+.field-offline-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px;
+  border-radius: 999px; font-weight: 650; font-size: 13px;
+}
+.field-offline-badge.online { background: rgba(46,204,113,.15); color: #1a7f42; }
+.field-offline-badge.offline { background: rgba(229,177,0,.18); color: #8a6d00; }
 .chart-wrap {
   height: 300px; flex-shrink: 0; background: var(--surface-1);
   border-top: 1px solid var(--hairline); padding: 8px 12px 4px;

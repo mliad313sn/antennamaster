@@ -105,7 +105,7 @@ export default function Field() {
   }
 
   return (
-    <div className="dash-shell">
+    <div className="dash-shell field-shell">
       <DashNav active="field" />
       <main className="dash-main tactical">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>

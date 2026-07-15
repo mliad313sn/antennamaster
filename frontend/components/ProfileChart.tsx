@@ -16,15 +16,19 @@ import {
 } from 'recharts';
 import type { ProfilePoint, ProfileResponse } from '@/lib/types';
 
-const SRTM_COLOR = '#2a78d6';
-const DXF_COLOR = '#eb6834';
+const SRTM_COLOR = '#2a78d6';   // blue  = SRTM base
+const DXF_COLOR = '#eb6834';    // orange = DXF patch
+const SEAM_COLOR = '#12b3a6';   // teal  = fused seam (blend)
+const FRESNEL_COLOR = '#38bdf8';
 
 interface ChartRow {
   km: number;
   srtm: number | null;
   dxf: number | null;
+  seam: number | null;          // terrain elevation at blended (seam) samples
   los: number;
-  fresnel: number;
+  fresnel: number;              // 1st Fresnel lower edge (60%-clearance ref)
+  fresnelZone: [number, number]; // [lower, upper] envelope for the shaded band
   source: string;
   rxPower?: number;
 }
@@ -59,12 +63,18 @@ function toRows(allPoints: ProfilePoint[]): ChartRow[] {
     const prev = i > 0 ? isDxf(points[i - 1]) : mine;
     const next = i < points.length - 1 ? isDxf(points[i + 1]) : mine;
     const boundary = mine !== prev || mine !== next;
+    // The first Fresnel radius is the gap between LOS and its lower edge; the
+    // upper edge mirrors it, giving the full ellipse envelope around the LOS.
+    const radius = p.los - p.fresnel_lower;
     return {
       km: p.d / 1000,
       srtm: !mine || boundary ? p.elev_curved : null,
       dxf: mine || boundary ? p.elev_curved : null,
+      // Seam markers highlight where SRTM and DXF are blended (0<w<1).
+      seam: p.source === 'blend' ? p.elev_curved : null,
       los: p.los,
       fresnel: p.fresnel_lower,
+      fresnelZone: [p.fresnel_lower, p.los + radius],
       source: p.source,
       rxPower: p.rx_power_dbm,
     };
@@ -150,14 +160,28 @@ export default function ProfileChart({ profile }: { profile: ProfileResponse }) 
               dot={false} activeDot={false} isAnimationActive={false}
             />
           )}
-          {/* First Fresnel zone lower edge, then the TX-RX sight line. */}
+          {/* Full 1st Fresnel zone as a shaded ellipse envelope (lower↔upper
+              edge) around the sight line — terrain rising into this band
+              degrades the link even with clear line of sight. */}
+          <Area
+            dataKey="fresnelZone" name="1st Fresnel zone" stroke={FRESNEL_COLOR}
+            fill={FRESNEL_COLOR} fillOpacity={0.14} strokeOpacity={0.5}
+            strokeWidth={1} dot={false} activeDot={false} isAnimationActive={false}
+          />
+          {/* 60%-clearance reference (lower edge), then the TX-RX sight line. */}
           <Line
-            dataKey="fresnel" name="1st Fresnel lower" stroke="var(--ink-muted)"
+            dataKey="fresnel" name="1st Fresnel lower (60% ref)" stroke="var(--ink-muted)"
             strokeDasharray="2 4" strokeWidth={1.5} dot={false} isAnimationActive={false}
           />
           <Line
-            dataKey="los" name="Line of sight" stroke="var(--ink-primary)"
+            dataKey="los" name="Line of sight (k=4/3)" stroke="var(--ink-primary)"
             strokeDasharray="6 4" strokeWidth={1.5} dot={false} isAnimationActive={false}
+          />
+          {/* Seam samples where SRTM and DXF are fused (teal dots). */}
+          <Line
+            dataKey="seam" name="Fused seam" stroke={SEAM_COLOR} strokeWidth={0}
+            dot={{ r: 2.5, fill: SEAM_COLOR, strokeWidth: 0 }}
+            activeDot={false} isAnimationActive={false} legendType="circle"
           />
           {/* Mark the controlling obstruction (where a repeater/mast-raise
               would act) whenever the path is not comfortably clear. */}
