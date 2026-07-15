@@ -139,6 +139,74 @@ def indoor_coverage(req: IndoorCoverageRequest,
     }
 
 
+class AutoPlaceRequest(BaseModel):
+    dxf_id: str
+    layer_materials: dict[str, str]
+    unit_scale: float = Field(1.0, gt=0)
+    technology: str | None = None
+    freq_mhz: float | None = Field(None, gt=0)
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    rx_gain_dbi: float | None = None
+    losses_db: float | None = None
+    rx_sensitivity_dbm: float | None = None
+    target_margin_db: float = Field(0.0, ge=0, le=40)
+    tx_height_m: float = Field(2.7, gt=0)
+    rx_height_m: float = Field(1.2, gt=0)
+    coverage_target: float = Field(0.95, ge=0.5, le=1.0)
+    max_aps: int = Field(24, ge=1, le=60)
+    candidate_grid: int = Field(8, ge=3, le=16)
+    demand_grid: int = Field(24, ge=8, le=48)
+    band: str = Field("2.4GHz")
+    roaming_threshold_dbm: float = Field(-67.0, le=0)
+    # Capacity-aware sizing (optional):
+    users_total: int = Field(0, ge=0, le=100_000)
+    throughput_per_user_mbps: float = Field(0.0, ge=0, le=1000)
+    ap_capacity_mbps: float = Field(600.0, gt=0, le=10_000)
+
+
+@router.post("/auto-place")
+def auto_place(req: AutoPlaceRequest,
+               user: dict | None = Depends(current_user)) -> dict:
+    """Solve AP count, positions and channel plan for a coverage (+capacity)
+    target over the floor plan - the inverse of the heatmap.  Reuses the same
+    multi-wall path-loss model, so the design matches the coverage view."""
+    require_feature(user, "indoor_studio")
+    session = _session_or_404(req.dxf_id, user)
+    walls = extract_walls(session.document(), req.layer_materials)
+    if walls.count == 0:
+        raise HTTPException(422, "No wall segments on the selected layers")
+
+    tech = get_technology(req.technology) if req.technology else {
+        "freq_mhz": 2442.0, "tx_power_dbm": 20.0, "tx_gain_dbi": 3.0,
+        "rx_gain_dbi": 0.0, "losses_db": 0.0, "rx_sensitivity_dbm": -72.0}
+    for f in ("freq_mhz", "tx_power_dbm", "tx_gain_dbi", "rx_gain_dbi",
+              "losses_db", "rx_sensitivity_dbm"):
+        v = getattr(req, f)
+        if v is not None:
+            tech[f] = v
+
+    from ..services.indoor.placement import auto_place_aps
+    try:
+        return auto_place_aps(
+            walls, float(tech["freq_mhz"]),
+            tx_power_dbm=float(tech["tx_power_dbm"]),
+            tx_gain_dbi=float(tech["tx_gain_dbi"]),
+            rx_gain_dbi=float(tech["rx_gain_dbi"]),
+            losses_db=float(tech["losses_db"]),
+            rx_sensitivity_dbm=float(tech["rx_sensitivity_dbm"]),
+            target_margin_db=req.target_margin_db, unit_scale=req.unit_scale,
+            tx_height_m=req.tx_height_m, rx_height_m=req.rx_height_m,
+            coverage_target=req.coverage_target, max_aps=req.max_aps,
+            candidate_grid=req.candidate_grid, demand_grid=req.demand_grid,
+            band=req.band, roaming_threshold_dbm=req.roaming_threshold_dbm,
+            users_total=req.users_total,
+            throughput_per_user_mbps=req.throughput_per_user_mbps,
+            ap_capacity_mbps=req.ap_capacity_mbps)
+    except Exception as exc:
+        raise HTTPException(502, f"Auto-placement failed: {exc}") from exc
+
+
 @router.get("/coverage/{result_id}.png")
 def indoor_coverage_png(result_id: str) -> Response:
     hit = results_store.load("indoor", result_id)
