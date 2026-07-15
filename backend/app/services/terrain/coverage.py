@@ -72,8 +72,14 @@ class CoverageEngine:
                       grid: DxfTerrainGrid | None = None,
                       georef: BaseGeoref | None = None,
                       k: float = K_FACTOR_DEFAULT,
+                      clutter_heights_fn=None,
                       progress_cb=None) -> dict:
         """Run the physics and return the polar field (no rasterization).
+
+        ``clutter_heights_fn(lats, lons) -> heights_m`` optionally raises the
+        obstacle surface by per-pixel clutter (e.g. WorldCover representative
+        heights): diffraction then bends over real canopy/buildings, and the
+        receiver sits ``h_ut`` above the cluttered surface (conservative).
 
         Returns {az, dist, rx_power, margin, tx_elev, warnings}."""
         freq = float(tech["freq_mhz"])
@@ -92,6 +98,11 @@ class CoverageEngine:
         elev_flat, _w = self.fusion.fused_elevations(
             np.asarray(lats), np.asarray(lons), grid, georef)
         elev = elev_flat.reshape(n_radials, n_steps)
+        if clutter_heights_fn is not None:
+            ch = np.asarray(clutter_heights_fn(np.asarray(lats),
+                                               np.asarray(lons)),
+                            dtype=np.float64).reshape(n_radials, n_steps)
+            elev = elev + ch
         tx_elev = float(self.fusion.fused_elevations(
             np.array([lat]), np.array([lon]), grid, georef)[0][0])
 
@@ -223,6 +234,7 @@ class CoverageEngine:
                  georef: BaseGeoref | None = None,
                  k: float = K_FACTOR_DEFAULT,
                  raster_px: int = 512,
+                 clutter_heights_fn=None,
                  progress_cb=None) -> CoverageResult:
         polar = self.compute_polar(
             lat, lon, tech, radius_m=radius_m,
@@ -237,6 +249,7 @@ class CoverageEngine:
             rain_rate_mm_h=rain_rate_mm_h,
             clutter_pct=clutter_pct,
             grid=grid, georef=georef, k=k,
+            clutter_heights_fn=clutter_heights_fn,
             progress_cb=progress_cb)
 
         png, bounds = self._rasterize(lat, lon, polar["az"], polar["dist"],

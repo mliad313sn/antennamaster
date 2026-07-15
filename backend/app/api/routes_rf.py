@@ -53,6 +53,9 @@ class CoverageRequest(BaseModel):
     # ITU-R P.2108 statistical man-made clutter: percentage of locations
     # not exceeded (0 = off, 50 = median urban clutter, 90 = conservative).
     clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    # Per-pixel clutter: "worldcover" raises the obstacle surface by the real
+    # land cover's representative height (ESA WorldCover 10 m, free).
+    clutter_source: str = "none"
     # Simulate on the surface model (DSM) instead of bare terrain;
     # requires AM_DSM_URL to be configured on the server.
     surface: bool = False
@@ -101,6 +104,17 @@ def resolve_scenario(scenario_id: str) -> dict:
         return _resolve(scenario_id)
     except KeyError:
         raise HTTPException(404, f"Unknown scenario: {scenario_id}")
+
+
+def _clutter_fn(source: str):
+    """Resolve a clutter_source string to a heights function (or None)."""
+    if source == "worldcover":
+        from ..services.clutter.worldcover import get_worldcover_store
+        store = get_worldcover_store()
+        return store.heights
+    if source not in ("none", "", None):
+        raise HTTPException(422, f"Unknown clutter_source: {source!r}")
+    return None
 
 
 def _resolve_tech(req: CoverageRequest) -> dict:
@@ -161,6 +175,8 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
         if req.tx_gain_dbi is None:
             tech["tx_gain_dbi"] = float(pattern.get("gain_dbi", tech["tx_gain_dbi"]))
 
+    clutter_fn = _clutter_fn(getattr(req, "clutter_source", "none"))
+
     engine = CoverageEngine(resolve_fusion(req.surface))
     try:
         result = engine.simulate(
@@ -178,6 +194,7 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
             k=req.k_factor,
             grid=grid, georef=georef,
             raster_px=req.raster_px,
+            clutter_heights_fn=clutter_fn,
             progress_cb=progress_cb,
         )
     except Exception as exc:  # DEM fetch failure -> 502, not a stacktrace
@@ -566,6 +583,7 @@ class MultiCoverageRequest(BaseModel):
     foliage_depth_m: float = Field(0.0, ge=0, le=400)
     rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
     clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    clutter_source: str = "none"
     surface: bool = False
     vertical_beamwidth_deg: float = Field(10.0, gt=1, le=90)
     k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
@@ -622,6 +640,7 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
         session = resolve_dxf(req.dxf_id, user)
         grid, georef = session.grid, session.georef
 
+    clutter_fn = _clutter_fn(req.clutter_source)
     engine = CoverageEngine(resolve_fusion(req.surface))
     radius_m = req.radius_km * 1000.0
     computed = []
@@ -641,7 +660,8 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
                     foliage_depth_m=req.foliage_depth_m,
                     rain_rate_mm_h=req.rain_rate_mm_h,
                     clutter_pct=req.clutter_pct,
-                    k=req.k_factor, grid=grid, georef=georef)
+                    k=req.k_factor, grid=grid, georef=georef,
+                    clutter_heights_fn=clutter_fn)
                 warnings.extend(w for w in polar["warnings"] if w not in warnings)
                 computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
                                  "radius_m": radius_m, "polar": polar})

@@ -99,6 +99,11 @@ def terrain_profile(
     # Sample the surface model (DSM: buildings/canopy) instead of the bare
     # terrain - requires AM_DSM_URL to be configured.
     surface: bool = Query(False),
+    # Per-pixel clutter: "worldcover" classifies every sample from the free
+    # ESA WorldCover 10 m land cover and raises the obstacle profile by the
+    # representative clutter height (trees 15 m, built-up 10 m, ...) - real
+    # localized obstacles instead of the statistical P.2108 percentage.
+    clutter_source: str = Query("none"),
     user: dict | None = Depends(current_user),
 ) -> dict:
     """TX->RX elevation profile over the fused terrain, plus RF link analysis.
@@ -122,6 +127,30 @@ def terrain_profile(
                               grid=grid, georef=georef)
     except Exception as exc:  # DEM fetch failures surface as 502, not 500
         raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    # Per-pixel clutter: raise the obstacle profile by the representative
+    # clutter height of each sample's real land cover (terminals excluded -
+    # their siting is an antenna-height matter, not a mid-path obstacle).
+    clutter_info = None
+    if clutter_source == "worldcover":
+        from ..services.clutter.worldcover import (clutter_profile_heights,
+                                                   get_worldcover_store)
+        try:
+            ch = clutter_profile_heights(get_worldcover_store(),
+                                         prof.lats, prof.lons)
+        except Exception as exc:
+            raise HTTPException(502, f"WorldCover clutter unavailable: {exc}") from exc
+        prof.elevations_m = prof.elevations_m + ch
+        clutter_info = {
+            "source": "esa_worldcover_10m",
+            "mean_clutter_height_m": round(float(ch.mean()), 2),
+            "max_clutter_height_m": round(float(ch.max()), 2),
+            "cluttered_fraction": round(float((ch > 0).mean()), 3),
+            "note": "elevations include representative clutter heights "
+                    "(P.1812 practice); terminals excluded",
+        }
+    elif clutter_source not in ("none", ""):
+        raise HTTPException(422, f"Unknown clutter_source: {clutter_source!r}")
 
     # Effective frequency: explicit param > technology preset > 446 MHz.
     tech_preview = None
@@ -223,6 +252,7 @@ def terrain_profile(
         "samples": samples,
         "dxf_id": dxf_id if dxf_active else None,
         "surface": surface,
+        "clutter": clutter_info,
         "distance_m": prof.distances_m[-1] - prof.distances_m[0],
         "points": [
             {
