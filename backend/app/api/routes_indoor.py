@@ -287,3 +287,89 @@ def leaky_feeder_study(req: LeakyFeederRequest,
         auto_amplifiers=req.auto_amplifiers)
     return {"freq_mhz": req.freq_mhz, "cable_length_m": round(length_m, 1),
             "cable_length_from_dxf": measured_from_dxf, **result}
+
+
+# ===================================================================== #
+#  Phase 3 — Automated AP / site placement solver
+# ===================================================================== #
+from ..services.rf import apsolver as _apsolver  # noqa: E402
+
+
+class ApSolveRequest(BaseModel):
+    dxf_id: str
+    layer_materials: dict[str, str] = Field(default_factory=dict)
+    unit_scale: float = Field(1.0, gt=0)          # meters per drawing unit
+    # Radio:
+    freq_mhz: float = Field(5800.0, gt=0)
+    tx_power_dbm: float = Field(20.0)
+    tx_gain_dbi: float = Field(3.0)
+    rx_gain_dbi: float = Field(0.0)
+    target_rssi_dbm: float = Field(-67.0, le=0)   # coverage design threshold
+    roaming_threshold_dbm: float = Field(-67.0, le=0)
+    target_coverage: float = Field(0.98, gt=0, le=1.0)
+    ceiling_z_m: float = Field(2.7, gt=0, le=50)
+    # Discretization (meters):
+    demand_spacing_m: float = Field(4.0, gt=0.5, le=50)
+    candidate_spacing_m: float = Field(8.0, gt=1.0, le=100)
+    max_aps: int = Field(40, ge=1, le=200)
+    # Capacity:
+    user_density_per_100m2: float = Field(0.0, ge=0)
+    users_per_ap: int = Field(40, ge=1, le=200)
+    throughput_demand_mbps: float = Field(0.0, ge=0)
+    ap_capacity_mbps: float = Field(600.0, gt=0)
+    band: str = Field("5GHz", pattern="^(2\\.4GHz|5GHz|6GHz)$")
+
+
+@router.post("/ap-solve")
+def ap_solve(req: ApSolveRequest,
+             user: dict | None = Depends(current_user)) -> dict:
+    """Solve an indoor AP layout over a DXF floor plan: the minimum number of
+    access points and their [x, y, z] positions to hit the coverage target,
+    grown to meet user-density / throughput capacity, with a -67 dBm roaming
+    overlap check and non-overlapping channel assignment (graph colouring)."""
+    require_feature(user, "indoor_studio")
+    session = _session_or_404(req.dxf_id, user)
+    walls = extract_walls(session.document(), req.layer_materials)
+
+    x0, y0, x1, y1 = walls.bbox() if walls.count else (0.0, 0.0,
+                                                       100.0 / req.unit_scale,
+                                                       100.0 / req.unit_scale)
+    bbox = (x0, y0, x1, y1)
+    area_m2 = abs((x1 - x0) * (y1 - y0)) * req.unit_scale ** 2
+
+    demand = _apsolver.make_grid(bbox, req.demand_spacing_m / req.unit_scale)
+    candidates = _apsolver.make_grid(
+        bbox, req.candidate_spacing_m / req.unit_scale,
+        inset=req.candidate_spacing_m / req.unit_scale * 0.25)
+    if demand.shape[0] * candidates.shape[0] > 4_000_000:
+        raise HTTPException(422, "Grid too fine for this area; increase "
+                                 "demand_spacing_m / candidate_spacing_m.")
+
+    rssi = _apsolver.build_indoor_rssi(
+        walls if walls.count else None, candidates, demand, req.freq_mhz,
+        req.unit_scale, req.tx_power_dbm, req.tx_gain_dbi, req.rx_gain_dbi)
+
+    sol = _apsolver.solve_layout(
+        rssi, candidates, demand, target_rssi_dbm=req.target_rssi_dbm,
+        target_coverage=req.target_coverage,
+        roaming_threshold_dbm=req.roaming_threshold_dbm, max_aps=req.max_aps,
+        area_m2=area_m2, user_density_per_100m2=req.user_density_per_100m2,
+        users_per_ap=req.users_per_ap,
+        throughput_demand_mbps=req.throughput_demand_mbps,
+        ap_capacity_mbps=req.ap_capacity_mbps, ceiling_z_m=req.ceiling_z_m,
+        channels=_apsolver.CHANNEL_PLANS[req.band], unit_scale=req.unit_scale)
+
+    return {
+        "dxf_id": req.dxf_id, "band": req.band,
+        "area_m2": round(area_m2, 1),
+        "bbox_dxf": [round(v, 3) for v in bbox],
+        "ap_count": sol.ap_count,
+        "aps": sol.aps,
+        "coverage_fraction": sol.coverage_fraction,
+        "roaming_fraction": sol.roaming_fraction,
+        "capacity": sol.capacity,
+        "channel_plan": {"cochannel_conflicts": sol.channel_plan["cochannel_conflicts"],
+                         "colors_used": sol.channel_plan["colors_used"]},
+        "demand_points": sol.demand_points,
+        "warnings": sol.warnings,
+    }

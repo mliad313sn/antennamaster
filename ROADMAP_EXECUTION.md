@@ -10,7 +10,7 @@ Baseline at kickoff: **139 backend tests passing**.
 |---|---|---|
 | **1** | Bidirectional "Talk-Back" & LMR repeaters | 🟢 Complete |
 | **2** | Metro/Mine leaky feeder (radiating cable) | 🟢 Complete |
-| **3** | Automated AP/site placement solver | ⬜ Not started |
+| **3** | Automated AP/site placement solver | 🟢 Complete |
 | **4** | Intelligent Copilot & MCP integration | ⬜ Not started |
 | **5** | Compliance (EMF), ITM & drive-test calibration | ⬜ Not started |
 
@@ -51,6 +51,22 @@ Deliverables:
       (`floorplan.layer_polyline_length`).
 - [x] API: `GET /api/indoor/leaky-cables`, `POST /api/indoor/leaky-feeder`.
 - [x] Tests: `tests/test_leaky_feeder.py` (9 tests).
-## Phase 3 — Automated AP/Site Placement Solver  *(pending)*
+## Phase 3 — Automated AP/Site Placement Solver
+
+**Goal:** invert the coverage problem — solve for AP count, positions and
+channels instead of scoring a hand-placed layout.
+
+Deliverables:
+- [x] `services/rf/apsolver.py`: demand/candidate grids, indoor RSSI builder
+      (FSPL + COST-231 multi-wall, ITU-R P.1238 fallback) and outdoor builder.
+- [x] Greedy max-coverage placement ((1−1/e) set-cover heuristic).
+- [x] Capacity sizing: adds APs for user-density and throughput demand
+      (Wi-Fi 6/7 users-per-AP + per-AP Mbps).
+- [x] Roaming enforcement: −67 dBm secondary-AP overlap fraction.
+- [x] Channel assignment: Welsh-Powell graph colouring over 2.4/5/6 GHz
+      non-overlapping channel sets; co-channel conflict count.
+- [x] Output: AP [x, y, z], channel, served demand points.
+- [x] API: `POST /api/indoor/ap-solve`.
+- [x] Tests: `tests/test_apsolver.py` (8 tests).
 ## Phase 4 — Intelligent Copilot & MCP Integration  *(pending)*
 ## Phase 5 — Compliance, ITM & Calibration  *(pending)*
