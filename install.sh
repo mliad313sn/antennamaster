@@ -1,95 +1,246 @@
 #!/usr/bin/env bash
 #
-# AntennaMaster — one-command local install (Linux / macOS).
+# AntennaMaster — universal self-bootstrapping installer (macOS / Linux).
 #
-#   ./install.sh
+#   ./install.sh              scan the system, install any missing runtimes,
+#                             build a self-contained deployment
+#   ./install.sh --no-sudo    never invoke sudo (only report manual commands)
+#   ./install.sh --yes        assume "yes" to every auto-install prompt
 #
-# Checks prerequisites, creates a dedicated Python virtualenv, installs the
-# backend and frontend dependencies, and builds the frontend for production.
-# Idempotent: safe to re-run.  Launch afterwards with ./launch_simulator.sh
-set -euo pipefail
+# State machine:
+#   1. Pre-flight scan   — OS family, CPU arch, package managers, runtimes
+#   2. Dependency fetch  — auto-install Python / Node / compilers when missing
+#   3. Virtualise & build— .venv + pip, npm ci, Next.js production build
+#   4. Graceful failbacks— on any failure, print the exact fix in red and the
+#                          copy-paste command to bypass the bottleneck; never
+#                          crash the whole run silently.
+#
+# Intentionally does NOT `set -e`: each step is guarded so a single failure
+# yields a helpful hint instead of an opaque abort.
+set -uo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
+
+# ---- flags ---------------------------------------------------------------
+NO_SUDO=0; ASSUME_YES=0
+for a in "$@"; do
+  case "$a" in
+    --no-sudo) NO_SUDO=1 ;;
+    --yes|-y)  ASSUME_YES=1 ;;
+    --help|-h) sed -n '2,16p' "$0"; exit 0 ;;
+  esac
+done
+[[ -n "${AM_ASSUME_YES:-}" ]] && ASSUME_YES=1
 
 # ---- colour-coded output -------------------------------------------------
 if [[ -t 1 ]]; then
   RED=$'\e[31m'; GRN=$'\e[32m'; YLW=$'\e[33m'; BLU=$'\e[36m'; BLD=$'\e[1m'; RST=$'\e[0m'
-else
-  RED=""; GRN=""; YLW=""; BLU=""; BLD=""; RST=""
-fi
-step() { printf '%s\n' "${BLU}${BLD}==>${RST} ${BLD}$*${RST}"; }
+else RED=""; GRN=""; YLW=""; BLU=""; BLD=""; RST=""; fi
+step() { printf '\n%s\n' "${BLU}${BLD}==>${RST} ${BLD}$*${RST}"; }
 ok()   { printf '%s\n' "  ${GRN}✓${RST} $*"; }
 warn() { printf '%s\n' "  ${YLW}!${RST} $*"; }
-die()  { printf '%s\n' "${RED}${BLD}✗ $*${RST}" >&2; exit 1; }
+info() { printf '%s\n' "  ${BLU}·${RST} $*"; }
+err()  { printf '%s\n' "${RED}${BLD}✗ $*${RST}" >&2; }
+hint() { printf '%s\n' "    ${YLW}try:${RST} ${BLD}$*${RST}" >&2; }
 
-trap 'die "Install failed on line $LINENO. Fix the error above and re-run ./install.sh"' ERR
+FAILED=0
+fail() { err "$1"; [[ -n "${2:-}" ]] && hint "$2"; FAILED=1; }
 
-echo "${BLD}AntennaMaster installer${RST}"
-echo "Project: $ROOT"
-echo
+# ---- 1. PRE-FLIGHT SYSTEM SCAN ------------------------------------------
+step "1/4  Pre-flight system scan"
 
-# ---- 1. prerequisites ----------------------------------------------------
-step "Checking prerequisites"
+OS="unknown"; case "$(uname -s)" in
+  Darwin) OS="macos" ;; Linux) OS="linux" ;;
+  *) OS="unknown" ;;
+esac
+ARCH="$(uname -m)"; case "$ARCH" in
+  arm64|aarch64) ARCH="arm64" ;; x86_64|amd64) ARCH="x86_64" ;;
+esac
+ok "OS: ${OS}   Arch: ${ARCH}"
 
-# Python 3.10+
-PYBIN=""
-for c in python3 python; do
-  if command -v "$c" >/dev/null 2>&1; then
-    v="$("$c" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || echo 0.0)"
-    major="${v%%.*}"; minor="${v##*.}"
-    if [[ "$major" -eq 3 && "$minor" -ge 10 ]]; then PYBIN="$c"; break; fi
-  fi
+# Detect available package managers (first match wins for auto-install).
+PKG=""
+for m in brew apt-get dnf yum pacman zypper; do
+  if command -v "$m" >/dev/null 2>&1; then PKG="$m"; break; fi
 done
-[[ -n "$PYBIN" ]] || die "Python 3.10+ is required (found none). Install it from https://www.python.org/downloads/"
-ok "Python $("$PYBIN" -c 'import sys;print("%d.%d.%d"%sys.version_info[:3])') ($PYBIN)"
+[[ -n "$PKG" ]] && ok "Package manager: $PKG" || warn "No supported package manager detected"
 
-command -v node >/dev/null 2>&1 || die "Node.js is required. Install the LTS from https://nodejs.org/"
-NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]')"
-[[ "$NODE_MAJOR" -ge 18 ]] || die "Node.js 18+ is required (found $(node -v))."
-ok "Node.js $(node -v)"
-command -v npm >/dev/null 2>&1 || die "npm was not found (it ships with Node.js)."
-ok "npm $(npm -v)"
+# sudo strategy.
+SUDO=""
+if [[ "$NO_SUDO" -eq 0 && "$(id -u)" -ne 0 ]] && command -v sudo >/dev/null 2>&1; then
+  SUDO="sudo"
+fi
 
-# ---- 2. python venv ------------------------------------------------------
-step "Creating the Python virtual environment (backend/.venv)"
-if [[ ! -d backend/.venv ]]; then
-  "$PYBIN" -m venv backend/.venv
-  ok "Created backend/.venv"
+confirm() {  # $1 = prompt; auto-yes when non-interactive or --yes
+  [[ "$ASSUME_YES" -eq 1 || ! -t 0 ]] && return 0
+  printf '  %s [Y/n] ' "$1"; read -r reply || return 1
+  [[ -z "$reply" || "$reply" =~ ^[Yy] ]]
+}
+
+pkg_install() {  # $1 = human name; $2.. = package names to try
+  local name="$1"; shift
+  [[ -n "$PKG" ]] || { fail "cannot auto-install $name (no package manager)"; return 1; }
+  confirm "Install $name with $PKG?" || { warn "skipped $name"; return 1; }
+  case "$PKG" in
+    brew)    brew install "$@" ;;
+    apt-get) $SUDO apt-get update -y && $SUDO apt-get install -y "$@" ;;
+    dnf)     $SUDO dnf install -y "$@" ;;
+    yum)     $SUDO yum install -y "$@" ;;
+    pacman)  $SUDO pacman -S --noconfirm "$@" ;;
+    zypper)  $SUDO zypper install -y "$@" ;;
+  esac
+}
+
+# ---- 2. DYNAMIC DEPENDENCY FETCHING -------------------------------------
+step "2/4  Resolving required runtimes"
+
+# --- Python 3.10+ ---
+find_python() {
+  local c v major minor
+  for c in python3.13 python3.12 python3.11 python3.10 python3 python; do
+    command -v "$c" >/dev/null 2>&1 || continue
+    v="$("$c" -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || echo 0.0)"
+    major="${v%%.*}"; minor="${v##*.}"
+    if [[ "$major" -eq 3 && "$minor" -ge 10 ]]; then echo "$c"; return 0; fi
+  done
+  return 1
+}
+PYBIN="$(find_python || true)"
+if [[ -z "$PYBIN" ]]; then
+  warn "Python 3.10+ not found — attempting install"
+  case "$PKG" in
+    brew)    pkg_install "Python 3.11" python@3.11 ;;
+    apt-get) pkg_install "Python 3" python3 python3-venv python3-dev ;;
+    dnf|yum) pkg_install "Python 3" python3 python3-devel ;;
+    pacman)  pkg_install "Python" python ;;
+    zypper)  pkg_install "Python 3" python3 python3-devel ;;
+    *) : ;;
+  esac
+  PYBIN="$(find_python || true)"
+fi
+if [[ -n "$PYBIN" ]]; then
+  ok "Python $("$PYBIN" -c 'import sys;print("%d.%d.%d"%sys.version_info[:3])') ($PYBIN)"
 else
-  ok "backend/.venv already exists"
+  fail "Python 3.10+ is required and could not be installed automatically." \
+       "install Python 3.11 from https://www.python.org/downloads/ then re-run ./install.sh"
 fi
-# shellcheck disable=SC1091
-VENV_PY="$ROOT/backend/.venv/bin/python"
-[[ -x "$VENV_PY" ]] || VENV_PY="$ROOT/backend/.venv/Scripts/python.exe"  # git-bash on Windows
 
-# ---- 3. backend deps -----------------------------------------------------
-step "Installing backend dependencies"
-"$VENV_PY" -m pip install --upgrade pip >/dev/null
-"$VENV_PY" -m pip install -r backend/requirements.txt
-ok "Backend dependencies installed"
-
-# ---- 4. frontend deps + build --------------------------------------------
-step "Installing frontend dependencies (npm)"
-( cd frontend && if [[ -f package-lock.json ]]; then npm ci; else npm install; fi )
-ok "Frontend dependencies installed"
-
-step "Building the frontend for production (npm run build)"
-( cd frontend && npm run build )
-# Stage the standalone server's assets so it can be launched directly
-# (identical to the Docker runtime; avoids the deprecated `next start` path
-# under output:'standalone').
-if [[ -d frontend/.next/standalone ]]; then
-  rm -rf frontend/.next/standalone/.next/static frontend/.next/standalone/public
-  cp -r frontend/.next/static frontend/.next/standalone/.next/static
-  [[ -d frontend/public ]] && cp -r frontend/public frontend/.next/standalone/public
+# --- Node.js 18+ ---
+node_ok() { command -v node >/dev/null 2>&1 && \
+  [[ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)" -ge 18 ]]; }
+if ! node_ok; then
+  warn "Node.js 18+ not found — attempting install"
+  case "$PKG" in
+    brew)    pkg_install "Node.js LTS" node ;;
+    apt-get)
+      if confirm "Install Node.js 20 LTS via NodeSource?"; then
+        curl -fsSL https://deb.nodesource.com/setup_20.x | $SUDO -E bash - \
+          && $SUDO apt-get install -y nodejs
+      fi ;;
+    dnf|yum)
+      if confirm "Install Node.js 20 LTS via NodeSource?"; then
+        curl -fsSL https://rpm.nodesource.com/setup_20.x | $SUDO -E bash - \
+          && $SUDO "$PKG" install -y nodejs
+      fi ;;
+    pacman)  pkg_install "Node.js" nodejs npm ;;
+    zypper)  pkg_install "Node.js" nodejs20 ;;
+    *) : ;;
+  esac
 fi
-ok "Frontend built"
+if node_ok; then ok "Node.js $(node -v)  npm $(npm -v 2>/dev/null || echo '?')"
+else fail "Node.js 18+ is required and could not be installed automatically." \
+          "install the LTS from https://nodejs.org/ then re-run ./install.sh"; fi
 
-# ---- done ----------------------------------------------------------------
-echo
-echo "${GRN}${BLD}✓ Install complete.${RST}"
-echo
-echo "Start the platform with:"
-echo "    ${BLD}./launch_simulator.sh${RST}"
-echo
-echo "It will open ${BLU}http://localhost:3000${RST} in your browser."
+# --- Git (recommended) ---
+if command -v git >/dev/null 2>&1; then ok "git $(git --version | awk '{print $3}')"
+else warn "git not found (optional for running; needed to pull updates)"
+     [[ -n "$PKG" ]] && pkg_install "git" git >/dev/null 2>&1 || true; fi
+
+# --- Docker (optional/recommended) ---
+if command -v docker >/dev/null 2>&1; then ok "Docker $(docker --version | awk '{print $3}' | tr -d ,) (optional path available)"
+else info "Docker not found — optional. 'docker compose up' is an alternative to this installer."; fi
+
+# --- Compiler toolchain (only if a wheel has to be built from source) ---
+ensure_build_tools() {
+  case "$OS" in
+    macos)
+      if ! xcode-select -p >/dev/null 2>&1; then
+        warn "Xcode Command Line Tools missing — required to compile native wheels"
+        confirm "Trigger 'xcode-select --install'?" && xcode-select --install || \
+          hint "xcode-select --install"
+      fi ;;
+    linux)
+      if ! command -v cc >/dev/null 2>&1 && ! command -v gcc >/dev/null 2>&1; then
+        warn "No C compiler — needed only if a prebuilt wheel is unavailable"
+        case "$PKG" in
+          apt-get) pkg_install "build tools" build-essential python3-dev ;;
+          dnf|yum) pkg_install "build tools" gcc gcc-c++ make python3-devel ;;
+          pacman)  pkg_install "build tools" base-devel ;;
+          zypper)  pkg_install "build tools" gcc gcc-c++ make ;;
+        esac
+      fi ;;
+  esac
+}
+
+# ---- 3. ENVIRONMENT VIRTUALISATION & BUILD ------------------------------
+if [[ -n "$PYBIN" ]]; then
+  step "3/4  Python virtual environment + backend dependencies"
+  if [[ ! -d backend/.venv ]]; then
+    if "$PYBIN" -m venv backend/.venv; then ok "Created backend/.venv"
+    else fail "could not create the virtualenv" \
+              "$PYBIN -m pip install --user virtualenv && $PYBIN -m virtualenv backend/.venv"; fi
+  else ok "backend/.venv already present"; fi
+
+  VENV_PY="$ROOT/backend/.venv/bin/python"
+  [[ -x "$VENV_PY" ]] || VENV_PY="$ROOT/backend/.venv/Scripts/python.exe"  # git-bash
+
+  if [[ -x "$VENV_PY" ]]; then
+    "$VENV_PY" -m pip install --upgrade pip >/dev/null 2>&1 || true
+    # First attempt: fast path (manylinux/macos wheels, no compiler needed).
+    if "$VENV_PY" -m pip install -r backend/requirements.txt; then
+      ok "Backend dependencies installed"
+    else
+      warn "A dependency failed to install — likely a native build (pyproj/scipy)"
+      ensure_build_tools
+      if "$VENV_PY" -m pip install -r backend/requirements.txt; then
+        ok "Backend dependencies installed (after adding build tools)"
+      else
+        fail "backend dependencies could not be installed" \
+             "activate the venv and inspect the error: source backend/.venv/bin/activate && pip install -r backend/requirements.txt"
+      fi
+    fi
+  fi
+fi
+
+if node_ok; then
+  step "3/4  Frontend dependencies + production build"
+  if ( cd frontend && { [[ -f package-lock.json ]] && npm ci || npm install; } ); then
+    ok "Frontend dependencies installed"
+  else
+    fail "npm install failed" "cd frontend && rm -rf node_modules package-lock.json && npm install"
+  fi
+  if ( cd frontend && npm run build ); then
+    # Stage the standalone server assets so launch.sh can run it directly.
+    if [[ -d frontend/.next/standalone ]]; then
+      rm -rf frontend/.next/standalone/.next/static frontend/.next/standalone/public
+      cp -r frontend/.next/static frontend/.next/standalone/.next/static 2>/dev/null || true
+      [[ -d frontend/public ]] && cp -r frontend/public frontend/.next/standalone/public 2>/dev/null || true
+    fi
+    ok "Frontend built for production"
+  else
+    fail "the frontend build failed" "cd frontend && npm run build   # read the first error above"
+  fi
+fi
+
+# ---- 4. SUMMARY ----------------------------------------------------------
+step "4/4  Result"
+if [[ "$FAILED" -eq 0 ]]; then
+  printf '%s\n\n' "${GRN}${BLD}✓ Install complete.${RST}"
+  echo "Start the platform:   ${BLD}./launch.sh${RST}"
+  echo "It opens ${BLU}http://localhost:3000${RST} once both servers are healthy."
+  exit 0
+else
+  printf '%s\n' "${RED}${BLD}✗ Install finished with issues (see the red lines above).${RST}"
+  echo "Fix the reported step(s) and re-run ${BLD}./install.sh${RST} — completed steps are skipped."
+  exit 1
+fi
