@@ -434,6 +434,65 @@ def p1812_study(
         raise HTTPException(502, f"P.1812 computation failed: {exc}") from exc
 
 
+@router.get("/availability")
+def link_availability_study(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    h_tx_m: float = Query(30.0, ge=0, le=500),
+    h_rx_m: float = Query(30.0, ge=0, le=500),
+    technology: str = Query("ptp18000"),
+    freq_mhz: float | None = Query(None, gt=0),
+    rain_zone: str = Query("K"),
+    dn1: float = Query(-300.0, ge=-1000, le=0),
+    fade_margin_db: float | None = Query(None, ge=0, le=60),
+    samples: int = Query(256, ge=32, le=2048),
+    dxf_id: str | None = None, surface: bool = Query(False),
+    user: dict | None = Depends(current_user),
+) -> dict:
+    """Annual availability of a PtP hop (ITU-R P.530 multipath + rain):
+    the 99.99x% number a backhaul contract is written on.  The fade margin
+    defaults to the hop's real link-budget margin over the fused terrain."""
+    try:
+        tech = get_technology(technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if freq_mhz is not None:
+        tech["freq_mhz"] = freq_mhz
+    tech["h_bs_m"], tech["h_ut_m"] = h_tx_m, h_rx_m
+
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+
+    from ..services.rf.planning import evaluate_receiver
+    try:
+        link = evaluate_receiver(fusion, dict(tech), lat1, lon1, lat2, lon2,
+                                 samples=samples, grid=grid, georef=georef)
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=8,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    margin = fade_margin_db if fade_margin_db is not None \
+        else max(link["margin_db"], 0.0)
+    d_km = link["distance_m"] / 1000.0
+    h_tx_masl = float(prof.elevations_m[0]) + h_tx_m
+    h_rx_masl = float(prof.elevations_m[-1]) + h_rx_m
+
+    from ..services.rf.availability import link_availability
+    try:
+        avail = link_availability(d_km, tech["freq_mhz"] / 1000.0,
+                                  h_tx_masl, h_rx_masl, margin,
+                                  rain_zone=rain_zone, dn1=dn1)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"link": link, "distance_km": round(d_km, 2),
+            "freq_mhz": tech["freq_mhz"], **avail}
+
+
 @router.get("/optimize-heights")
 def optimize_heights(
     lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
