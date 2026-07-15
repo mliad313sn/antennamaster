@@ -1,10 +1,10 @@
 # AntennaMaster — Complete Functionality, Capability & Capacity Reference
 
-Verified against the codebase: **47 REST endpoints** (27 simulation +
-20 SaaS/accounts), **90 backend test functions (100 cases)** + 10 frontend
-component tests, 90% backend line coverage. Companion docs: `ASSESSMENT.md`
-(benchmark & review history), `SaaS_ARCHITECTURE.md` (accounts, tiers,
-workspaces, monetization).
+Verified against the codebase: **69 REST endpoints** (49 simulation +
+20 SaaS/accounts), **172 backend test functions (182 cases)** + 13 frontend
+component tests. Companion docs: `ROADMAP.md` (five-layer capability model &
+delivered phases), `ASSESSMENT.md` (benchmark & review history),
+`SaaS_ARCHITECTURE.md` (accounts, tiers, workspaces, monetization).
 
 ## 1. Terrain engine
 
@@ -44,7 +44,7 @@ All modes bidirectional (exact inverse), vertical `z_scale` independent,
 state persisted as a JSON sidecar and deterministically rebuilt by any
 worker (`ensure_ready`).
 
-## 3. Propagation models (6)
+## 3. Propagation models (6 empirical + ITM)
 
 | Model | Range | Use |
 |---|---|---|
@@ -54,6 +54,7 @@ worker (`ensure_ready`).
 | 3GPP TR 38.901 RMa LOS/NLOS | 0.5–30 GHz | 4G/5G rural |
 | 3GPP TR 38.901 UMa LOS/NLOS | 0.5–100 GHz | 4G/5G urban macro |
 | 3GPP TR 38.901 UMi LOS/NLOS | 0.5–100 GHz | small cells, mmWave |
+| **Longley-Rice / ITM** | irregular terrain | **reliability-quantile path loss** (`/api/terrain/itm`): validated Deygout median + terrain-roughness Δh + time/situation variability (`qerfi`) |
 
 All floor-bounded by FSPL; out-of-validity inputs clamped with API warnings.
 **Terrain diffraction on top of any model:** Deygout multi-knife-edge (≤3
@@ -126,6 +127,41 @@ band plans mergeable from `DATA_DIR/technologies.json` without code changes.
   max range vs sensitivity; wall presets (concrete/rock/coal/limestone/salt).
 - **TTE link**: skin depth, ground+spreading loss split, margin/verdict;
   ground presets (dry rock → wet clay, 0.001–0.1 S/m).
+
+## 4b. System design, optimization, compliance & intelligence
+
+Beyond *predicting* coverage, the platform now *designs*, *optimizes*,
+*certifies* and *advises* (the Layer 2–5 capabilities — see `ROADMAP.md`):
+
+- **Two-way (LMR) talk-back** (`/api/rf/twoway/*`): talk-out **and** talk-in
+  computed together and limited by the weaker direction (by reciprocity the two
+  differ only by the TX-power swap, so one downlink sweep yields both); **DAQ**
+  (delivered-audio-quality, TIA-4046) grading; portable body loss + penetration
+  classes (on-street / in-vehicle / in-building / underground); an area study
+  reporting talk-out/talk-in/**reliable-both** served fractions with the
+  limiting-direction split; a **repeater-cascade** spacing/count solver for
+  continuous corridor talk-back.
+- **Leaky feeder & distributed antennas** (`/api/indoor/leaky-feeder`,
+  `/tunnel-das`): radiating-cable field profile (longitudinal + coupling loss),
+  inline-amplifier spacing solver, bend excess-loss, served-length and
+  worst-gap KPIs; a DAS designer turning the Emslie single-antenna reach into
+  antenna count + spacing — the real metro / underground-mine deliverable.
+- **Automated AP placement** (`/api/indoor/auto-place`): the inverse of the
+  heatmap — greedy maximum-coverage set-cover over the same multi-wall
+  path-loss model, a graph-colour **channel plan** (2.4/5/6 GHz reuse sets), a
+  users×throughput **capacity floor**, and a −67 dBm **roaming-overlap** check.
+- **EMF exposure compliance** (`/api/rf/compliance`): ICNIRP and FCC OET-65
+  public/occupational exclusion-zone distances and exposure ratios, with an
+  optional ground-reflection worst case — the permitting gate.
+- **Drive-test calibration** (`/api/rf/calibrate`): fit an offset / offset+slope
+  correction from measured RSSI vs prediction and report RMS error before/after
+  — turning predictions into site-tuned, trusted predictions.
+- **AI design copilot** (`/api/copilot/*`): an engine-driven, **air-gapped**
+  advisor that runs the profile + height optimizer and turns the numbers into
+  ranked, actionable findings with quantified fixes (mast height, dB deficit,
+  band change, repeater); a machine-readable **tool catalog** exposing the
+  study endpoints so an external agent (MCP / function-calling) can drive the
+  simulator; an optional Claude-backed narrator when an API key is present.
 
 ## 5. Frontend (Next.js 14 + React-Leaflet + Recharts)
 
@@ -200,7 +236,7 @@ credential/audit DB 0600. Full posture: `SECURITY_COMPLIANCE.md`.
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
 | Audit | centralized middleware → append-only `audit.log` (0600) + tenant-scoped DB, stamped with user id + client IP |
-| Tests | 129 test functions / 139 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit regression; planning tools; API workflows) |
+| Tests | 172 test functions / 182 cases (fake DEM world; physics reference values hand-checked incl. anchored ITM/knife-edge/reciprocity invariants; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit regression; planning, two-way, leaky-feeder, auto-placement, compliance, calibration, copilot; API workflows) |
 
 ## 7. SaaS & workspace layer
 
@@ -215,11 +251,21 @@ resource ownership on DXFs and antenna patterns. Full detail:
 
 ## 8. Known limits (honest boundaries)
 
-Median empirical models + knife-edge diffraction (no ITM/P.1546/P.452 —
-Deygout + the Hata/38.901 family covers the same planning use cases);
-clutter is statistical (ITU-R P.2108), not a per-pixel land-use database;
-SINR assumes worst-case co-channel reuse-1 (no frequency planning /
-scheduler model); multi-floor is a penetration term, not per-floor wall
-maps; building obstruction requires a user-supplied DSM source
-(`AM_DSM_URL` — no public global Terrarium DSM exists); Nominatim search
-requires internet.
+Propagation is empirical/38.901 + Deygout diffraction, plus a Longley-Rice-
+family **ITM** whose median reuses the validated Deygout physics and whose
+variability follows the ITM quantile formulation — a documented engineering
+model, **not** a byte-exact NTIA port (P.1546/P.452 still absent). Clutter is
+statistical (ITU-R P.2108), **not yet** a per-pixel land-use / building-
+footprint database. SINR assumes worst-case co-channel reuse-1 (no frequency
+planning / scheduler model); there is coverage and an AP **capacity floor**,
+but no full traffic/Erlang dimensioning or throughput map. Multi-floor is a
+penetration term, not per-floor wall maps; outdoor building obstruction still
+requires a user-supplied DSM source (`AM_DSM_URL`). DAQ thresholds and the ITM
+assembly are documented engineering heuristics, not measured BER curves. The
+copilot's deterministic advice is offline; its optional prose narrator needs an
+API key (or a local model). Nominatim place search requires internet.
+
+**On the roadmap, not yet built:** per-pixel clutter from OSM/Overture building
+footprints + ESA WorldCover; capacity/traffic dimensioning beyond the AP floor;
+vision-assisted plan/photo reading; agentic optimization driving
+site-search/auto-placement toward a coverage-vs-CAPEX objective.
