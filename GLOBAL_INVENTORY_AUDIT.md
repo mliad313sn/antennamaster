@@ -36,57 +36,82 @@ exhaustive global scrape. The pipeline is built so more devices can be ingested
 from real datasheets by dropping a JSON into `backend/app/data/catalog_sources/`
 (or a customer's `AM_DATA_DIR`) and re-running the tool — no code changes.
 
+## The datasheet campaign (live-scraped vendor sources)
+
+The campaign phase added two **live scrapers that copy vendor-published specs
+verbatim** — the "500+ devices" headline target was deliberately traded for a
+hard zero-hallucination guarantee on every record shipped:
+
+- `tools/scrape_mikrotik.py` — MikroTik's server-rendered product pages
+  (per-band antenna gain, the full per-MCS TX-power / RX-sensitivity table
+  reduced to max-TX / best-sensitivity, IP rating, ambient temperature).
+  **87 devices** across Wi-Fi APs, 5 GHz PtP dishes, 60 GHz, LTE/5G CPEs,
+  LoRa gateways and passive antennas.
+- `tools/scrape_ubiquiti.py` — Ubiquiti's structured techspecs JSON (per-band
+  gain and conducted TX power for current products; the official datasheet
+  HTML table for older airMAX/LTU products). **55 devices** across UniFi
+  Wi-Fi, airMAX/LTU/airFiber/Wave PtP and 60 GHz.
+
+Every scraped record carries `spec_confidence: "datasheet"`, a `provenance`
+naming the exact page, and a machine-checkable `source_url`. Products whose
+pages expose no RF figures are **skipped, never guessed**; fields the vendor
+does not publish stay null. Two CI gates enforce this at scale:
+*physical-sanity bounds on every entry* (which caught a real sign-parsing bug
+during the campaign) and *datasheet-claims-carry-a-source-URL*, plus a floor
+asserting the catalog stays ≥ 150 devices and majority datasheet-grade.
+
+Scaling to 500+ is now an incremental exercise — one scraper per uniform
+vendor source (Cambium, Teltonika, TP-Link Omada are the natural next
+targets), each subject to the same gates.
+
 ---
 
 ## Totals
 
 | Metric | Count |
 |---|---|
-| **Total catalog entries** | **52** |
-| Curated, richly-typed entries (this audit) | 39 |
+| **Total catalog entries** | **194** |
+| Datasheet-grade entries (verbatim vendor specs, source URL on record) | 143 |
+| Curated published-typical / class-reference entries | 38 |
 | Legacy generic profiles (retained) | 13 |
-| OEM rebrands merged by dedup | 2 |
+| OEM rebrands / declared variants merged by dedup | 2 |
 
 ## By equipment class
 
 | Equipment class | Count |
 |---|---|
-| Macro-cellular antenna (`macro_antenna`) | 6 |
-| Massive-MIMO active radio (`massive_mimo`) | 4 |
-| PtP microwave (`microwave_ptp`) | 6 |
-| mmWave backhaul, E/V-band (`mmwave_ptp`) | 2 |
-| Leaky feeder / radiating cable (`leaky_feeder`) | 4 |
-| Tunnel / confined-space antenna (`tunnel_antenna`) | 1 |
-| LMR / PMR / TETRA repeater (`lmr_repeater`) | 5 |
-| LMR base / vehicular antenna (`lmr_antenna`) | 2 |
-| Enterprise Wi-Fi AP (`wifi_ap`) | 4 |
-| IoT / LoRaWAN gateway (`iot_gateway`) | 3 |
-| Embedded IoT / RedCap module (`iot_module`) | 1 |
-| GNSS / GPS (`gnss`) | 1 |
+| Enterprise / outdoor Wi-Fi AP (`wifi_ap`) | 92 |
+| PtP / fixed-wireless radio (`microwave_ptp`) | 26 |
+| LTE/5G CPE / cellular router (`lte_cpe`) | 23 |
 | Legacy generic profiles | 13 |
+| IoT / LoRaWAN gateway (`iot_gateway`) | 8 |
+| Macro-cellular antenna (`macro_antenna`) | 6 |
+| LMR / PMR / TETRA repeater (`lmr_repeater`) | 5 |
+| Fixed-wireless (WISP) antenna (`wisp_antenna`) | 5 |
+| Leaky feeder / radiating cable (`leaky_feeder`) | 4 |
+| Massive-MIMO active radio (`massive_mimo`) | 4 |
+| mmWave backhaul, E/V/60 GHz (`mmwave_ptp`) | 3 |
+| LMR base / vehicular antenna (`lmr_antenna`) | 2 |
+| GNSS / GPS (`gnss`) | 1 |
+| Embedded IoT / RedCap module (`iot_module`) | 1 |
+| Tunnel / confined-space antenna (`tunnel_antenna`) | 1 |
 
 ## By continent / region of origin
 
 | Region | Count |
 |---|---|
-| North America | 14 |
-| Europe | 12 |
+| Europe | 99 |
+| North America | 69 |
+| Unknown | 13 |
 | Asia | 10 |
 | Middle East | 2 |
 | Oceania | 1 |
-| Unspecified (legacy generic) | 13 |
-
-Vendors represented include CommScope, Kathrein/Ericsson, RFS/Amphenol, Huawei,
-ZTE, Nokia, Comba, Tongyu, Cambium, Ceragon, Aviat, Siklu, NEC, Mimosa, Motorola
-Solutions, Hytera, Tait, Sinclair, Kerlink, MultiTech, RAKwireless, Seeed,
-Quectel and u-blox — spanning tier-1 OEMs, regional leaders (Comba/Tongyu in
-Asia/Africa), and niche industrial/mining suppliers.
 
 ## By spec confidence
 
 | Confidence | Count | Meaning |
 |---|---|---|
-| `datasheet` | 1 | verified against a manufacturer datasheet |
+| `datasheet` | 143 | verbatim vendor-published specs, machine-traceable `source_url` on every record |
 | `published_typical` | 8 | real model, well-established public planning specs |
 | `class_reference` | 30 | real family, engineering-standard class figures (confirm SKU) |
 | legacy | 13 | pre-existing generic planning profiles |
@@ -103,12 +128,13 @@ Asia/Africa), and niche industrial/mining suppliers.
    Equipment Selector and physics engine require (band midpoint → `freq_mhz`,
    `rf_specs.gain_dbi` → `antenna_gain_dbi`, class → default technology preset +
    propagation model), while the full detail is retained.
-2. **Deduplicate** — merges re-branded OEM hardware, but *only on real evidence*:
-   a shared `oem_reference` (reference-design / ODM id, even across
-   manufacturers), or the same manufacturer with datasheet-precise identical
-   specs (a jacket/variant of one RF core). **Coincident class-reference
-   ballparks never merge** — Huawei and ZTE sharing a 64T64R/53 dBm envelope stay
-   distinct, because equal planning specs are not proof of the same device.
+2. **Deduplicate** — merges re-branded OEM hardware, but *only on explicit
+   evidence*: a shared `oem_reference` (reference-design / ODM id, even across
+   manufacturers), or the same manufacturer with a declared `variant_group`
+   (a jacket/packaging variant of one RF core, stated in the source record).
+   **Spec coincidence never merges** — at catalog scale even datasheet-precise
+   reduced fingerprints collide (two different Wi-Fi APs both "30 dBm / 6 dBi /
+   5 GHz"), so equal specs are not proof of the same device.
 3. **Emit** — writes `hardware_catalog.json` (merged with the legacy profiles),
    idempotently, with the counts above in `_meta`.
 

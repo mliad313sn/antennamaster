@@ -1,0 +1,2007 @@
+{
+ "_source": "Ubiquiti official techspecs (techspecs.ui.com) structured specification JSON, fetched per product. Every RF value is the vendor's published figure (conducted TX power, per-band antenna gain); products without RF specs are skipped. datasheet_url links the official PDF.",
+ "devices": [
+  {
+   "id": "ubiquiti-af-5",
+   "manufacturer": "Ubiquiti",
+   "model": "airFiber 5 GHz Mid-Band Bridge",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5470.0,
+     5950.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 23.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 23.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 6.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/af-5 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/af-5"
+  },
+  {
+   "id": "ubiquiti-af-5u",
+   "manufacturer": "Ubiquiti",
+   "model": "airFiber 5 GHz High-Band Bridge",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5725.0,
+     6200.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 23.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 23.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 6.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/af-5u (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/af-5u"
+  },
+  {
+   "id": "ubiquiti-af60-xr",
+   "manufacturer": "Ubiquiti",
+   "model": "airFiber 60 Xtreme-Range",
+   "equipment_class": "mmwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150.0,
+     5875.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 26.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 26.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 5.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/60ghz-wireless/af60-xr (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/60ghz-wireless/af60-xr"
+  },
+  {
+   "id": "ubiquiti-am-9m13-120",
+   "manufacturer": "Ubiquiti",
+   "model": "airMAX 900 MHz, 13 dBi, 120º Sector Antenna",
+   "equipment_class": "wisp_antenna",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     902.0,
+     928.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 13.8,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 13.8
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 109.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/am-9m13-120 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/am-9m13-120"
+  },
+  {
+   "id": "ubiquiti-amy-9m16x2",
+   "manufacturer": "Ubiquiti",
+   "model": "airMAX 900 MHz,16 dBi, 2x2 Yagi Antenna, 2-Pack",
+   "equipment_class": "wisp_antenna",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     902.0,
+     928.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 16.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 16.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 34.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/amy-9m16x2 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/amy-9m16x2"
+  },
+  {
+   "id": "ubiquiti-e7",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point E7",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 30.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 6.0
+     },
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 5.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/e7 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/e7"
+  },
+  {
+   "id": "ubiquiti-e7-audience-indoor",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point E7 Audience Indoor",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 15.0,
+    "max_tx_power_dbm": 30.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 15.0
+     },
+     "5-ghz": {
+      "gain_dbi": 15.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 50.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/e7-audience-indoor (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/e7-audience-indoor"
+  },
+  {
+   "id": "ubiquiti-e7-audience-us",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point E7 Audience",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 15.0,
+    "max_tx_power_dbm": 30.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 15.0
+     },
+     "5-ghz": {
+      "gain_dbi": 15.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 50.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/e7-audience-us (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/e7-audience-us"
+  },
+  {
+   "id": "ubiquiti-e7-campus-indoor",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point E7 Campus Indoor",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 12.0,
+    "max_tx_power_dbm": 30.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 12.0
+     },
+     "5-ghz": {
+      "gain_dbi": 12.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 9.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 90.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/e7-campus-indoor (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/e7-campus-indoor"
+  },
+  {
+   "id": "ubiquiti-e7-campus-us",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point E7 Campus",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 12.0,
+    "max_tx_power_dbm": 30.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 12.0
+     },
+     "5-ghz": {
+      "gain_dbi": 12.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 9.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 90.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/e7-campus-us (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/e7-campus-us"
+  },
+  {
+   "id": "ubiquiti-locom2",
+   "manufacturer": "Ubiquiti",
+   "model": "airMAX NanoStation M2 loco",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     2412.0,
+     2462.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 8.5,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 8.5
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 60.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/locom2 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/locom2"
+  },
+  {
+   "id": "ubiquiti-ltu-lite-us",
+   "manufacturer": "Ubiquiti",
+   "model": "LTU Lite",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     4800.0,
+     6200.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 13.0,
+    "max_tx_power_dbm": 22.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 13.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 45.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/ltu-lite-us (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/ltu-lite-us"
+  },
+  {
+   "id": "ubiquiti-ltu-lr",
+   "manufacturer": "Ubiquiti",
+   "model": "LTU Long-Range",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     4800.0,
+     6200.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 26.0,
+    "max_tx_power_dbm": 22.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 26.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/ltu-lr (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/ltu-lr"
+  },
+  {
+   "id": "ubiquiti-ltu-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "LTU Pro",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     4800.0,
+     6200.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 24.0,
+    "max_tx_power_dbm": 22.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 24.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 14.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/ltu-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/ltu-pro"
+  },
+  {
+   "id": "ubiquiti-ltu-rocket",
+   "manufacturer": "Ubiquiti",
+   "model": "LTU Rocket",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     4800.0,
+     6200.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "max_tx_power_dbm": 29.0,
+    "per_band": {}
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/ltu-rocket (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/ltu-rocket"
+  },
+  {
+   "id": "ubiquiti-pbe-m2-400",
+   "manufacturer": "Ubiquiti",
+   "model": "airMAX PowerBeam M2 400 mm Bridge",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     2405.0,
+     2475.0
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 18.0,
+    "per_band": {
+     "unbanded": {
+      "gain_dbi": 18.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/pbe-m2-400 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/pbe-m2-400"
+  },
+  {
+   "id": "ubiquiti-u-airwire",
+   "manufacturer": "Ubiquiti",
+   "model": "AirWire",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 11.0,
+    "max_tx_power_dbm": 25.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 11.0
+     },
+     "5-ghz": {
+      "gain_dbi": 11.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u-airwire (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u-airwire"
+  },
+  {
+   "id": "ubiquiti-u6-enterprise",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Enterprise",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 6.0
+     },
+     "5-ghz": {
+      "gain_dbi": 5.3
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.2
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-enterprise (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-enterprise"
+  },
+  {
+   "id": "ubiquiti-u6-enterprise-iw",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Enterprise In-Wall",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.8,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 5.8
+     },
+     "5-ghz": {
+      "gain_dbi": 5.8
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-enterprise-iw (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-enterprise-iw"
+  },
+  {
+   "id": "ubiquiti-u6-extender",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Extender",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 5.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-extender (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-extender"
+  },
+  {
+   "id": "ubiquiti-u6-iw",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 In-Wall",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.9,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 5.9
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 5.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-iw (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-iw"
+  },
+  {
+   "id": "ubiquiti-u6-lr",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Long-Range",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.5,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 5.5
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-lr (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-lr"
+  },
+  {
+   "id": "ubiquiti-u6-mesh",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Mesh",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 5.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-mesh (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-mesh"
+  },
+  {
+   "id": "ubiquiti-u6-mesh-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Mesh Pro",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 8.0,
+    "max_tx_power_dbm": 27.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 8.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 8.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-mesh-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-mesh-pro"
+  },
+  {
+   "id": "ubiquiti-u6-plus",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Plus",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.4,
+    "max_tx_power_dbm": 23.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 5.4
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-plus (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-plus"
+  },
+  {
+   "id": "ubiquiti-u6-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U6 Pro",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u6-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u6-pro"
+  },
+  {
+   "id": "ubiquiti-u7-iw",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 In-Wall",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 8.0,
+    "max_tx_power_dbm": 24.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 8.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-iw (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-iw"
+  },
+  {
+   "id": "ubiquiti-u7-lite",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Lite",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.0,
+    "max_tx_power_dbm": 24.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 5.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-lite (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-lite"
+  },
+  {
+   "id": "ubiquiti-u7-lr",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Long-Range",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 27.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-lr (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-lr"
+  },
+  {
+   "id": "ubiquiti-u7-mesh",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Mesh",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 10.0,
+    "max_tx_power_dbm": 24.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 10.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-mesh (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-mesh"
+  },
+  {
+   "id": "ubiquiti-u7-outdoor",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Outdoor",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 12.5,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 12.5
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 8.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 45.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-outdoor (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-outdoor"
+  },
+  {
+   "id": "ubiquiti-u7-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 5.8
+     },
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro"
+  },
+  {
+   "id": "ubiquiti-u7-pro-max",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro Max",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 29.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 5.9
+     },
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro-max (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro-max"
+  },
+  {
+   "id": "ubiquiti-u7-pro-outdoor-us",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro Outdoor",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 11.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 10.0
+     },
+     "5-ghz": {
+      "gain_dbi": 11.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 8.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 90.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro-outdoor-us (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro-outdoor-us"
+  },
+  {
+   "id": "ubiquiti-u7-pro-wall",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro Wall",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 6.0
+     },
+     "5-ghz": {
+      "gain_dbi": 5.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro-wall (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro-wall"
+  },
+  {
+   "id": "ubiquiti-u7-pro-xg",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro XG",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 6.0
+     },
+     "5-ghz": {
+      "gain_dbi": 5.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro-xg (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro-xg"
+  },
+  {
+   "id": "ubiquiti-u7-pro-xg-wall",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro XG Wall",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 6.0
+     },
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro-xg-wall (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro-xg-wall"
+  },
+  {
+   "id": "ubiquiti-u7-pro-xgs",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point U7 Pro XGS",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.0,
+    "max_tx_power_dbm": 29.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 6.0
+     },
+     "5-ghz": {
+      "gain_dbi": 6.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/u7-pro-xgs (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/u7-pro-xgs"
+  },
+  {
+   "id": "ubiquiti-uap-ac-iw",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point AC In-Wall",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 2.0,
+    "max_tx_power_dbm": 20.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 2.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 1.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uap-ac-iw (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uap-ac-iw"
+  },
+  {
+   "id": "ubiquiti-uap-ac-lite",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point AC Lite",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 3.0,
+    "max_tx_power_dbm": 20.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 3.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uap-ac-lite (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uap-ac-lite"
+  },
+  {
+   "id": "ubiquiti-uap-ac-mesh",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point AC Mesh",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 4.0,
+    "max_tx_power_dbm": 20.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 4.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uap-ac-mesh (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uap-ac-mesh"
+  },
+  {
+   "id": "ubiquiti-uap-ac-mesh-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point AC Mesh Pro",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 8.0,
+    "max_tx_power_dbm": 22.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 8.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 8.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uap-ac-mesh-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uap-ac-mesh-pro"
+  },
+  {
+   "id": "ubiquiti-uap-ac-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point AC Pro",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 3.0,
+    "max_tx_power_dbm": 22.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 3.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uap-ac-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uap-ac-pro"
+  },
+  {
+   "id": "ubiquiti-uap-iw-hd",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point In-Wall HD",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 4.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 4.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 1.8
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uap-iw-hd (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uap-iw-hd"
+  },
+  {
+   "id": "ubiquiti-ubb",
+   "manufacturer": "Ubiquiti",
+   "model": "Building-to-Building Bridge",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     57000,
+     66000
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 17.2,
+    "max_tx_power_dbm": 25.0,
+    "per_band": {
+     "60-ghz": {
+      "gain_dbi": 17.2
+     },
+     "5-ghz": {
+      "gain_dbi": 10.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 2.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/ubb (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/ubb"
+  },
+  {
+   "id": "ubiquiti-ubb-xg",
+   "manufacturer": "Ubiquiti",
+   "model": "Building-to-Building Bridge XG",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     57000,
+     66000
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 21.0,
+    "max_tx_power_dbm": 23.0,
+    "per_band": {
+     "60-ghz": {
+      "gain_dbi": 21.0
+     },
+     "5-ghz": {
+      "gain_dbi": 14.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 2.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/ubb-xg (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/ubb-xg"
+  },
+  {
+   "id": "ubiquiti-udb",
+   "manufacturer": "Ubiquiti",
+   "model": "UniFi Device Bridge",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 5.0,
+    "max_tx_power_dbm": 21.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 5.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 360.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/udb (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/udb"
+  },
+  {
+   "id": "ubiquiti-udb-pro",
+   "manufacturer": "Ubiquiti",
+   "model": "Device Bridge Pro",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 19.0,
+    "max_tx_power_dbm": 25.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 19.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/udb-pro (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/udb-pro"
+  },
+  {
+   "id": "ubiquiti-udb-pro-sector",
+   "manufacturer": "Ubiquiti",
+   "model": "Device Bridge Pro Sector",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 17.0,
+    "max_tx_power_dbm": 25.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 17.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/udb-pro-sector (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/udb-pro-sector"
+  },
+  {
+   "id": "ubiquiti-udb-switch",
+   "manufacturer": "Ubiquiti",
+   "model": "Device Bridge Switch",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 8.0,
+    "max_tx_power_dbm": 26.0,
+    "per_band": {
+     "6-ghz": {
+      "gain_dbi": 8.0
+     },
+     "5-ghz": {
+      "gain_dbi": 8.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/udb-switch (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/udb-switch"
+  },
+  {
+   "id": "ubiquiti-uk-ultra",
+   "manufacturer": "Ubiquiti",
+   "model": "Swiss Army Knife",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 6.1,
+    "max_tx_power_dbm": 20.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 6.1
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 4.7
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uk-ultra (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uk-ultra"
+  },
+  {
+   "id": "ubiquiti-unifi-ac-lr",
+   "manufacturer": "Ubiquiti",
+   "model": "Access Point AC Long-Range",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 3.0,
+    "max_tx_power_dbm": 24.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 3.0
+     },
+     "2dot4-ghz": {
+      "gain_dbi": 3.0
+     }
+    }
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/unifi-ac-lr (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/unifi-ac-lr"
+  },
+  {
+   "id": "ubiquiti-uwb-xg",
+   "manufacturer": "Ubiquiti",
+   "model": "WiFi BaseStation XG",
+   "equipment_class": "wifi_ap",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "gain_dbi": 15.0,
+    "max_tx_power_dbm": 25.0,
+    "per_band": {
+     "5-ghz": {
+      "gain_dbi": 15.0
+     }
+    }
+   },
+   "spatial_characteristics": {
+    "h_beamwidth_deg": 50.0
+   },
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/unifi/wifi/uwb-xg (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/unifi/wifi/uwb-xg"
+  },
+  {
+   "id": "ubiquiti-wave-mlo5",
+   "manufacturer": "Ubiquiti",
+   "model": "Wave MLO5",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "max_tx_power_dbm": 24.0,
+    "per_band": {}
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/wave-mlo5 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/wave-mlo5"
+  },
+  {
+   "id": "ubiquiti-wave-mlo6",
+   "manufacturer": "Ubiquiti",
+   "model": "Wave MLO6",
+   "equipment_class": "microwave_ptp",
+   "region_of_origin": "North America",
+   "environment_rating": {
+    "ip": null,
+    "atex": false,
+    "temp_c": null
+   },
+   "frequency_bands_mhz": [
+    [
+     5150,
+     5875
+    ],
+    [
+     5925,
+     7125
+    ]
+   ],
+   "rf_specs": {
+    "impedance_ohm": 50,
+    "max_tx_power_dbm": 24.0,
+    "per_band": {}
+   },
+   "spatial_characteristics": {},
+   "provenance": "Ubiquiti official datasheet values via techspecs https://techspecs.ui.com/uisp/wireless/wave-mlo6 (structured specification JSON; conducted TX max, best gain across bands).",
+   "spec_confidence": "datasheet",
+   "source_url": "https://techspecs.ui.com/uisp/wireless/wave-mlo6"
+  }
+ ]
+}

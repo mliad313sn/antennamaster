@@ -99,3 +99,22 @@ def test_pipeline_handles_600_records(tmp_path):
     # Every surviving record kept its provenance & confidence.
     for e in out["equipment"]:
         assert e["provenance"] and e["spec_confidence"] in VALID_CONFIDENCE
+
+
+def test_datasheet_claims_carry_a_source_url():
+    """Every datasheet-confidence record must be machine-traceable to its
+    source page — the anti-hallucination audit trail."""
+    for e in _catalog():
+        if e.get("spec_confidence") == "datasheet":
+            assert str(e.get("source_url", "")).startswith("http"), \
+                f"{e['id']}: datasheet confidence without a source_url"
+
+
+def test_catalog_scale_and_confidence_mix():
+    """The catalog must stay majority-verified as it grows: at least half of
+    all entries carry datasheet-grade confidence, and at least 150 devices
+    total (the ingested-vendor baseline)."""
+    entries = _catalog()
+    assert len(entries) >= 150
+    ds = sum(1 for e in entries if e.get("spec_confidence") == "datasheet")
+    assert ds / len(entries) >= 0.5

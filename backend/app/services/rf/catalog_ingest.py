@@ -46,6 +46,8 @@ CLASS_DEFAULTS: dict[str, tuple[str, str, str]] = {
     "lmr_repeater": ("LMR / PMR repeater", "tetra400", "okumura_hata"),
     "lmr_antenna": ("LMR base / vehicular antenna", "vhf150", "okumura_hata"),
     "wifi_ap": ("Enterprise Wi-Fi AP", "wifi5800", "tr38901_umi"),
+    "lte_cpe": ("LTE/5G CPE / cellular router", "lte1800", "cost231_hata"),
+    "wisp_antenna": ("Fixed-wireless (WISP) antenna", "wifi5800", "fspl"),
     "iot_gateway": ("IoT / LoRaWAN gateway", "lora868", "okumura_hata"),
     "iot_module": ("Embedded IoT / RedCap module", "lora868", "okumura_hata"),
     "gnss": ("GNSS / GPS tracker", "custom", "fspl"),
@@ -64,6 +66,7 @@ _CLASS_FALLBACK = {
     "small_cell": (37.0, -100.0), "microwave_ptp": (20.0, -70.0),
     "mmwave_ptp": (10.0, -60.0), "leaky_feeder": (20.0, -95.0),
     "tunnel_antenna": (30.0, -100.0), "wifi_ap": (23.0, -82.0),
+    "lte_cpe": (23.0, -95.0), "wisp_antenna": (23.0, -82.0),
     "iot_gateway": (16.0, -137.0), "iot_module": (14.0, -110.0),
     "gnss": (0.0, -160.0),
 }
@@ -127,6 +130,11 @@ def normalize(rec: dict) -> dict | None:
         out["also_sold_as"] = list(rec["also_sold_as"])
     if rec.get("oem_reference"):
         out["oem_reference"] = rec["oem_reference"]
+    if rec.get("variant_group"):
+        out["variant_group"] = rec["variant_group"]
+    for extra in ("source_url", "datasheet_url"):
+        if rec.get(extra):
+            out[extra] = rec[extra]
     return out
 
 
@@ -160,22 +168,27 @@ def _dedup_key(e: dict):
     device sold under different labels.
 
     Coincident *planning ballparks* are NOT evidence of a rebrand — many
-    genuinely different products share a 65°/18 dBi or a 64T64R/53 dBm envelope.
-    So a merge requires real evidence of shared hardware:
+    genuinely different products share a 65°/18 dBi or a 64T64R/53 dBm envelope,
+    and at catalog scale even datasheet-precise reduced fingerprints collide
+    (two different Wi-Fi APs can both be "30 dBm / 6 dBi / 5+6 GHz").  So a
+    merge requires EXPLICIT evidence of shared hardware:
 
-      * an explicit ``oem_reference`` (a shared ODM / reference-design id) — the
-        true signature of a rebrand, even across manufacturers; OR
-      * the SAME manufacturer with datasheet-precise, identical specs (a jacket/
-        variant of one RF core, e.g. a fire-retardant version of a cable).
+      * an ``oem_reference`` (a shared ODM / reference-design id) — the true
+        signature of a rebrand, even across manufacturers; OR
+      * the SAME manufacturer with a shared ``variant_group`` declaration (a
+        jacket/packaging variant of one RF core, e.g. the fire-retardant
+        version of a radiating cable) — stated in the source record, never
+        inferred from spec coincidence.
 
     Everything else stays distinct (returns a unique object identity).
     """
     oem = e.get("oem_reference")
     if oem:
         return ("oem", oem)
-    if e.get("spec_confidence") == "datasheet":
-        return ("vendor_fp", e.get("vendor"), _fingerprint(e))
-    return ("unique", id(e))     # never auto-merge coarse/estimated specs
+    vg = e.get("variant_group")
+    if vg:
+        return ("variant", e.get("vendor"), vg)
+    return ("unique", id(e))     # never auto-merge on spec coincidence
 
 
 def deduplicate(entries: list[dict]) -> tuple[list[dict], int]:

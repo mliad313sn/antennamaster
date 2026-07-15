@@ -67,19 +67,29 @@ def test_dedup_does_not_merge_distinct_products_with_coincident_specs():
     assert len(merged) == 2 and n == 0
 
 
-def test_dedup_merges_same_vendor_datasheet_variants():
-    # Same vendor, datasheet-precise, identical fingerprint = a jacket variant.
+def test_dedup_merges_same_vendor_declared_variants_only():
+    # A jacket variant merges ONLY via an explicit variant_group declaration.
     rlkw = _mk("rlkw", "RFS", cls="leaky_feeder", gain=0, power=20, sens=-95,
                conf="datasheet", band=(75, 1000))
     rlku = _mk("rlku", "RFS", cls="leaky_feeder", gain=0, power=20, sens=-95,
                conf="datasheet", band=(75, 1000))
+    rlkw["variant_group"] = rlku["variant_group"] = "rlk-114"
     merged, n = deduplicate([rlkw, rlku])
     assert len(merged) == 1 and n == 1
-    # But a DIFFERENT vendor with the same datasheet specs stays separate.
+    # Same vendor + identical datasheet specs WITHOUT the declaration stays
+    # separate: at catalog scale, reduced fingerprints of genuinely different
+    # products collide (e.g. two Wi-Fi APs both "30 dBm / 6 dBi / 5 GHz").
+    ap1 = _mk("ap1", "UBNT", cls="wifi_ap", gain=6, power=30, sens=-90,
+              conf="datasheet", band=(5150, 5875))
+    ap2 = _mk("ap2", "UBNT", cls="wifi_ap", gain=6, power=30, sens=-90,
+              conf="datasheet", band=(5150, 5875))
+    merged2, n2 = deduplicate([ap1, ap2])
+    assert len(merged2) == 2 and n2 == 0
+    # And a different vendor never merges without a shared oem_reference.
     other = _mk("cs", "CommScope", cls="leaky_feeder", gain=0, power=20,
                 sens=-95, conf="datasheet", band=(75, 1000))
-    merged2, n2 = deduplicate([rlkw, other])
-    assert len(merged2) == 2 and n2 == 0
+    merged3, n3 = deduplicate([rlkw, other])
+    assert len(merged3) == 2 and n3 == 0
 
 
 # ----------------------------------------------------- pipeline over sources
