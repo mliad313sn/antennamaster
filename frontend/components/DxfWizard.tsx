@@ -9,12 +9,13 @@
  * validation) and renders it on the map.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { georeference, uploadDxf } from '@/lib/api';
 import type {
   ControlPointPair, GeorefMode, GeorefResponse, LayerInfo, UploadResponse,
 } from '@/lib/types';
 
-const STEPS = ['Upload DXF', 'Select layers', 'Georeference'] as const;
+
 
 export interface DxfWizardProps {
   onClose: () => void;
@@ -22,6 +23,8 @@ export interface DxfWizardProps {
 }
 
 export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) {
+  const { t } = useTranslation();
+  const STEPS = [t('dxf.stepUpload'), t('dxf.stepLayers'), t('dxf.stepGeoref')];
   const [step, setStep] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -72,9 +75,11 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
       if (h) {
         setMode(h.suggested_mode);
         if (h.suggested_unit_scale) setUnitScale(h.suggested_unit_scale);
-        setHint(`Auto-detected: ${h.suggested_mode.replace('_', ' ')} mode, `
-          + `units in ${h.suggested_unit === 'ft' ? 'feet' : 'meters'} — ${h.reason}. `
-          + 'Adjust below if wrong.');
+        setHint(t('dxf.autoDetect', {
+          mode: h.suggested_mode.replace('_', ' '),
+          unit: h.suggested_unit === 'ft' ? 'feet' : 'meters',
+          reason: h.reason,
+        }));
       }
       setStep(1);
     } catch (e) {
@@ -146,8 +151,8 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Import DXF terrain</h2>
-          <button onClick={onClose} aria-label="Close">✕</button>
+          <h2>{t('dxf.importTitle')}</h2>
+          <button onClick={onClose} aria-label={t('dxf.close')}>✕</button>
         </div>
         <div className="modal-body">
           <div className="steps">
@@ -160,11 +165,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
 
           {step === 0 && (
             <div>
-              <p className="hint">
-                Upload a DXF containing relief data (survey points, contour polylines,
-                3D faces, meshes or spot-height text). It will be fused as a
-                high-resolution patch over the global SRTM base terrain.
-              </p>
+              <p className="hint">{t('dxf.uploadHint')}</p>
               <div
                 className={`dropzone ${dragOver ? 'over' : ''}`}
                 onClick={() => fileRef.current?.click()}
@@ -176,26 +177,23 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                   const f = e.dataTransfer.files?.[0];
                   if (f) handleFile(f);
                 }}
-                role="button" tabIndex={0} aria-label="Upload DXF file"
+                role="button" tabIndex={0} aria-label={t('dxf.uploadAria')}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileRef.current?.click(); } }}
               >
-                <b>Drop your DXF here</b><br />
-                <span style={{ fontSize: 12 }}>or click to browse — CRS and units are auto-detected</span>
+                <b>{t('dxf.dropHere')}</b><br />
+                <span style={{ fontSize: 12 }}>{t('dxf.dropBrowse')}</span>
               </div>
               <input
                 ref={fileRef} type="file" accept=".dxf" style={{ display: 'none' }}
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
               />
-              {busy && <p className="hint">Parsing DXF…</p>}
+              {busy && <p className="hint">{t('dxf.parsing')}</p>}
             </div>
           )}
 
           {step === 1 && upload && (
             <div>
-              <p className="hint">
-                Select the layers that carry terrain elevations. Layers with varying
-                Z values are preselected. {selectedPointCount.toLocaleString()} elevation
-                points selected.
-              </p>
+              <p className="hint">{t('dxf.layersHint', { points: selectedPointCount.toLocaleString() })}</p>
               {upload.layers.map((l: LayerInfo) => (
                 <div key={l.name} className="layer-row" onClick={() => toggleLayer(l.name)}>
                   <input
@@ -205,10 +203,10 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                   />
                   <span className="name">{l.name}</span>
                   <span className="meta">
-                    {l.point_count.toLocaleString()} pts
+                    {l.point_count.toLocaleString()} {t('dxf.pts')}
                     {l.z_min !== null && l.z_max !== null &&
                       ` · Z ${l.z_min.toFixed(1)}–${l.z_max.toFixed(1)}`}
-                    {' · '}{l.entity_types.join(', ') || 'empty'}
+                    {' · '}{l.entity_types.join(', ') || t('dxf.empty')}
                   </span>
                 </div>
               ))}
@@ -219,83 +217,67 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
             <div>
               {hint && <div className="warning-box" style={{ marginBottom: 10 }}>💡 {hint}</div>}
               <div className="mode-tabs">
-                <button className={mode === 'known_crs' ? 'active' : ''} onClick={() => setMode('known_crs')}>
-                  Known CRS
-                </button>
-                <button className={mode === 'control_points' ? 'active' : ''} onClick={() => setMode('control_points')}>
-                  Control points
-                </button>
-                <button className={mode === 'origin_bearing' ? 'active' : ''} onClick={() => setMode('origin_bearing')}>
-                  Origin + rotation
-                </button>
+                <button className={mode === 'known_crs' ? 'active' : ''} onClick={() => setMode('known_crs')}>{t('dxf.modeKnownCrs')}</button>
+                <button className={mode === 'control_points' ? 'active' : ''} onClick={() => setMode('control_points')}>{t('dxf.modeControlPoints')}</button>
+                <button className={mode === 'origin_bearing' ? 'active' : ''} onClick={() => setMode('origin_bearing')}>{t('dxf.modeOrigin')}</button>
               </div>
 
               {mode === 'known_crs' && (
                 <div>
-                  <p className="hint">
-                    The DXF is drawn in a known projected coordinate system (UTM,
-                    Lambert, state plane…). Coordinates are reprojected to WGS84.
-                  </p>
-                  <label>CRS (EPSG code or PROJ string)</label>
+                  <p className="hint">{t('dxf.knownCrsHint')}</p>
+                  <label>{t('dxf.crsLabel')}</label>
                   <input value={crs} onChange={(e) => setCrs(e.target.value)} placeholder="EPSG:32633" />
                 </div>
               )}
 
               {mode === 'control_points' && (
                 <div>
-                  <p className="hint">
-                    Pair 2–3 DXF X/Y locations with their real-world Lat/Lon. A 2D
-                    Helmert (similarity) transform is solved by least squares; the
-                    residual error in meters is reported after applying.
-                  </p>
+                  <p className="hint">{t('dxf.cpHint')}</p>
                   {cps.map((cp, i) => (
                     <div key={i} className="cp-grid">
-                      <div><label>DXF X</label><input value={cp.dxf_x} onChange={(e) => setCp(i, 'dxf_x', e.target.value)} /></div>
-                      <div><label>DXF Y</label><input value={cp.dxf_y} onChange={(e) => setCp(i, 'dxf_y', e.target.value)} /></div>
-                      <div><label>Lat</label><input value={cp.lat} onChange={(e) => setCp(i, 'lat', e.target.value)} /></div>
-                      <div><label>Lon</label><input value={cp.lon} onChange={(e) => setCp(i, 'lon', e.target.value)} /></div>
+                      <div><label>{t('dxf.dxfX')}</label><input value={cp.dxf_x} onChange={(e) => setCp(i, 'dxf_x', e.target.value)} /></div>
+                      <div><label>{t('dxf.dxfY')}</label><input value={cp.dxf_y} onChange={(e) => setCp(i, 'dxf_y', e.target.value)} /></div>
+                      <div><label>{t('dxf.lat')}</label><input value={cp.lat} onChange={(e) => setCp(i, 'lat', e.target.value)} /></div>
+                      <div><label>{t('dxf.lon')}</label><input value={cp.lon} onChange={(e) => setCp(i, 'lon', e.target.value)} /></div>
                       <button
                         disabled={cps.length <= 2}
                         onClick={() => setCps((prev) => prev.filter((_, j) => j !== i))}
-                        title="Remove point"
+                        title={t('dxf.removePoint')}
                       >−</button>
                     </div>
                   ))}
                   <button
                     disabled={cps.length >= 3}
                     onClick={() => setCps((prev) => [...prev, { dxf_x: '0', dxf_y: '0', lat: '47', lon: '15' }])}
-                  >+ Add control point</button>
+                  >{t('dxf.addPoint')}</button>
                 </div>
               )}
 
               {mode === 'origin_bearing' && (
                 <div>
-                  <p className="hint">
-                    Anchor a known DXF point at a Lat/Lon, give the true bearing of
-                    the DXF +Y axis (0° = north-up drawing) and the drawing unit.
-                  </p>
+                  <p className="hint">{t('dxf.originHint')}</p>
                   <div className="row">
-                    <div><label>Origin latitude</label><input value={originLat} onChange={(e) => setOriginLat(e.target.value)} /></div>
-                    <div><label>Origin longitude</label><input value={originLon} onChange={(e) => setOriginLon(e.target.value)} /></div>
+                    <div><label>{t('dxf.originLat')}</label><input value={originLat} onChange={(e) => setOriginLat(e.target.value)} /></div>
+                    <div><label>{t('dxf.originLon')}</label><input value={originLon} onChange={(e) => setOriginLon(e.target.value)} /></div>
                   </div>
                   <div className="row">
-                    <div><label>DXF X at origin</label><input value={originX} onChange={(e) => setOriginX(e.target.value)} /></div>
-                    <div><label>DXF Y at origin</label><input value={originY} onChange={(e) => setOriginY(e.target.value)} /></div>
+                    <div><label>{t('dxf.dxfXOrigin')}</label><input value={originX} onChange={(e) => setOriginX(e.target.value)} /></div>
+                    <div><label>{t('dxf.dxfYOrigin')}</label><input value={originY} onChange={(e) => setOriginY(e.target.value)} /></div>
                   </div>
                   <div className="row">
-                    <div><label>Bearing of +Y axis (°)</label><input value={bearing} onChange={(e) => setBearing(e.target.value)} /></div>
+                    <div><label>{t('dxf.bearing')}</label><input value={bearing} onChange={(e) => setBearing(e.target.value)} /></div>
                   </div>
                 </div>
               )}
 
               <div className="row" style={{ marginTop: 10 }}>
                 <div>
-                  <label>Drawing units</label>
+                  <label>{t('dxf.drawingUnits')}</label>
                   <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
-                    <option value={1}>Meters (1 unit = 1 m)</option>
-                    <option value={0.3048}>Feet (1 unit = 0.3048 m)</option>
-                    <option value={0.9144}>Yards (1 unit = 0.9144 m)</option>
-                    <option value={0.01}>Centimeters</option>
+                    <option value={1}>{t('dxf.meters')}</option>
+                    <option value={0.3048}>{t('dxf.feet')}</option>
+                    <option value={0.9144}>{t('dxf.yards')}</option>
+                    <option value={0.01}>{t('dxf.centimeters')}</option>
                   </select>
                 </div>
               </div>
@@ -306,17 +288,13 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
         </div>
 
         <div className="modal-foot">
-          <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || busy}>
-            Back
-          </button>
+          <button onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || busy}>{t('dxf.back')}</button>
           {step === 1 && (
-            <button className="primary" disabled={selected.size === 0} onClick={() => setStep(2)}>
-              Next: georeference →
-            </button>
+            <button className="primary" disabled={selected.size === 0} onClick={() => setStep(2)}>{t('dxf.nextGeoref')}</button>
           )}
           {step === 2 && (
             <button className="primary" disabled={!georefValid || busy} onClick={applyGeoref}>
-              {busy ? 'Georeferencing…' : 'Apply georeferencing'}
+              {busy ? t('dxf.georeferencing') : t('dxf.applyGeoref')}
             </button>
           )}
         </div>
