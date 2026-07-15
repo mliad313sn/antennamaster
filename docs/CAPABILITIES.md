@@ -230,16 +230,19 @@ Earth / QGIS / ArcGIS), coverage PNG + **GeoTIFF (EPSG:4326)** + KMZ
 GroundOverlay, indoor heatmap PNG, hardware **BOM CSV** (fleet-scaled),
 branded PDF report. An "Export to GIS" menu surfaces the geospatial formats.
 
-**Hardware Catalog:** 52 equipment profiles across 12 classes (macro antennas,
+**Hardware Catalog:** 194 equipment profiles across 14 classes (macro antennas,
 Massive-MIMO radios, PtP/mmWave, **leaky feeders with real attenuation/coupling
-curves**, LMR/TETRA repeaters, tunnel antennas, Wi-Fi 6/6E, LoRaWAN/IoT, GNSS)
-from real vendors on 5 continents, each tagged with `provenance` and
-`spec_confidence` (datasheet / published_typical / class_reference); an
-Equipment Selector auto-fills the RF parameters, and the leaky-feeder studio
-autofills cable physics from the catalog. Ingestion pipeline with
-evidence-based OEM-rebrand dedup (`tools/ingest_catalog.py`); extensible via
-`catalog_sources/` or `AM_DATA_DIR/hardware_catalog.json`. Audit:
-`GLOBAL_INVENTORY_AUDIT.md`.
+curves**, LMR/TETRA repeaters, tunnel antennas, Wi-Fi 6/6E/7, LTE/5G CPEs,
+WISP antennas, LoRaWAN/IoT, GNSS) — **143 of them datasheet-grade, scraped
+verbatim from official vendor pages** (MikroTik 87, Ubiquiti 55; per-record
+`provenance` + machine-checkable `source_url`), the rest tagged
+published_typical / class_reference. CI gates enforce physical-sanity bounds,
+traceable provenance and a majority-datasheet floor. An Equipment Selector
+auto-fills the RF parameters, and the leaky-feeder studio autofills cable
+physics from the catalog. Ingestion pipeline with explicit-evidence dedup
+(`tools/ingest_catalog.py`, scrapers `tools/scrape_mikrotik.py` /
+`tools/scrape_ubiquiti.py`); extensible via `catalog_sources/` or
+`AM_DATA_DIR/hardware_catalog.json`. Audit: `GLOBAL_INVENTORY_AUDIT.md`.
 
 **Field-ready (PWA + offline maps):** installable web app with an offline
 service worker (app shell, map tiles, last API results) **plus a local
@@ -281,22 +284,32 @@ resource ownership on DXFs and antenna patterns. Full detail:
 
 ## 8. Known limits (honest boundaries)
 
-Propagation is empirical/38.901 + Deygout diffraction, plus a Longley-Rice-
-family **ITM** whose median reuses the validated Deygout physics and whose
-variability follows the ITM quantile formulation — a documented engineering
-model, **not** a byte-exact NTIA port (P.1546/P.452 still absent). Automatic
-clutter is statistical (ITU-R P.2108); real per-object 3D obstruction is
-available where a **drone LiDAR survey** is uploaded (surveyed footprint only),
-not yet from a global building-footprint database. SINR assumes worst-case co-channel reuse-1 (no frequency
-planning / scheduler model); there is coverage and an AP **capacity floor**,
-but no full traffic/Erlang dimensioning or throughput map. Multi-floor is a
-penetration term, not per-floor wall maps; outdoor building obstruction still
-requires a user-supplied DSM source (`AM_DSM_URL`). DAQ thresholds and the ITM
-assembly are documented engineering heuristics, not measured BER curves. The
-copilot's deterministic advice is offline; its optional prose narrator needs an
-API key (or a local model). Nominatim place search requires internet.
+The exact engines are proven where a public reference exists: the **NTIA ITM**
+(itmlogic port) reproduces the published Crystal Palace validation case to
+0.0 dB on all six quantiles (CI-gated ≤ 0.1 dB), and **ITU-R P.1812** runs the
+official SG3 reference code with the ITU digital maps; both are exposed in the
+UI with their environment parameters (climate zone, N₀, time/location
+percentages). P.1546 / P.452 / P.2001 remain absent. Per-pixel clutter comes
+from **ESA WorldCover 10 m** (P.1812 representative heights) and uploaded
+building footprints / **drone LiDAR** DSMs; a global 3D building database is
+still not bundled. Frequency/PCI planning, Erlang B/C, SINR→CQI throughput
+maps with saturation verdicts, P.530 availability, per-floor wall maps and the
+DAS tree solver are built and UI-exposed — the scheduler model is still
+airtime-share, not a per-TTI simulator, and DAQ thresholds remain documented
+engineering heuristics, not measured BER curves.
 
-**On the roadmap, not yet built:** per-pixel clutter from OSM/Overture building
-footprints + ESA WorldCover; capacity/traffic dimensioning beyond the AP floor;
-vision-assisted plan/photo reading; agentic optimization driving
-site-search/auto-placement toward a coverage-vs-CAPEX objective.
+**Field precision is deliberately marked unproven**: the drive-test pipeline
+(CSV/GPX ingestion, calibration fit, RMSE CI gates at 8 dB urban / 6 dB rural)
+is armed and proven end-to-end on labelled synthetic datasets, but no real
+measurement campaign has been ingested yet — the benchmark says so instead of
+inventing numbers. The hardware catalog (194 devices, 143 datasheet-grade) is
+majority-verified but far from exhaustive. The copilot's deterministic advice
+is offline; its optional prose narrator needs an API key (or a local model).
+Nominatim place search and first-use WorldCover/DEM tile fetches require
+internet.
+
+**On the roadmap, not yet built:** P.452/P.2001 interference coordination;
+real drive-test campaigns to close the field-RMSE gates; catalog growth to
+500+ via further vendor scrapers; vision-assisted plan/photo reading; agentic
+optimization driving site-search/auto-placement toward a coverage-vs-CAPEX
+objective.

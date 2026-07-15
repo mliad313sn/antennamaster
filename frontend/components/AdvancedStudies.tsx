@@ -145,8 +145,10 @@ function EmfTab() {
   const go = () => run(() => emfCompliance({
     freq_mhz: +freq, tx_power_dbm: +power, antenna_gain_dbi: +gain, standard: std,
   }));
+  const [pdfErr, setPdfErr] = useState<string | null>(null);
   const downloadPdf = async () => {
     setPdfBusy(true);
+    setPdfErr(null);
     try {
       const blob = await emfReportPdf({
         site: { name: 'AntennaMaster site' },
@@ -159,6 +161,8 @@ function EmfTab() {
       a.download = 'emf-compliance.pdf';
       a.click();
       URL.revokeObjectURL(url);
+    } catch (e) {
+      setPdfErr(e instanceof Error ? e.message : String(e));
     } finally {
       setPdfBusy(false);
     }
@@ -195,6 +199,7 @@ function EmfTab() {
           {pdfBusy ? t('advanced.running') : t('advanced.emfPdf')}
         </button>
       )}
+      {pdfErr && <div className="warning-box">{pdfErr}</div>}
     </div>
   );
 }

@@ -22,8 +22,8 @@
 | C4 Erlang + débit | **Livré** | Ancres table Erlang exactes ; échelle CQI 3GPP ; verdict saturation |
 | C5 Disponibilité P.530 | **Livré** | Multipath + pluie P.837/P.838 → % annuel + « nines » |
 | C6 Étages + arbre DAS | **Livré** | Comptabilité dB exacte par composant ; immeuble entier en un appel |
-| C7 Catalogue ≥500 vérifiés | **Partiel (invariant livré)** | Garde CI zéro-hallucination + preuve 600 records ; le compte croît uniquement par vraies fiches techniques |
-| C8 Benchmark précision | **Livré** | `PRECISION_BENCHMARK.md` régénéré en CI ; section terrain refuse d'inventer |
+| C7 Catalogue ≥500 vérifiés | **Partiel — 194 dont 143 datasheet** | Scrapers officiels MikroTik (87) + Ubiquiti (55) copiant les specs constructeur mot à mot, `source_url` traçable sur chaque fiche ; gardes CI : bornes physiques, provenance obligatoire, plancher ≥150 & majorité datasheet. Croissance = un scraper par constructeur (Cambium, Teltonika, TP-Link ensuite) |
+| C8 Benchmark précision | **Livré — portes RMSE armées** | `PRECISION_BENCHMARK.md` régénéré en CI ; ingestion CSV/GPX de drive-tests (`tools/ingest_drive_test.py`) ; 2 jeux synthétiques *étiquetés comme tels* prouvent la chaîne ingest→prédiction→fit→porte (RMSE ≈ σ injecté, sous les portes 8/6 dB) ; la précision terrain réelle reste **non prouvée** tant qu'aucune campagne réelle n'est ingérée — jamais de chiffres inventés |
 | C9 Dossiers réglementaires | **Livré** | Dossier EMF PDF prêt à déposer (contenu testé) |
 
 Après exécution : **86 points d'accès, 256 fonctions de test (266 cas), 0 régression.**
