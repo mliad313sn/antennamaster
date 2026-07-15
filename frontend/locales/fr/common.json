@@ -10,7 +10,8 @@
     "pitch": "Présentation",
     "signIn": "Se connecter",
     "signOut": "Se déconnecter",
-    "account": "Compte"
+    "account": "Compte",
+    "live": "Direct"
   },
   "locale": {
     "label": "Langue",
@@ -396,5 +397,27 @@
     "exit": "Quitter la 3D",
     "unavailable": "Vue 3D indisponible",
     "panelHint": "Globe 3D immersif avec la zone de Fresnel affichée en tube lumineux sur le relief réel."
+  },
+  "liveops": {
+    "title": "Opérations en direct",
+    "intro": "Positions de flotte/IoT en direct corrélées à la prédiction de couverture RF — entrées en zone morte et déconnexions RF signalées automatiquement.",
+    "txLat": "Latitude émetteur",
+    "txLon": "Longitude émetteur",
+    "technology": "Technologie",
+    "ctxBind": "Lier la prédiction de couverture",
+    "ctxUpdate": "Mettre à jour la couverture",
+    "demoStart": "Démarrer la démo",
+    "demoStop": "Arrêter la démo",
+    "inCoverage": "Couvert",
+    "deadZone": "Zone morte",
+    "disconnected": "Déconnecté",
+    "assets": "Actifs",
+    "events": "Événements de corrélation",
+    "noEvents": "Aucun événement.",
+    "evEnter": "Entré en zone morte",
+    "evExit": "De retour en couverture",
+    "evDisconnect": "Déconnexion RF",
+    "evOnline": "Actif en ligne",
+    "evReconnect": "Reconnecté"
   }
 }

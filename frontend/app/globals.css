@@ -193,6 +193,35 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
 }
 .globe3d-error p { color: var(--ink-muted); font-size: 13px; margin-top: 6px; }
+
+/* Live Operations dashboard */
+.live-page { display: flex; flex-direction: column; height: 100vh; }
+.live-topbar {
+  display: flex; gap: 16px; align-items: center; padding: 10px 16px;
+  background: var(--surface-1); border-bottom: 1px solid var(--border, #223);
+  font-weight: 600;
+}
+.live-topbar a { color: var(--accent, #2a78d6); text-decoration: none; }
+.liveops { display: flex; flex: 1; min-height: 0; }
+.liveops-side {
+  width: 340px; flex-shrink: 0; overflow-y: auto; padding: 14px;
+  background: var(--surface-1); border-right: 1px solid var(--border, #223);
+}
+.liveops-map { flex: 1; min-width: 0; }
+.liveops .legend-row { display: flex; gap: 14px; margin: 12px 0; font-size: 12px; flex-wrap: wrap; }
+.liveops .legend-row span { display: flex; align-items: center; gap: 5px; }
+.asset-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; border: 2px solid #fff; box-shadow: 0 0 4px rgba(0,0,0,.5); }
+.asset-dot.ok { background: #2ecc71; }
+.asset-dot.dead { background: #e5b100; animation: assetPulse 1s infinite; }
+.asset-dot.down { background: #888; opacity: .7; }
+@keyframes assetPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,177,0,.8); } 50% { box-shadow: 0 0 0 7px rgba(229,177,0,0); } }
+.asset-list, .event-list { list-style: none; padding: 0; margin: 6px 0 14px; font-size: 13px; }
+.asset-list li, .event-list li { padding: 5px 8px; border-radius: 6px; margin-bottom: 3px; background: var(--surface-2, rgba(255,255,255,.03)); }
+.asset-list li.dead { border-left: 3px solid #e5b100; }
+.asset-list li.down { border-left: 3px solid #888; opacity: .7; }
+.event-list li.enter_dead_zone { border-left: 3px solid #e5b100; }
+.event-list li.rf_disconnect { border-left: 3px solid #e74c3c; }
+.event-list li.muted { color: var(--ink-muted); background: none; }
 .chart-wrap {
   height: 300px; flex-shrink: 0; background: var(--surface-1);
   border-top: 1px solid var(--hairline); padding: 8px 12px 4px;

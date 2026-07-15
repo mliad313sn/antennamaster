@@ -10,7 +10,8 @@
     "pitch": "Pitch",
     "signIn": "Sign in",
     "signOut": "Sign out",
-    "account": "Account"
+    "account": "Account",
+    "live": "Live Ops"
   },
   "locale": {
     "label": "Language",
@@ -396,5 +397,27 @@
     "exit": "Exit 3D",
     "unavailable": "3D view unavailable",
     "panelHint": "Immersive 3D globe with the Fresnel zone rendered as a glowing tube over real terrain."
+  },
+  "liveops": {
+    "title": "Live Operations",
+    "intro": "Live fleet/IoT positions correlated against the RF coverage prediction — dead-zone entries and RF-disconnects raised automatically.",
+    "txLat": "TX latitude",
+    "txLon": "TX longitude",
+    "technology": "Technology",
+    "ctxBind": "Bind coverage prediction",
+    "ctxUpdate": "Update coverage prediction",
+    "demoStart": "Start demo feed",
+    "demoStop": "Stop demo feed",
+    "inCoverage": "In coverage",
+    "deadZone": "Dead zone",
+    "disconnected": "Disconnected",
+    "assets": "Assets",
+    "events": "Correlation events",
+    "noEvents": "No events yet.",
+    "evEnter": "Entered dead zone",
+    "evExit": "Back in coverage",
+    "evDisconnect": "RF disconnect",
+    "evOnline": "Asset online",
+    "evReconnect": "Reconnected"
   }
 }

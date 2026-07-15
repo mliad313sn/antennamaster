@@ -15,6 +15,7 @@ export default function DashNav({ active }: { active: string }) {
         <Link href="/dashboard" className={`nav-link ${active === 'dashboard' ? 'on' : ''}`}>{t('nav.dashboard')}</Link>
         <Link href="/field" className={`nav-link ${active === 'field' ? 'on' : ''}`}>{t('nav.field')}</Link>
         <Link href="/pitch" className={`nav-link ${active === 'pitch' ? 'on' : ''}`}>{t('nav.pitch')}</Link>
+        <Link href="/live" className={`nav-link ${active === 'live' ? 'on' : ''}`}>{t('nav.live')}</Link>
       </nav>
       <div style={{ marginLeft: 'auto' }}><LocaleSwitcher /></div>
     </header>

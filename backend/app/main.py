@@ -26,9 +26,39 @@ from .api.routes_rf import router as rf_router
 from .api.routes_saas import router as saas_router
 from .api.routes_terrain import router as terrain_router
 from .api.routes_copilot import router as copilot_router
+from .api.routes_telemetry import router as telemetry_router
 from .api.routes_twoway import router as twoway_router
 
+import asyncio  # noqa: E402
+import contextlib  # noqa: E402
+import time  # noqa: E402
+
+
+@contextlib.asynccontextmanager
+async def _lifespan(app_: FastAPI):
+    """Run the telemetry disconnect-sweeper for the app's lifetime: flags
+    assets that stop transmitting as RF-disconnects (correlated with predicted
+    dead zones)."""
+    from .services.telemetry import ENGINE
+
+    async def sweeper():
+        while True:
+            await asyncio.sleep(5.0)
+            try:
+                ENGINE.sweep(time.monotonic(), timeout_s=30.0)
+            except Exception:
+                pass
+    task = asyncio.create_task(sweeper())
+    try:
+        yield
+    finally:
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+
+
 app = FastAPI(
+    lifespan=_lifespan,
     title="AntennaMaster RF Coverage Simulator API",
     description=(
         "Professional RF planning API: global SRTM 30 m terrain fused with "
@@ -125,6 +155,7 @@ app.include_router(saas_router)
 app.include_router(basemap_router)
 app.include_router(twoway_router)
 app.include_router(copilot_router)
+app.include_router(telemetry_router)
 
 
 @app.get("/api/health")
