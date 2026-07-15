@@ -184,3 +184,21 @@ def test_scenarios_map_to_presets(client):
     assert one["technology"] == "wifi2400"
     assert one["study"] == "coverage" and one["radius_km"] == 3.0
     assert client.get("/api/rf/scenarios/nonexistent").status_code == 404
+
+
+# --------------------------------------------------- hardware catalog
+def test_hardware_catalog(client):
+    r = client.get("/api/rf/equipment")
+    assert r.status_code == 200
+    body = r.json()
+    eq = body["equipment"]
+    assert len(eq) >= 10
+    cats = set(body["categories"])
+    assert {"Wi-Fi", "Private LTE", "PTP Microwave"} <= cats
+    # Every profile carries the required planning attributes.
+    for e in eq:
+        for f in ("id", "vendor", "model", "category", "band_label", "freq_mhz",
+                  "tx_power_dbm", "rx_sensitivity_dbm", "antenna_gain_dbi",
+                  "beamwidth_deg", "technology"):
+            assert f in e, f"{e.get('id')} missing {f}"
+        assert e["freq_mhz"] > 0 and e["antenna_gain_dbi"] >= 0

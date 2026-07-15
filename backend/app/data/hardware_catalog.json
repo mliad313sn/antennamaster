@@ -1,0 +1,112 @@
+{
+  "_meta": {
+    "description": "AntennaMaster hardware catalog — indicative equipment profiles for the Simple/Expert Equipment Selector. Specs are realistic planning ballparks, not vendor datasheet guarantees; override per link as needed. Extend or replace by dropping a hardware_catalog.json into AM_DATA_DIR.",
+    "version": 1
+  },
+  "equipment": [
+    {
+      "id": "wifi_ap_24_sector",
+      "vendor": "Generic", "model": "Outdoor AP 2.4 GHz Sector",
+      "category": "Wi-Fi", "band_label": "2.4 GHz (802.11n)",
+      "technology": "wifi2400", "model_key": "tr38901_umi", "environment": "nlos",
+      "freq_mhz": 2442.0, "tx_power_dbm": 20.0, "rx_sensitivity_dbm": -90.0,
+      "antenna_gain_dbi": 8.0, "beamwidth_deg": 90.0, "bandwidth_mhz": 20.0
+    },
+    {
+      "id": "wifi_ptmp_5ghz",
+      "vendor": "Generic", "model": "5 GHz PtMP Base",
+      "category": "Wi-Fi", "band_label": "5.5 GHz (802.11ac)",
+      "technology": "wifi5800", "model_key": "tr38901_umi", "environment": "los",
+      "freq_mhz": 5500.0, "tx_power_dbm": 23.0, "rx_sensitivity_dbm": -88.0,
+      "antenna_gain_dbi": 16.0, "beamwidth_deg": 30.0, "bandwidth_mhz": 40.0
+    },
+    {
+      "id": "wifi6_ap_omni",
+      "vendor": "Generic", "model": "Wi-Fi 6 Outdoor Omni",
+      "category": "Wi-Fi", "band_label": "5.8 GHz (802.11ax)",
+      "technology": "wifi5800", "model_key": "tr38901_umi", "environment": "nlos",
+      "freq_mhz": 5800.0, "tx_power_dbm": 24.0, "rx_sensitivity_dbm": -85.0,
+      "antenna_gain_dbi": 6.0, "beamwidth_deg": 360.0, "bandwidth_mhz": 80.0
+    },
+    {
+      "id": "cbrs_b48_smallcell",
+      "vendor": "Generic", "model": "CBRS B48 Small Cell",
+      "category": "Private LTE", "band_label": "3.6 GHz CBRS (B48)",
+      "technology": "private_lte_b48", "model_key": "tr38901_uma", "environment": "nlos",
+      "freq_mhz": 3625.0, "tx_power_dbm": 30.0, "rx_sensitivity_dbm": -102.0,
+      "antenna_gain_dbi": 15.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 20.0
+    },
+    {
+      "id": "private_5g_n77_gnb",
+      "vendor": "Generic", "model": "Private 5G n77 gNodeB",
+      "category": "Private LTE", "band_label": "3.9 GHz (n77)",
+      "technology": "private_nr_n77", "model_key": "tr38901_uma", "environment": "nlos",
+      "freq_mhz": 3900.0, "tx_power_dbm": 47.0, "rx_sensitivity_dbm": -95.0,
+      "antenna_gain_dbi": 24.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 100.0
+    },
+    {
+      "id": "private_lte_iot_gw",
+      "vendor": "Generic", "model": "LTE-M / NB-IoT Gateway",
+      "category": "Private LTE", "band_label": "3.6 GHz narrowband",
+      "technology": "private_lte_iot", "model_key": "tr38901_uma", "environment": "nlos",
+      "freq_mhz": 3625.0, "tx_power_dbm": 23.0, "rx_sensitivity_dbm": -120.0,
+      "antenna_gain_dbi": 5.0, "beamwidth_deg": 360.0, "bandwidth_mhz": 1.4
+    },
+    {
+      "id": "private_lte_b3_macro",
+      "vendor": "Generic", "model": "Private LTE B3 Macro",
+      "category": "Private LTE", "band_label": "1.8 GHz (B3)",
+      "technology": "lte1800", "model_key": "cost231_hata", "environment": "urban",
+      "freq_mhz": 1842.0, "tx_power_dbm": 43.0, "rx_sensitivity_dbm": -103.0,
+      "antenna_gain_dbi": 17.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 20.0
+    },
+    {
+      "id": "ptp_18ghz_03m",
+      "vendor": "Generic", "model": "18 GHz PtP ODU (0.3 m dish)",
+      "category": "PTP Microwave", "band_label": "18 GHz licensed",
+      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
+      "freq_mhz": 18000.0, "tx_power_dbm": 20.0, "rx_sensitivity_dbm": -70.0,
+      "antenna_gain_dbi": 34.0, "beamwidth_deg": 3.0, "bandwidth_mhz": 56.0
+    },
+    {
+      "id": "ptp_23ghz_06m",
+      "vendor": "Generic", "model": "23 GHz PtP (0.6 m dish)",
+      "category": "PTP Microwave", "band_label": "23 GHz licensed",
+      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
+      "freq_mhz": 23000.0, "tx_power_dbm": 18.0, "rx_sensitivity_dbm": -68.0,
+      "antenna_gain_dbi": 38.0, "beamwidth_deg": 2.0, "bandwidth_mhz": 56.0
+    },
+    {
+      "id": "ptp_6ghz_12m",
+      "vendor": "Generic", "model": "6 GHz Licensed PtP (1.2 m dish)",
+      "category": "PTP Microwave", "band_label": "6 GHz licensed",
+      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
+      "freq_mhz": 6000.0, "tx_power_dbm": 27.0, "rx_sensitivity_dbm": -74.0,
+      "antenna_gain_dbi": 34.0, "beamwidth_deg": 3.0, "bandwidth_mhz": 30.0
+    },
+    {
+      "id": "ptp_60ghz_shorthaul",
+      "vendor": "Generic", "model": "60 GHz Short-Haul PtP",
+      "category": "PTP Microwave", "band_label": "60 GHz unlicensed (V-band)",
+      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
+      "freq_mhz": 60000.0, "tx_power_dbm": 10.0, "rx_sensitivity_dbm": -60.0,
+      "antenna_gain_dbi": 40.0, "beamwidth_deg": 1.5, "bandwidth_mhz": 500.0
+    },
+    {
+      "id": "tetra_base",
+      "vendor": "Generic", "model": "TETRA Base Station",
+      "category": "PMR / PPDR", "band_label": "400 MHz TETRA",
+      "technology": "tetra400", "model_key": "okumura_hata", "environment": "suburban",
+      "freq_mhz": 420.0, "tx_power_dbm": 40.0, "rx_sensitivity_dbm": -112.0,
+      "antenna_gain_dbi": 9.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 0.025
+    },
+    {
+      "id": "vhf_repeater",
+      "vendor": "Generic", "model": "VHF Land-Mobile Repeater",
+      "category": "PMR / PPDR", "band_label": "150 MHz VHF",
+      "technology": "vhf150", "model_key": "okumura_hata", "environment": "open",
+      "freq_mhz": 155.0, "tx_power_dbm": 44.0, "rx_sensitivity_dbm": -116.0,
+      "antenna_gain_dbi": 3.0, "beamwidth_deg": 360.0, "bandwidth_mhz": 0.0125
+    }
+  ]
+}

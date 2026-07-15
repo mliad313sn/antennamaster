@@ -74,6 +74,15 @@ def list_models() -> dict:
     return {"models": [{"key": k, **v} for k, v in MODEL_INFO.items()]}
 
 
+@router.get("/equipment")
+def list_equipment() -> dict:
+    """Hardware Catalog — real equipment profiles (Wi-Fi, Private LTE, PTP
+    microwave, PMR) for the Equipment Selector.  Selecting one auto-fills the
+    RF parameters; users can still override any field."""
+    from ..services.rf.hardware import categories, list_equipment as _list
+    return {"equipment": _list(), "categories": categories()}
+
+
 @router.get("/scenarios")
 def list_scenarios() -> dict:
     """Plain-language deployment scenarios for Simple Mode - each maps an

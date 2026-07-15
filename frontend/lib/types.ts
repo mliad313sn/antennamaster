@@ -304,3 +304,20 @@ export interface ScenarioResolved {
   sector: boolean;
   shadow_margin_db: number;
 }
+
+export interface Equipment {
+  id: string;
+  vendor: string;
+  model: string;
+  category: string;
+  band_label: string;
+  technology: string;
+  model_key?: string;
+  environment?: string;
+  freq_mhz: number;
+  tx_power_dbm: number;
+  rx_sensitivity_dbm: number;
+  antenna_gain_dbi: number;
+  beamwidth_deg: number;
+  bandwidth_mhz?: number;
+}

@@ -1,6 +1,6 @@
 /** Thin fetch wrappers for the terrain backend (proxied through /api). */
 import type {
-  BatchResponse, OptimizeHeightsResponse, Scenario, ScenarioResolved, SiteCandidate,
+  BatchResponse, Equipment, OptimizeHeightsResponse, Scenario, ScenarioResolved, SiteCandidate,
   AntennaInfo, CoverageResponse, GeorefRequest, GeorefResponse,
   IndoorCoverageResponse, Material, ModelInfo, ProfileResponse, Technology,
   TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
@@ -367,4 +367,11 @@ export async function fetchScenarios(): Promise<Scenario[]> {
 
 export async function resolveScenario(id: string): Promise<ScenarioResolved> {
   return jsonOrThrow(await fetch(`/api/rf/scenarios/${encodeURIComponent(id)}`));
+}
+
+// ------------------------------------------------- hardware catalog
+export async function fetchEquipment(): Promise<{ equipment: Equipment[]; categories: string[] }> {
+  const body = await jsonOrThrow<{ equipment: Equipment[]; categories: string[] }>(
+    await fetch('/api/rf/equipment'));
+  return { equipment: body.equipment ?? [], categories: body.categories ?? [] };
 }

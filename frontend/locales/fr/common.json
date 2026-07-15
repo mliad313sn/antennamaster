@@ -32,14 +32,20 @@
     "useLocation": "Ma position",
     "gpsUnavailable": "GPS indisponible : {{error}}",
     "noGps": "Cet appareil n'expose pas de GPS / géolocalisation.",
-    "placeTx": "Placer l'émetteur", "moveTx": "Déplacer l'émetteur",
-    "placeRx": "Placer le récepteur", "moveRx": "Déplacer le récepteur",
+    "placeTx": "Placer l'émetteur",
+    "moveTx": "Déplacer l'émetteur",
+    "placeRx": "Placer le récepteur",
+    "moveRx": "Déplacer le récepteur",
     "useGps": "Utiliser ma position GPS",
     "swap": "Inverser les extrémités",
     "theme": "Changer le thème de couleur",
     "startTour": "Lancer la visite",
-    "txLat": "Lat émetteur", "txLon": "Lon émetteur", "rxLat": "Lat récepteur", "rxLon": "Lon récepteur",
-    "txHeight": "Hauteur émetteur (m)", "rxHeight": "Hauteur récepteur (m)",
+    "txLat": "Lat émetteur",
+    "txLon": "Lon émetteur",
+    "rxLat": "Lat récepteur",
+    "rxLon": "Lon récepteur",
+    "txHeight": "Hauteur émetteur (m)",
+    "rxHeight": "Hauteur récepteur (m)",
     "frequency": "Fréquence (MHz) — analyse du terrain",
     "localTerrain": "Terrain local (DXF)",
     "importDxf": "Importez un DXF pour ajouter un relief haute résolution sur le terrain de base.",
@@ -117,7 +123,10 @@
     "sinrGe6": "Zone ≥ 6 dB SINR",
     "cellEdge": "Bord de cellule (< 0 dB)",
     "viewBestServer": "Meilleur serveur",
-    "viewSinr": "SINR / interférence"
+    "viewSinr": "SINR / interférence",
+    "equipment": "Équipement (préremplit les réglages)",
+    "equipmentNone": "— choisir un équipement (facultatif) —",
+    "equipmentApplied": "Réglages RF remplis depuis cet équipement — modifiez un champ ci-dessous pour remplacer."
   },
   "batch": {
     "title": "Récepteurs en lot",
@@ -131,7 +140,10 @@
     "qualify_other": "Qualifier {{count}} récepteurs",
     "qualifying": "Qualification…",
     "servedCount": "Couverts",
-    "colSite": "Site", "colKm": "km", "colMargin": "Marge", "colLos": "Visée",
+    "colSite": "Site",
+    "colKm": "km",
+    "colMargin": "Marge",
+    "colLos": "Visée",
     "downloadCsv": "Télécharger le CSV"
   },
   "simple": {
@@ -173,7 +185,10 @@
     }
   },
   "tour": {
-    "skip": "Passer", "back": "Retour", "next": "Suivant", "last": "Terminer",
+    "skip": "Passer",
+    "back": "Retour",
+    "next": "Suivant",
+    "last": "Terminer",
     "welcome": {
       "title": "Bienvenue sur AntennaMaster",
       "body": "Planifiez la couverture radio partout dans le monde. Cette visite rapide présente l'essentiel — vous pouvez la quitter à tout moment."

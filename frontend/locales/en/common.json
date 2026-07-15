@@ -32,14 +32,20 @@
     "useLocation": "Use my location",
     "gpsUnavailable": "GPS unavailable: {{error}}",
     "noGps": "This device does not expose GPS/geolocation.",
-    "placeTx": "Place TX", "moveTx": "Move TX",
-    "placeRx": "Place RX", "moveRx": "Move RX",
+    "placeTx": "Place TX",
+    "moveTx": "Move TX",
+    "placeRx": "Place RX",
+    "moveRx": "Move RX",
     "useGps": "Use my GPS position",
     "swap": "Swap ends",
     "theme": "Toggle color theme",
     "startTour": "Take the tour",
-    "txLat": "TX lat", "txLon": "TX lon", "rxLat": "RX lat", "rxLon": "RX lon",
-    "txHeight": "TX height (m)", "rxHeight": "RX height (m)",
+    "txLat": "TX lat",
+    "txLon": "TX lon",
+    "rxLat": "RX lat",
+    "rxLon": "RX lon",
+    "txHeight": "TX height (m)",
+    "rxHeight": "RX height (m)",
     "frequency": "Frequency (MHz) — terrain analysis",
     "localTerrain": "Local DXF terrain",
     "importDxf": "Import a DXF to patch high-resolution relief over the base terrain.",
@@ -117,7 +123,10 @@
     "sinrGe6": "Area ≥ 6 dB SINR",
     "cellEdge": "Cell-edge (< 0 dB)",
     "viewBestServer": "Best server",
-    "viewSinr": "SINR / interference"
+    "viewSinr": "SINR / interference",
+    "equipment": "Equipment (auto-fills settings)",
+    "equipmentNone": "— choose equipment (optional) —",
+    "equipmentApplied": "RF settings filled from this equipment — edit any field below to override."
   },
   "batch": {
     "title": "Batch receivers",
@@ -131,7 +140,10 @@
     "qualify_other": "Qualify {{count}} receivers",
     "qualifying": "Qualifying…",
     "servedCount": "Served",
-    "colSite": "Site", "colKm": "km", "colMargin": "Margin", "colLos": "LOS",
+    "colSite": "Site",
+    "colKm": "km",
+    "colMargin": "Margin",
+    "colLos": "LOS",
     "downloadCsv": "Download CSV"
   },
   "simple": {
@@ -173,7 +185,10 @@
     }
   },
   "tour": {
-    "skip": "Skip", "back": "Back", "next": "Next", "last": "Done",
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "last": "Done",
     "welcome": {
       "title": "Welcome to AntennaMaster",
       "body": "Plan radio coverage anywhere on Earth. This quick tour shows the essentials — you can leave any time."

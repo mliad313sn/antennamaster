@@ -10,12 +10,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  fetchAntennas, fetchModels, fetchTechnologies, simulateCoverage,
+  fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, simulateCoverage,
   simulateMultiCoverage, uploadAntenna,
 } from '@/lib/api';
 import Help from '@/components/Help';
 import type {
-  AntennaInfo, CoverageResponse, LatLng, ModelInfo, SiteEntry, StudyResult,
+  AntennaInfo, CoverageResponse, Equipment, LatLng, ModelInfo, SiteEntry, StudyResult,
   Technology,
 } from '@/lib/types';
 
@@ -67,6 +67,10 @@ export default function StudyPanel(props: StudyPanelProps) {
   // Measured antenna patterns (MSI Planet uploads).
   const [antennas, setAntennas] = useState<AntennaInfo[]>([]);
   const [antennaId, setAntennaId] = useState<string | null>(null);
+  // Hardware catalog (Equipment Selector).
+  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [equipmentId, setEquipmentId] = useState<string>('');
+  const [freqOverride, setFreqOverride] = useState<number | undefined>(undefined);
   // Multi-site best-server study; the raw response is kept so the map
   // overlay can be flipped between best-server and SINR views.
   const [sites, setSites] = useState<SiteEntry[]>([]);
@@ -91,7 +95,27 @@ export default function StudyPanel(props: StudyPanelProps) {
     fetchTechnologies().then(setTechs).catch(() => setTechs([]));
     fetchModels().then(setModels).catch(() => setModels([]));
     fetchAntennas().then(setAntennas).catch(() => setAntennas([]));
+    fetchEquipment().then((r) => setEquipment(r.equipment)).catch(() => setEquipment([]));
   }, []);
+
+  // Equipment Selector: pick a real hardware profile and auto-fill the RF
+  // parameters (technology, model, power, gain, sensitivity, beamwidth,
+  // frequency).  Every field remains editable afterwards for advanced users.
+  function applyEquipment(id: string) {
+    setEquipmentId(id);
+    const e = equipment.find((x) => x.id === id);
+    if (!e) { setFreqOverride(undefined); return; }
+    props.onTechnologyChange(e.technology);
+    props.onModelChange(e.model_key ?? null);
+    props.onEnvironmentChange(e.environment ?? null);
+    setOvrPower(String(e.tx_power_dbm));
+    setOvrTxGain(String(e.antenna_gain_dbi));
+    setOvrSens(String(e.rx_sensitivity_dbm));
+    setFreqOverride(e.freq_mhz);
+    const directional = e.beamwidth_deg < 360;
+    setSector(directional);
+    if (directional) setBeamwidth(e.beamwidth_deg);
+  }
 
   async function handleAntennaFile(file: File) {
     setError(null);
@@ -148,6 +172,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         lat: props.tx.lat, lon: props.tx.lng,
         technology: props.technology, radiusKm,
         dxfId: props.dxfId,
+        freqMhz: freqOverride,
         model: props.model, environment: props.environment,
         antennaAzimuthDeg: (sector || antennaId) ? azimuth : null,
         antennaBeamwidthDeg: beamwidth,
@@ -173,9 +198,42 @@ export default function StudyPanel(props: StudyPanelProps) {
     }
   }
 
+  const equipGroups = useMemo(() => {
+    const g = new Map<string, Equipment[]>();
+    for (const e of equipment) {
+      if (!g.has(e.category)) g.set(e.category, []);
+      g.get(e.category)!.push(e);
+    }
+    return Array.from(g.entries());
+  }, [equipment]);
+
   return (
     <div className="panel">
       <h3 data-tour="technology">{t('study.title')}</h3>
+
+      {/* Equipment Selector — pick real gear; it auto-fills the RF settings,
+          all of which stay editable below. */}
+      {equipment.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <label>{t('study.equipment')}<Help term="gain" /></label>
+          <select value={equipmentId} onChange={(e) => applyEquipment(e.target.value)}>
+            <option value="">{t('study.equipmentNone')}</option>
+            {equipGroups.map(([cat, list]) => (
+              <optgroup key={cat} label={cat}>
+                {list.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.model} — {e.band_label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          {equipmentId && (
+            <p className="hint">{t('study.equipmentApplied')}</p>
+          )}
+        </div>
+      )}
+
       <label>{t('study.technology')}</label>
       <select
         value={props.technology ?? ''}
@@ -183,6 +241,7 @@ export default function StudyPanel(props: StudyPanelProps) {
           props.onTechnologyChange(e.target.value || null);
           props.onModelChange(null);
           props.onEnvironmentChange(null);
+          setEquipmentId(''); setFreqOverride(undefined);
         }}
       >
         <option value="">{t('study.none')}</option>
