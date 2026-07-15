@@ -12,6 +12,22 @@
 209 cas de test, 6 modèles empiriques + ITM-famille, 23 préréglages,
 52 équipements catalogués, UI bilingue FR/EN, 3D, télémétrie, LiDAR.
 
+## ✅ STATUT D'EXÉCUTION (mis à jour après livraison)
+
+| Chantier | Statut | Preuve |
+|---|---|---|
+| C1 Clutter mondial 10 m | **Livré** | WorldCover COG live (trajet Graz 86,7 % classifié) + footprints bâtiments ; profil/couverture/multisite |
+| C2 ITM exact + P.1812 | **Livré** | 6/6 valeurs publiées à **0,0 dB** d'écart ; code UIT officiel + cartes DN50/N050 d'itu.int |
+| C3 Plan fréquences/PCI | **Livré** | +5,4 dB SINR moyen mesuré, bord de cellule 18,7 %→4,8 % |
+| C4 Erlang + débit | **Livré** | Ancres table Erlang exactes ; échelle CQI 3GPP ; verdict saturation |
+| C5 Disponibilité P.530 | **Livré** | Multipath + pluie P.837/P.838 → % annuel + « nines » |
+| C6 Étages + arbre DAS | **Livré** | Comptabilité dB exacte par composant ; immeuble entier en un appel |
+| C7 Catalogue ≥500 vérifiés | **Partiel (invariant livré)** | Garde CI zéro-hallucination + preuve 600 records ; le compte croît uniquement par vraies fiches techniques |
+| C8 Benchmark précision | **Livré** | `PRECISION_BENCHMARK.md` régénéré en CI ; section terrain refuse d'inventer |
+| C9 Dossiers réglementaires | **Livré** | Dossier EMF PDF prêt à déposer (contenu testé) |
+
+Après exécution : **86 points d'accès, 256 fonctions de test (266 cas), 0 régression.**
+
 ---
 
 ## Les 9 chantiers (limite → périmètre → livrables → succès)

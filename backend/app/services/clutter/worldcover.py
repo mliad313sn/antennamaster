@@ -147,6 +147,10 @@ class WorldCoverStore:
                 tmp.replace(disk)
                 out = (arr, transform)
                 with self._lock:
+                    # Bounded RAM cache: evict oldest windows beyond 64 (the
+                    # disk cache below remains the durable tier).
+                    while len(self._mem) >= 64:
+                        self._mem.pop(next(iter(self._mem)))
                     self._mem[key] = out
                 return out
 

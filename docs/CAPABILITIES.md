@@ -1,7 +1,7 @@
 # AntennaMaster — Complete Functionality, Capability & Capacity Reference
 
-Verified against the codebase: **79 REST/stream endpoints** (59 simulation +
-20 SaaS/accounts), **199 backend test functions (209 cases)** + 13 frontend
+Verified against the codebase: **86 REST/stream endpoints** (66 simulation +
+20 SaaS/accounts), **256 backend test functions (266 cases)** + 13 frontend
 component tests. Companion docs: `VISION_ARCHITECTURE.md` (3D digital twin, live
 telemetry, LiDAR), `ROADMAP.md` (five-layer capability model & delivered
 phases), `ASSESSMENT.md` (benchmark & review history), `SaaS_ARCHITECTURE.md`

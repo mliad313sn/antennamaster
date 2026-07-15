@@ -232,6 +232,19 @@ cd backend && python -m pytest tests/ -q
 | `POST /api/telemetry/coverage-context` | bind the live twin to an RF prediction for dead-zone correlation |
 | `POST /api/lidar/upload` | ingest a drone `.las`/`.laz` survey → Digital Surface Model overlay |
 | `GET /api/lidar/{id}/profile` | diffraction against the surveyed 3D surface vs bare terrain |
+| `GET /api/terrain/profile?clutter_source=worldcover` | per-pixel clutter from free ESA WorldCover 10 m land cover (also on coverage/multi-site) |
+| `POST /api/clutter/buildings` | GeoJSON building footprints (Overture/OSM) extruded into a surface overlay |
+| `GET /api/terrain/itm?engine=ntia` | **exact NTIA ITM** (validated 0.0 dB vs the published reference case) |
+| `GET /api/terrain/p1812` | **official ITU-R P.1812** reference code (30 MHz–6 GHz), WorldCover-fed clutter |
+| `GET /api/terrain/availability` | ITU-R P.530 annual availability (multipath + rain) — the 99.99x% verdict |
+| `POST /api/rf/frequency-plan` | automatic channel + PCI plan with post-plan SINR vs reuse-1 |
+| `GET /api/rf/erlang` · `POST /api/rf/throughput-map` | Erlang B/C dimensioning + SINR→MCS→Mbit/s capacity & saturation |
+| `POST /api/indoor/das` · `POST /api/indoor/stack` | DAS component-tree solver + whole-building multi-floor study |
+| `POST /api/rf/compliance/report.pdf` | ready-to-file EMF dossier (ICNIRP/FCC) |
+
+Precision is **proven, not claimed**: see [`PRECISION_BENCHMARK.md`](PRECISION_BENCHMARK.md)
+(regenerated in CI — exact-ITM deviation 0.0 dB; field-accuracy section gated
+on real drive-test datasets).
 
 **3D digital twin:** a seamless 2D/3D toggle renders the fused terrain in
 CesiumJS with a glowing 3D Fresnel tube and draped coverage; a Live Operations
