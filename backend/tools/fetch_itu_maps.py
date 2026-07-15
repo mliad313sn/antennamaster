@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Install the ITU-R P.1812 digital maps for the official Py1812 engine.
+
+The DN50/N050 refractivity maps are ITU *integral products*: they ship inside
+the official Recommendation package on itu.int and may not be redistributed in
+this repository. This tool downloads them from the official source (the path
+the Py1812 README prescribes), extracts them into the Py1812 package, and
+builds the .npz the reference code loads.
+
+    python -m tools.fetch_itu_maps
+"""
+from __future__ import annotations
+
+import io
+import subprocess
+import sys
+import urllib.request
+import zipfile
+from pathlib import Path
+
+ITU_ZIP = ("https://www.itu.int/dms_pubrec/itu-r/rec/p/"
+           "R-REC-P.1812-8-202509-I!!ZIP-E.zip")
+
+
+def main() -> int:
+    try:
+        import Py1812  # noqa: F401
+    except FileNotFoundError:
+        # Package present but maps missing — that is exactly what we fix.
+        pass
+    except ImportError:
+        print("Py1812 is not installed: pip install git+https://github.com/eeveetza/Py1812")
+        return 1
+
+    import importlib.util
+    spec = importlib.util.find_spec("Py1812")
+    pkg_dir = Path(spec.origin).parent
+    maps_dir = pkg_dir / "maps"
+    maps_dir.mkdir(exist_ok=True)
+
+    if (pkg_dir / "P1812.npz").exists():
+        print(f"maps already installed: {pkg_dir / 'P1812.npz'}")
+        return 0
+
+    print(f"downloading ITU digital maps from {ITU_ZIP} …")
+    with urllib.request.urlopen(ITU_ZIP, timeout=180) as r:
+        data = r.read()
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        z.extractall(maps_dir)
+    print(f"extracted {len(list(maps_dir.iterdir()))} files → {maps_dir}")
+
+    subprocess.run([sys.executable, "initiate_digital_maps.py"],
+                   cwd=pkg_dir, check=True)
+    print(f"built {pkg_dir / 'P1812.npz'} — P.1812 reference engine ready")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -328,11 +328,14 @@ def itm_study(
     samples: int = Query(256, ge=16, le=2048),
     dxf_id: str | None = None, surface: bool = Query(False),
     k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
+    # "ntia" (default) = the exact NTIA ITM v1.2.2 algorithm, validated to
+    # <=0.1 dB against the published reference case; "heuristic" = the earlier
+    # in-house Deygout+quantile engineering model (kept for comparison).
+    engine: str = Query("ntia"),
     user: dict | None = Depends(current_user),
 ) -> dict:
-    """Longley-Rice-family Irregular Terrain Model over the fused profile: a
-    median reference loss plus a reliability quantile (time/situation), the one
-    statistical model the DEM reference tools have that empirical curves lack."""
+    """Longley-Rice Irregular Terrain Model over the fused profile with a
+    reliability quantile — by default the EXACT NTIA algorithm."""
     eff_freq = freq_mhz
     if technology is not None:
         try:
@@ -353,12 +356,82 @@ def itm_study(
     except Exception as exc:
         raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
 
-    from ..services.rf.itm import itm_point_to_point
-    return {"freq_mhz": eff_freq,
-            **itm_point_to_point(prof.distances_m, prof.elevations_m,
-                                 h_tx_m, h_rx_m, eff_freq,
-                                 reliability=reliability, confidence=confidence,
-                                 k=k_factor)}
+    if engine == "ntia":
+        from ..services.rf.itm_exact import itm_p2p_loss
+        try:
+            res = itm_p2p_loss(prof.distances_m, prof.elevations_m,
+                               h_tx_m, h_rx_m, eff_freq,
+                               reliability_pct=reliability * 100.0,
+                               confidence_pct=confidence * 100.0)
+        except Exception as exc:
+            raise HTTPException(422, f"ITM rejected the input: {exc}") from exc
+        return {"freq_mhz": eff_freq, "reliability": reliability,
+                "confidence": confidence, **res}
+    if engine == "heuristic":
+        from ..services.rf.itm import itm_point_to_point
+        return {"freq_mhz": eff_freq, "engine": "heuristic",
+                **itm_point_to_point(prof.distances_m, prof.elevations_m,
+                                     h_tx_m, h_rx_m, eff_freq,
+                                     reliability=reliability,
+                                     confidence=confidence, k=k_factor)}
+    raise HTTPException(422, f"Unknown engine: {engine!r} (ntia | heuristic)")
+
+
+@router.get("/p1812")
+def p1812_study(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    h_tx_m: float = Query(30.0, ge=0, le=3000),
+    h_rx_m: float = Query(10.0, ge=0, le=3000),
+    freq_mhz: float = Query(900.0, ge=30, le=6000),
+    time_pct: float = Query(50.0, gt=0, lt=100),
+    location_pct: float = Query(50.0, ge=1, le=99),
+    samples: int = Query(256, ge=32, le=2048),
+    dxf_id: str | None = None, surface: bool = Query(False),
+    clutter_source: str = Query("none"),
+    user: dict | None = Depends(current_user),
+) -> dict:
+    """ITU-R P.1812 basic transmission loss (official reference code, 30 MHz–
+    6 GHz) over the fused profile.  ``clutter_source=worldcover`` feeds the
+    Recommendation's per-point clutter input R from real 10 m land cover."""
+    from ..services.rf.itm_exact import p1812_available, p1812_loss
+    if not p1812_available():
+        raise HTTPException(503, "P.1812 reference code / ITU digital maps not "
+                                 "installed — run tools/fetch_itu_maps.py")
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+    try:
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=samples,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    clutter = None
+    if clutter_source == "worldcover":
+        from ..services.clutter.worldcover import (clutter_profile_heights,
+                                                   get_worldcover_store)
+        try:
+            clutter = clutter_profile_heights(get_worldcover_store(),
+                                              prof.lats, prof.lons)
+        except Exception as exc:
+            raise HTTPException(502, f"WorldCover clutter unavailable: {exc}") from exc
+    elif clutter_source not in ("none", ""):
+        raise HTTPException(422, f"Unknown clutter_source: {clutter_source!r}")
+
+    try:
+        return {"freq_mhz": freq_mhz,
+                **p1812_loss(prof.distances_m, prof.elevations_m,
+                             prof.lats, prof.lons, h_tx_m, h_rx_m, freq_mhz,
+                             time_pct=time_pct, location_pct=location_pct,
+                             clutter_heights_m=clutter)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"P.1812 computation failed: {exc}") from exc
 
 
 @router.get("/optimize-heights")
