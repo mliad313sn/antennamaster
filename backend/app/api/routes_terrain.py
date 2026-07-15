@@ -379,3 +379,61 @@ def terrain_profile_csv(
     return Response(
         content="\n".join(lines) + "\n", media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="profile.csv"'})
+
+
+@router.get("/profile.kml")
+def terrain_profile_kml(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    samples: int = Query(128, ge=16, le=1024),
+    dxf_id: str | None = None,
+    surface: bool = Query(False),
+    tx_height_m: float = Query(20.0, ge=0),
+    rx_height_m: float = Query(10.0, ge=0),
+    freq_mhz: float = Query(446.0, gt=0),
+    k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
+    kmz: bool = Query(False),
+    user: dict | None = Depends(current_user),
+):
+    """Export the TX→RX link as KML/KMZ for Google Earth / GIS: TX & RX
+    placemarks, the line-of-sight path (green=clear, red=obstructed) and the
+    terrain profile beneath it.  ``kmz=true`` returns a zipped KMZ."""
+    from fastapi.responses import Response
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+    try:
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=samples,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    rf = analyze_path(prof.distances_m, prof.elevations_m,
+                      tx_height_m=tx_height_m, rx_height_m=rx_height_m,
+                      freq_mhz=freq_mhz, k=k_factor)
+    terrain = [(float(lo), float(la), float(e))
+               for la, lo, e in zip(prof.lats, prof.lons, prof.elevations_m)]
+
+    from ..services.gis_kml import kmz_wrap, los_kml
+    from ..services.saas import db
+    kml = los_kml(
+        tx_lat=lat1, tx_lon=lon1, rx_lat=lat2, rx_lon=lon2,
+        tx_ground_m=float(prof.elevations_m[0]),
+        rx_ground_m=float(prof.elevations_m[-1]),
+        tx_height_m=tx_height_m, rx_height_m=rx_height_m,
+        terrain=terrain, los_clear=rf["line_of_sight_clear"],
+        title="AntennaMaster line-of-sight")
+    # Audit the export (user + action recorded centrally; see middleware).
+    if user:
+        db.log_action(user["id"], "export_kml",
+                      f"{lat1:.4f},{lon1:.4f} -> {lat2:.4f},{lon2:.4f}")
+    if kmz:
+        return Response(
+            content=kmz_wrap(kml), media_type="application/vnd.google-earth.kmz",
+            headers={"Content-Disposition": 'attachment; filename="link.kmz"'})
+    return Response(
+        content=kml, media_type="application/vnd.google-earth.kml+xml",
+        headers={"Content-Disposition": 'attachment; filename="link.kml"'})

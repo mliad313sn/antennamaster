@@ -26,7 +26,7 @@ import ProfileChart from '@/components/ProfileChart';
 import SimpleMode from '@/components/SimpleMode';
 import StudyPanel from '@/components/StudyPanel';
 import Tour, { tourAlreadySeen } from '@/components/Tour';
-import { fetchDxfState, fetchProfile, fetchSurfaceAvailable, profileCsvUrl } from '@/lib/api';
+import { fetchDxfState, fetchProfile, fetchSurfaceAvailable, profileCsvUrl, profileKmlUrl } from '@/lib/api';
 import {
   authHeaders, createProject, fetchMe, setToken, type User,
 } from '@/lib/saas';
@@ -609,12 +609,37 @@ export default function Home() {
                 })}
                 download
               >
-                ⤓ Download profile CSV
+                ⤓ {t('link.downloadCsv')}
               </a>
+              {/* Export to GIS: KML/KMZ of the link (TX/RX + LoS + terrain). */}
+              <div className="gis-export">
+                <span className="gis-export-label">{t('gis.exportTitle')}</span>
+                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                  <a className="download-link"
+                    href={profileKmlUrl({
+                      lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
+                      dxfId: georef?.dxf_id ?? null,
+                      txHeight: num(txHeight, 20), rxHeight: num(rxHeight, 10),
+                      freqMhz: num(freqMhz, 446), surface: surfaceOn,
+                    })}
+                    download
+                    title={t('gis.kmlTitle')}>⤓ KML</a>
+                  <a className="download-link"
+                    href={profileKmlUrl({
+                      lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
+                      dxfId: georef?.dxf_id ?? null,
+                      txHeight: num(txHeight, 20), rxHeight: num(rxHeight, 10),
+                      freqMhz: num(freqMhz, 446), surface: surfaceOn, kmz: true,
+                    })}
+                    download
+                    title={t('gis.kmzTitle')}>⤓ KMZ (Google Earth)</a>
+                </div>
+                <span className="gis-export-hint">{t('gis.coverageNote')}</span>
+              </div>
               <div style={{ marginTop: 6, fontSize: 11 }}>
                 <span className="badge srtm">SRTM</span>{' '}
                 <span className="badge dxf">DXF</span>{' '}
-                <span style={{ color: 'var(--ink-muted)' }}>= data provenance in the chart</span>
+                <span style={{ color: 'var(--ink-muted)' }}>{t('link.provenanceNote')}</span>
               </div>
             </div>
           )}

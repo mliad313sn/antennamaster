@@ -149,6 +149,25 @@ export function profileCsvUrl(params: {
   return `/api/terrain/profile.csv?${q.toString()}`;
 }
 
+/** URL of the KML/KMZ export of the current link (TX/RX + LoS + terrain)
+ *  for Google Earth / GIS. */
+export function profileKmlUrl(params: {
+  lat1: number; lon1: number; lat2: number; lon2: number;
+  dxfId: string | null; txHeight: number; rxHeight: number;
+  freqMhz: number; surface?: boolean; kmz?: boolean;
+}): string {
+  const q = new URLSearchParams({
+    lat1: String(params.lat1), lon1: String(params.lon1),
+    lat2: String(params.lat2), lon2: String(params.lon2),
+    tx_height_m: String(params.txHeight), rx_height_m: String(params.rxHeight),
+    freq_mhz: String(params.freqMhz),
+  });
+  if (params.dxfId) q.set('dxf_id', params.dxfId);
+  if (params.surface) q.set('surface', 'true');
+  if (params.kmz) q.set('kmz', 'true');
+  return `/api/terrain/profile.kml?${q.toString()}`;
+}
+
 // ------------------------------------------------ indoor / underground
 export async function fetchMaterials(): Promise<Material[]> {
   const body = await jsonOrThrow<{ materials: Material[] }>(

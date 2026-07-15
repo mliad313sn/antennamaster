@@ -229,6 +229,17 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 }
 .link-btn:focus-visible { outline: 2px solid var(--accent); border-radius: 4px; }
 
+/* Export to GIS block (link analysis panel) */
+.gis-export {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--hairline);
+  display: flex; flex-direction: column; gap: 5px;
+}
+.gis-export-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--ink-secondary);
+}
+.gis-export-hint { font-size: 10.5px; color: var(--ink-muted); }
+
 /* Connectivity pill (field tactical view) */
 .conn-pill {
   font-family: var(--mono, ui-monospace, monospace); font-size: 11px;

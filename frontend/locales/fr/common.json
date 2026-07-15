@@ -235,5 +235,11 @@
     "helmert": "Ajustement de géoréférencement : comment le dessin est aligné au monde réel à partir des points de référence fournis. Une grande erreur (en mètres) signale souvent un point mal placé ou de mauvaises unités.",
     "gain": "Gain d'antenne (dBi) : à quel point une antenne concentre son énergie dans une direction plutôt que de rayonner partout. Un gain élevé donne plus de portée mais un faisceau plus étroit.",
     "txpower": "Puissance d'émission (dBm) : la puissance émise par la radio. Plus de puissance porte plus loin, mais la réglementation la limite et ce n'est qu'une partie du bilan."
+  },
+  "gis": {
+    "exportTitle": "Exporter vers un SIG",
+    "kmlTitle": "KML pour Google Earth / QGIS / ArcGIS",
+    "kmzTitle": "KMZ (KML compressé) pour Google Earth",
+    "coverageNote": "Les cartes de couverture s'exportent aussi en GeoTIFF / KMZ (panneau Étude radio)."
   }
 }

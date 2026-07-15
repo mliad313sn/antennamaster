@@ -235,5 +235,11 @@
     "helmert": "Georeferencing fit: how the drawing is aligned to the real world from the reference points you gave. A large error (in meters) usually means a mis-placed point or the wrong units.",
     "gain": "Antenna gain (dBi): how much an antenna concentrates its energy in a direction versus radiating everywhere equally. Higher gain means more reach but a narrower beam.",
     "txpower": "Transmit power (dBm): how much power the radio puts out. More power reaches further, but regulators cap it and it is only one part of the budget."
+  },
+  "gis": {
+    "exportTitle": "Export to GIS",
+    "kmlTitle": "KML for Google Earth / QGIS / ArcGIS",
+    "kmzTitle": "KMZ (zipped KML) for Google Earth",
+    "coverageNote": "Coverage maps also export as GeoTIFF / KMZ (Radio study panel)."
   }
 }

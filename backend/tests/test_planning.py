@@ -202,3 +202,21 @@ def test_hardware_catalog(client):
                   "beamwidth_deg", "technology"):
             assert f in e, f"{e.get('id')} missing {f}"
         assert e["freq_mhz"] > 0 and e["antenna_gain_dbi"] >= 0
+
+
+# ------------------------------------------------- GIS KML/KMZ export
+def test_kml_and_kmz_export(client):
+    p = {"lat1": 47.0, "lon1": 15.0, "lat2": 47.05, "lon2": 15.08, "samples": 32}
+    r = client.get("/api/terrain/profile.kml", params=p)
+    assert r.status_code == 200
+    assert "google-earth.kml" in r.headers["content-type"]
+    body = r.text
+    assert body.startswith("<?xml")
+    for part in ("<name>TX</name>", "<name>RX</name>", "Line of sight",
+                 "Terrain profile", "<LineString>"):
+        assert part in body
+    # KMZ variant is a zip.
+    rk = client.get("/api/terrain/profile.kml", params={**p, "kmz": "true"})
+    assert rk.status_code == 200
+    assert rk.content[:2] == b"PK"
+    assert "google-earth.kmz" in rk.headers["content-type"]
