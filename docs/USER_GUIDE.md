@@ -84,6 +84,24 @@ Open **http://localhost:3000**. The REST API is self-documenting at
 
 ## 2. The planner (main screen)
 
+### Language, Simple Mode & the guided tour
+
+- **Language** — the header has an **EN / FR** switcher. English and French
+  ship out of the box; your choice is remembered. (Adding a language is just
+  another `locales/<code>/common.json` file.)
+- **Simple ↔ Expert** — the header toggle. **Simple Mode** hides the RF
+  numbers (dBi, MHz, propagation model) and instead asks *"what are you
+  trying to connect?"* — pick an outcome (connect two buildings, Wi-Fi for a
+  vehicle fleet, handheld radios across a site, private 4G/5G, IoT sensors,
+  mobile coverage, long-distance backhaul) and the right technology and
+  settings are applied for you. **Expert** exposes every control.
+- **Guided tour** — first-time visitors get a short walkthrough
+  (placing points → choosing a technology → uploading a DXF → reading the
+  heatmap). Replay it any time with the **❓** button.
+- **Glossary tooltips** — every technical field has an **ⓘ** icon. Hover,
+  focus or tap it for a plain-language, equation-free explanation (also
+  translated).
+
 ### Map & providers
 
 | Setting | What it does |
@@ -91,6 +109,7 @@ Open **http://localhost:3000**. The REST API is self-documenting at
 | Base layer picker | 6 built-in providers: OpenStreetMap, OpenTopoMap, Carto Light, Carto Dark, Esri World Imagery, Esri World Topo |
 | Custom XYZ URL | Any `{z}/{x}/{y}` tile template (private tile servers, orthophotos…) |
 | Theme toggle | auto (follows OS) → dark → light; persisted |
+| Language | English / French; persisted |
 
 The map view (center/zoom) and the whole session (endpoints, study settings,
 DXF reference) persist in `localStorage` and are restored on reload.

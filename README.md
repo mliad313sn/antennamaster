@@ -81,7 +81,14 @@ frontend/ (Next.js / React-Leaflet / Recharts)
   components/DxfWizard   Upload → layer select → georeferencing modal
   components/MapView     TX/RX placement, DXF footprint polygon, hillshade overlay
   components/ProfileChart Provenance-colored profile (blue=SRTM, orange=DXF)
+  components/SimpleMode  Non-technical outcome picker → preset mapping
+  components/Tour        First-run guided walkthrough (react-joyride)
+  locales/{en,fr}        Bilingual UI strings (react-i18next), PWA offline
 ```
+
+The UI is **bilingual (EN/FR)**, has a **Simple Mode** that hides the RF
+parameters behind plain-language deployment scenarios, a **guided tour** for
+first-time users, and **offline (PWA)** field caching.
 
 ### Terrain fusion pipeline
 
@@ -164,6 +171,7 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/rf/antennas` | uploaded patterns with gains and -3 dB beamwidths |
 | `POST /api/rf/coverage/multi` | best-server composite over up to 8 sites (per-site colors + shares) |
 | `GET /api/rf/technologies` | all radio-study presets (2G→5G, PMR, broadcast, WLAN, IoT, PtP) |
+| `GET /api/rf/scenarios` | plain-language Simple-Mode scenarios → preset mapping |
 | `GET /api/rf/models` | propagation models with validity ranges |
 | `POST /api/rf/coverage` | area coverage simulation from a TX site (radius, sector antenna, resolution, DXF fusion); returns raster URL + legend + stats |
 | `GET /api/rf/coverage/{id}.png` | coverage raster overlay (RGBA, transparent where unserved) |

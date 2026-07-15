@@ -148,6 +148,22 @@ indoor/underground studio (3 tabs). Session fully persisted (localStorage +
 server-side DXF state restore); dark/light/auto theming; responsive ≤800 px;
 debounced recomputes; Escape/aria on modals.
 
+**Onboarding & internationalization (for non-technical operators):**
+- **Bilingual UI (English / French)** via react-i18next, persistent locale
+  switcher in the header; the framework and `locales/{en,fr}/common.json`
+  extend to any locale. Verified that switching does not break Leaflet or
+  Recharts.
+- **Simple Mode** — a guided toggle that hides dBi/MHz/model and asks "what
+  are you trying to connect?" (connect two buildings, Wi-Fi for a vehicle
+  fleet, handheld radios across a site, private 4G/5G, IoT, mobile coverage,
+  long-distance backhaul). The backend (`/api/rf/scenarios`) maps each
+  plain-language outcome to the correct preset + study defaults.
+- **Guided tour** (react-joyride) auto-runs once for new users and is
+  replayable — placing points, choosing a technology, uploading a DXF,
+  reading the heatmap; fully translated.
+- **Glossary tooltips** (Radix Tooltip, keyboard-accessible) on every
+  technical parameter — plain-language, equation-free, translated.
+
 **Exports:** profile CSV, batch-receiver CSV, coverage PNG + **GeoTIFF
 (EPSG:4326, GIS-native)** + KMZ (Google Earth GroundOverlay), indoor heatmap
 PNG, hardware **BOM CSV** (fleet-scaled), branded PDF report.
