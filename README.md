@@ -219,3 +219,15 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/copilot/tools` | machine-readable tool catalog for an AI agent to drive the simulator |
 | `POST /api/copilot/analyze/link` | engine-driven link diagnosis with quantified fixes |
 | `POST /api/copilot/analyze/coverage` | coverage-result diagnosis (holes, interference, band choice) |
+| `GET /api/terrain/heightmap/{z}/{x}/{y}.bin` | int16 heightmap tiles for the CesiumJS 3D terrain (fused SRTM+DXF, no Ion key) |
+| `POST /api/telemetry/ingest` · `WS /api/telemetry/ws` | live asset position ingest (fleet/IoT) |
+| `GET /api/telemetry/stream` | SSE live-twin stream (moving assets + dead-zone / RF-disconnect events) |
+| `POST /api/telemetry/coverage-context` | bind the live twin to an RF prediction for dead-zone correlation |
+| `POST /api/lidar/upload` | ingest a drone `.las`/`.laz` survey → Digital Surface Model overlay |
+| `GET /api/lidar/{id}/profile` | diffraction against the surveyed 3D surface vs bare terrain |
+
+**3D digital twin:** a seamless 2D/3D toggle renders the fused terrain in
+CesiumJS with a glowing 3D Fresnel tube and draped coverage; a Live Operations
+dashboard (`/live`) tracks moving assets against the RF prediction; drone LiDAR
+surveys replace statistical clutter with real 3D obstructions. Full detail in
+[`VISION_ARCHITECTURE.md`](VISION_ARCHITECTURE.md).

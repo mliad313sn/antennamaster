@@ -1,10 +1,11 @@
 # AntennaMaster — Complete Functionality, Capability & Capacity Reference
 
-Verified against the codebase: **69 REST endpoints** (49 simulation +
-20 SaaS/accounts), **172 backend test functions (182 cases)** + 13 frontend
-component tests. Companion docs: `ROADMAP.md` (five-layer capability model &
-delivered phases), `ASSESSMENT.md` (benchmark & review history),
-`SaaS_ARCHITECTURE.md` (accounts, tiers, workspaces, monetization).
+Verified against the codebase: **79 REST/stream endpoints** (59 simulation +
+20 SaaS/accounts), **190 backend test functions (200 cases)** + 13 frontend
+component tests. Companion docs: `VISION_ARCHITECTURE.md` (3D digital twin, live
+telemetry, LiDAR), `ROADMAP.md` (five-layer capability model & delivered
+phases), `ASSESSMENT.md` (benchmark & review history), `SaaS_ARCHITECTURE.md`
+(accounts, tiers, workspaces, monetization).
 
 ## 1. Terrain engine
 
@@ -163,6 +164,29 @@ Beyond *predicting* coverage, the platform now *designs*, *optimizes*,
   study endpoints so an external agent (MCP / function-calling) can drive the
   simulator; an optional Claude-backed narrator when an API key is present.
 
+## 4c. 3D digital twin, live telemetry & drone LiDAR
+
+The immersive, operational layer (see `VISION_ARCHITECTURE.md`):
+
+- **3D volumetric rendering (CesiumJS)** — a seamless 2D/3D toggle renders the
+  fused SRTM+DXF terrain in a WebGL globe, fed by the platform's OWN heightmap
+  tiles (`/api/terrain/heightmap/{z}/{x}/{y}.bin`, no Cesium Ion key, offline-
+  capable). Shows a glowing 3D **Fresnel cylinder** along the true LOS, red
+  markers where terrain slices into the Fresnel zone, and the coverage heatmap
+  draped over the 3D terrain. Cesium loads at runtime (not bundled) and decodes
+  in Web Workers so the UI never blocks.
+- **Live telemetry / digital twin** — ingest real-time asset positions (POST,
+  or WebSocket `/api/telemetry/ws`) and stream the live twin over SSE
+  (`/api/telemetry/stream`). Each asset is correlated against the RF prediction:
+  **dead-zone entry** flags (evaluated with the planner's own link budget) and
+  **RF-disconnect correlation** (logs whether a lost tracker was in a predicted
+  dead zone). Live Operations dashboard at `/live`.
+- **Drone LiDAR ingestion** — upload a `.las`/`.laz` survey
+  (`/api/lidar/upload`); it is rasterised into a Digital Surface Model that
+  overrides statistical clutter, so diffraction is computed against the real
+  surveyed buildings/trees/machinery (validated: a 50 m building raised a link's
+  modelled diffraction from 40 to 114 dB).
+
 ## 5. Frontend (Next.js 14 + React-Leaflet + Recharts)
 
 Map: 6 built-in providers (OSM, OpenTopoMap, Carto Light/Dark, Esri
@@ -254,9 +278,10 @@ resource ownership on DXFs and antenna patterns. Full detail:
 Propagation is empirical/38.901 + Deygout diffraction, plus a Longley-Rice-
 family **ITM** whose median reuses the validated Deygout physics and whose
 variability follows the ITM quantile formulation — a documented engineering
-model, **not** a byte-exact NTIA port (P.1546/P.452 still absent). Clutter is
-statistical (ITU-R P.2108), **not yet** a per-pixel land-use / building-
-footprint database. SINR assumes worst-case co-channel reuse-1 (no frequency
+model, **not** a byte-exact NTIA port (P.1546/P.452 still absent). Automatic
+clutter is statistical (ITU-R P.2108); real per-object 3D obstruction is
+available where a **drone LiDAR survey** is uploaded (surveyed footprint only),
+not yet from a global building-footprint database. SINR assumes worst-case co-channel reuse-1 (no frequency
 planning / scheduler model); there is coverage and an AP **capacity floor**,
 but no full traffic/Erlang dimensioning or throughput map. Multi-floor is a
 penetration term, not per-floor wall maps; outdoor building obstruction still
