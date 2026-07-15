@@ -606,3 +606,221 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
         "technology": {**tech, "key": req.technology},
         "warnings": warnings,
     }
+
+
+# ===================================================================== #
+#  Phase 1 — Bidirectional "talk-back" LMR & repeater-system design
+# ===================================================================== #
+from ..services.rf import talkback as _talkback  # noqa: E402
+
+
+@router.get("/portable-profiles")
+def list_portable_profiles() -> dict:
+    """Portable/mobile radio profiles for two-way LMR studies (body loss,
+    1.5 m antenna height, building/vehicle penetration, device EIRP)."""
+    return {"profiles": [{"key": k, **v}
+                         for k, v in _talkback.PORTABLE_PROFILES.items()],
+            "daq_ladder": [{"min_margin_db": m, "daq": d, "description": desc}
+                           for m, d, desc in _talkback.DAQ_LADDER],
+            "user_environments": ["on_street", "in_building", "in_vehicle"]}
+
+
+class _TalkbackOverrides(BaseModel):
+    freq_mhz: float | None = Field(None, gt=0)
+    model: str | None = None
+    environment: str | None = None
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    rx_gain_dbi: float | None = None
+    losses_db: float | None = None
+    rx_sensitivity_dbm: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+    # Portable overrides (any PORTABLE_PROFILES field):
+    portable_tx_power_dbm: float | None = None
+    portable_antenna_gain_dbi: float | None = None
+    portable_antenna_height_m: float | None = Field(None, gt=0)
+    portable_body_loss_db: float | None = Field(None, ge=0, le=20)
+    portable_building_penetration_db: float | None = Field(None, ge=0, le=40)
+    portable_rx_sensitivity_dbm: float | None = None
+
+
+def _resolve_talkback(technology: str, profile: str, ov: _TalkbackOverrides):
+    """Build (base tech dict, portable dict) with request overrides applied."""
+    try:
+        tech = get_technology(technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "environment", "tx_power_dbm", "tx_gain_dbi",
+              "rx_gain_dbi", "losses_db", "rx_sensitivity_dbm", "h_bs_m"):
+        v = getattr(ov, f)
+        if v is not None:
+            tech[f] = v
+    if tech["model"] not in MODEL_INFO:
+        raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+    p_ov = {
+        "tx_power_dbm": ov.portable_tx_power_dbm,
+        "antenna_gain_dbi": ov.portable_antenna_gain_dbi,
+        "antenna_height_m": ov.portable_antenna_height_m,
+        "body_loss_db": ov.portable_body_loss_db,
+        "building_penetration_db": ov.portable_building_penetration_db,
+        "rx_sensitivity_dbm": ov.portable_rx_sensitivity_dbm,
+    }
+    try:
+        portable = _talkback.get_portable_profile(profile, p_ov)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return tech, portable
+
+
+class TalkbackRequest(_TalkbackOverrides):
+    base_lat: float = Field(ge=-90, le=90)
+    base_lon: float = Field(ge=-180, le=180)
+    portable_lat: float = Field(ge=-90, le=90)
+    portable_lon: float = Field(ge=-180, le=180)
+    technology: str = "tetra400"
+    portable_profile: str = "portable_handheld_5w"
+    user_environment: str = "on_street"
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    foliage_depth_m: float = Field(0.0, ge=0, le=400)
+    rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    dxf_id: str | None = None
+    surface: bool = False
+
+
+@router.post("/talkback")
+def talkback_link(req: TalkbackRequest,
+                  user: dict | None = Depends(current_user)) -> dict:
+    """Two-way LMR link between a base/repeater and a portable radio: computes
+    talk-out (base->portable) and talk-in (portable->base) budgets over one
+    reciprocal terrain path, grades each to TIA-4046 DAQ and returns the
+    intersection (combined DAQ = min of the two directions)."""
+    tech, portable = _resolve_talkback(req.technology, req.portable_profile, req)
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+    fusion = resolve_fusion(req.surface)
+    try:
+        with jobs.sim_slot():
+            res = _talkback.bidirectional_link(
+                fusion, tech, portable,
+                req.base_lat, req.base_lon, req.portable_lat, req.portable_lon,
+                user_environment=req.user_environment, k=req.k_factor,
+                foliage_depth_m=req.foliage_depth_m,
+                rain_rate_mm_h=req.rain_rate_mm_h, clutter_pct=req.clutter_pct,
+                grid=grid, georef=georef)
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Talk-back analysis failed: {exc}") from exc
+    return {
+        "base": {"lat": req.base_lat, "lon": req.base_lon},
+        "portable": {"lat": req.portable_lat, "lon": req.portable_lon},
+        "technology": {**tech, "key": req.technology},
+        "portable_profile": {**portable, "key": req.portable_profile},
+        "distance_m": res.distance_m,
+        "path_loss_db": res.path_loss_db,
+        "diffraction_loss_db": res.diffraction_loss_db,
+        "environment_loss_db": res.environment_loss_db,
+        "los_clear": res.los_clear,
+        "talk_out": res.talk_out,
+        "talk_in": res.talk_in,
+        "combined": res.combined,
+        "limiting_direction": res.limiting_direction,
+        "warnings": res.warnings,
+    }
+
+
+class _TalkbackPoint(BaseModel):
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    name: str | None = None
+
+
+class TalkbackBatchRequest(_TalkbackOverrides):
+    base_lat: float = Field(ge=-90, le=90)
+    base_lon: float = Field(ge=-180, le=180)
+    portables: list[_TalkbackPoint] = Field(..., min_length=1, max_length=200)
+    technology: str = "tetra400"
+    portable_profile: str = "portable_handheld_5w"
+    user_environment: str = "on_street"
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    foliage_depth_m: float = Field(0.0, ge=0, le=400)
+    rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    clutter_pct: float = Field(0.0, ge=0, le=99.9)
+    dxf_id: str | None = None
+    surface: bool = False
+
+
+@router.post("/talkback/batch")
+def talkback_batch(req: TalkbackBatchRequest,
+                   user: dict | None = Depends(current_user)) -> dict:
+    """Grade up to 200 portable locations for two-way talk-back against one
+    base/repeater — the LMR analogue of /batch, returning per-location DAQ
+    for talk-out, talk-in and the combined (limiting) direction."""
+    tech, portable = _resolve_talkback(req.technology, req.portable_profile, req)
+    grid = georef = None
+    if req.dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(req.dxf_id, user)
+        grid, georef = session.grid, session.georef
+    fusion = resolve_fusion(req.surface)
+    rows = []
+    try:
+        with jobs.sim_slot():
+            for i, p in enumerate(req.portables):
+                r = _talkback.bidirectional_link(
+                    fusion, tech, portable,
+                    req.base_lat, req.base_lon, p.lat, p.lon,
+                    user_environment=req.user_environment, k=req.k_factor,
+                    foliage_depth_m=req.foliage_depth_m,
+                    rain_rate_mm_h=req.rain_rate_mm_h,
+                    clutter_pct=req.clutter_pct, grid=grid, georef=georef)
+                rows.append({
+                    "name": p.name or f"P{i + 1}", "lat": p.lat, "lon": p.lon,
+                    "distance_m": r.distance_m,
+                    "talk_out_daq": r.talk_out["daq"],
+                    "talk_in_daq": r.talk_in["daq"],
+                    "combined_daq": r.combined["daq"],
+                    "limiting_direction": r.limiting_direction,
+                    "served": r.combined["served"]})
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Talk-back batch failed: {exc}") from exc
+    served = sum(1 for r in rows if r["served"])
+    return {
+        "base": {"lat": req.base_lat, "lon": req.base_lon},
+        "technology": {**tech, "key": req.technology},
+        "portable_profile": {**portable, "key": req.portable_profile},
+        "portables": rows,
+        "summary": {"total": len(rows), "served": served,
+                    "served_fraction": round(served / len(rows), 4)},
+    }
+
+
+class RepeaterDesignRequest(BaseModel):
+    freq_mhz: float = Field(..., gt=0)
+    system_gain_db: float = Field(..., ge=0, le=120)
+    donor_coverage_separation_m: float = Field(..., gt=0, le=200)
+    arrangement: str = Field("vertical", pattern="^(vertical|horizontal)$")
+    stability_margin_db: float = Field(15.0, ge=0, le=40)
+    tx_gain_dbi: float = 0.0
+    rx_gain_dbi: float = 0.0
+    reliable_range_m: float | None = Field(None, gt=0)
+    overlap_fraction: float = Field(0.15, ge=0, le=0.5)
+
+
+@router.post("/repeater/design")
+def repeater_design(req: RepeaterDesignRequest) -> dict:
+    """Repeater-system verdict: donor/coverage antenna isolation, the
+    feedback-stable maximum gain (isolation - stability margin) and — when a
+    reliable one-way range is given — the cascade spacing for continuous
+    talk-back along a linear route (highway/rail/tunnel access)."""
+    return _talkback.repeater_design(
+        req.freq_mhz, req.system_gain_db, req.donor_coverage_separation_m,
+        arrangement=req.arrangement, stability_margin_db=req.stability_margin_db,
+        reliable_range_m=req.reliable_range_m, overlap_fraction=req.overlap_fraction,
+        tx_gain_dbi=req.tx_gain_dbi, rx_gain_dbi=req.rx_gain_dbi)

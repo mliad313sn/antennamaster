@@ -189,6 +189,10 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/rf/antennas` | uploaded patterns with gains and -3 dB beamwidths |
 | `POST /api/rf/coverage/multi` | best-server composite over up to 8 sites (per-site colors + shares) |
 | `GET /api/rf/technologies` | all radio-study presets (2G→5G, PMR, broadcast, WLAN, IoT, PtP) |
+| `GET /api/rf/portable-profiles` | LMR portable/mobile radio profiles (body loss, 1.5 m height, building/vehicle penetration, EIRP) + DAQ ladder |
+| `POST /api/rf/talkback` | **two-way LMR link**: talk-out (base→portable) + talk-in (portable→base) over one reciprocal path, TIA-4046 DAQ per direction + combined (min) |
+| `POST /api/rf/talkback/batch` | grade ≤200 portable locations for two-way talk-back against one base/repeater |
+| `POST /api/rf/repeater/design` | repeater donor/coverage antenna isolation, feedback-stable max gain, cascade spacing for continuous talk-back |
 | `GET /api/rf/scenarios` | plain-language Simple-Mode scenarios → preset mapping |
 | `GET /api/rf/equipment` | hardware catalog (Wi-Fi/Private LTE/PTP/PMR) for the Equipment Selector |
 | `GET /api/terrain/profile.kml` | line-of-sight KML/KMZ (TX/RX + LoS + terrain) for Google Earth/GIS |
