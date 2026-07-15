@@ -36,6 +36,7 @@ import type {
   CoverageResponse, GeorefResponse, LatLng, ProfileResponse, ScenarioResolved,
 } from '@/lib/types';
 
+const Globe3D = dynamic(() => import('@/components/Globe3D'), { ssr: false });
 const MapView = dynamic(() => import('@/components/MapView'), {
   ssr: false,
   loading: () => <div style={{ padding: 20, color: 'var(--ink-muted)' }}>Loading map…</div>,
@@ -66,6 +67,7 @@ export default function Home() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [indoorOpen, setIndoorOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [view3d, setView3d] = useState(false);
   const [georef, setGeoref] = useState<GeorefResponse | null>(null);
   const [showOverlay, setShowOverlay] = useState(true);
 
@@ -670,13 +672,27 @@ export default function Home() {
 
         <div className="map-and-chart">
           <div className="map-wrap" data-tour="map">
-            <MapView
-              tx={tx} rx={rx} placing={placing} onPlace={handlePlace}
-              georef={georef} showOverlay={showOverlay}
-              coverage={coverage}
-              customTileUrl={customTileUrl.includes('{z}') ? customTileUrl : undefined}
-              flyTarget={flyTarget}
-            />
+            <div className="view-toggle" role="group" aria-label="2D / 3D">
+              <button className={!view3d ? 'active' : ''} onClick={() => setView3d(false)}>{t('globe.view2d')}</button>
+              <button className={view3d ? 'active' : ''} onClick={() => setView3d(true)}>{t('globe.view3d')}</button>
+            </div>
+            {view3d ? (
+              <Globe3D
+                tx={tx} rx={rx} freqMhz={Number(freqMhz) || 446}
+                txHeight={Number(txHeight) || 20} rxHeight={Number(rxHeight) || 10}
+                profile={profile} coverage={coverage}
+                dxfId={georef?.dxf_id ?? null}
+                onClose={() => setView3d(false)}
+              />
+            ) : (
+              <MapView
+                tx={tx} rx={rx} placing={placing} onPlace={handlePlace}
+                georef={georef} showOverlay={showOverlay}
+                coverage={coverage}
+                customTileUrl={customTileUrl.includes('{z}') ? customTileUrl : undefined}
+                flyTarget={flyTarget}
+              />
+            )}
           </div>
           {(profile || loading) && (
             <div className="chart-wrap">

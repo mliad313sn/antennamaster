@@ -388,5 +388,13 @@
     "regime": "régime",
     "roughness": "Rugosité du terrain Δh",
     "copilotHint": "Exécute le profil + l'optimiseur de hauteurs, puis explique le résultat avec des correctifs chiffrés."
+  },
+  "globe": {
+    "view2d": "2D",
+    "view3d": "3D",
+    "title": "Jumeau numérique 3D — terrain, tube de Fresnel, couverture drapée",
+    "exit": "Quitter la 3D",
+    "unavailable": "Vue 3D indisponible",
+    "panelHint": "Globe 3D immersif avec la zone de Fresnel affichée en tube lumineux sur le relief réel."
   }
 }

@@ -258,6 +258,33 @@ def terrain_profile(
     }
 
 
+@router.get("/heightmap/{level}/{x}/{y}.bin")
+def heightmap_tile(level: int, x: int, y: int, size: int = Query(65, ge=17, le=129),
+                   dxf_id: str | None = None, surface: bool = Query(False),
+                   user: dict | None = Depends(current_user)):
+    """int16 heightmap tile for the CesiumJS 3D terrain provider, sampled from
+    the fused SRTM+DXF model (no Cesium Ion required)."""
+    from fastapi.responses import Response
+
+    from ..services.terrain.heightmap import heightmap_int16
+    if level < 0 or level > 16 or x < 0 or y < 0:
+        raise HTTPException(422, "tile out of range")
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+    try:
+        data = heightmap_int16(fusion, level, x, y, size=size,
+                               grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+    return Response(content=data, media_type="application/octet-stream",
+                   headers={"Cache-Control": "max-age=3600",
+                            "X-Heightmap-Size": str(size)})
+
+
 @router.get("/itm")
 def itm_study(
     lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),

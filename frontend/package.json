@@ -3,14 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "node scripts/copy-cesium.mjs && next dev",
+    "build": "node scripts/copy-cesium.mjs && next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "copy-cesium": "node scripts/copy-cesium.mjs"
   },
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.12",
+    "cesium": "1.123",
     "i18next": "^23.16.8",
     "leaflet": "^1.9.4",
     "next": "^14.2.5",

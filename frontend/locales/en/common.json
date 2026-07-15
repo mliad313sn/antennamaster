@@ -388,5 +388,13 @@
     "regime": "regime",
     "roughness": "Terrain roughness Δh",
     "copilotHint": "Runs the profile + height optimizer, then explains the result with quantified fixes."
+  },
+  "globe": {
+    "view2d": "2D",
+    "view3d": "3D",
+    "title": "3D digital twin — terrain, Fresnel tube, coverage drape",
+    "exit": "Exit 3D",
+    "unavailable": "3D view unavailable",
+    "panelHint": "Immersive 3D globe with the Fresnel zone rendered as a glowing tube over real terrain."
   }
 }
