@@ -24,9 +24,19 @@ The ITU-R P.1812 engine is the official ITU-R SG3 reference code
 
 ## B. Field accuracy — prediction vs measured drive tests
 
-*No measurement datasets present yet.* This section refuses to
-invent numbers: drop real campaign files into
-`backend/benchmarks/measurements/*.json` (format in
-`tools/validate_predictions.py`) and re-run — RMSE / bias / std
-per environment will appear here, gated in CI against each
-dataset's `rmse_target_db` (targets: ≤ 8 dB urban, ≤ 6 dB rural).
+| Dataset | Env | Model | N | RMSE dB | Bias dB | Std dB | RMSE after cal. | Target |
+|---|---|---|---|---|---|---|---|---|
+| synthetic-rural-pipelineproof *(synthetic)* | rural | okumura_hata | 60 | 4.36 | -0.25 | 4.35 | 4.33 | 6.0 |
+| synthetic-urban-pipelineproof *(synthetic)* | urban | okumura_hata | 60 | 6.54 | -0.39 | 6.53 | 6.5 | 8.0 |
+
+**Synthetic rows are pipeline proof, not field evidence.**
+They are the platform's own prediction over a deterministic
+synthetic terrain plus seeded log-normal shadowing (σ 6 dB
+urban / 4 dB rural), so a correct pipeline must land at
+RMSE ≈ σ — under the gates (≤ 8 dB urban, ≤ 6 dB rural).
+They prove the ingest → predict → fit → gate machinery is
+armed end-to-end. Real-world field accuracy remains
+**unproven** until real campaigns are ingested with
+`python -m tools.ingest_drive_test` (CSV or GPX).
+
+*No real (non-synthetic) measurement datasets present yet.*

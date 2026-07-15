@@ -65,7 +65,16 @@ def replay_dataset(ds: dict) -> dict:
     from app.services.rf.planning import evaluate_receiver
     from app.services.terrain.fusion import TerrainFusionService
 
-    fusion = TerrainFusionService()
+    if ds.get("terrain") == "ramp":
+        # Synthetic pipeline-proof datasets replay on the deterministic ramp
+        # DEM they were generated against — network-free and reproducible.
+        import tempfile
+
+        from tools._ramp_terrain import RampTileStore
+        fusion = TerrainFusionService(
+            store=RampTileStore(Path(tempfile.mkdtemp(prefix="ramp-dem-"))))
+    else:
+        fusion = TerrainFusionService()
     tx = ds["tx"]
     tech = {
         "freq_mhz": float(tx["freq_mhz"]), "model": ds.get("model", "okumura_hata"),
@@ -93,6 +102,7 @@ def replay_dataset(ds: dict) -> dict:
         "std_db": round(float(err.std()), 2),
         "rmse_after_calibration_db": fit["rms_error_offset_slope_db"],
         "rmse_target_db": ds.get("rmse_target_db"),
+        "synthetic": bool(ds.get("synthetic", False)),
     }
 
 
@@ -157,11 +167,30 @@ def build_report() -> str:
             if "error" in r:
                 lines.append(f"| {r['name']} | — | — | — | ERROR: {r['error']} | | | | |")
             else:
+                tag = " *(synthetic)*" if r.get("synthetic") else ""
                 lines.append(
-                    f"| {r['name']} | {r['environment']} | {r['model']} | "
+                    f"| {r['name']}{tag} | {r['environment']} | {r['model']} | "
                     f"{r['n_points']} | {r['rmse_db']} | {r['bias_db']} | "
                     f"{r['std_db']} | {r['rmse_after_calibration_db']} | "
                     f"{r['rmse_target_db'] or '—'} |")
+        if any(r.get("synthetic") for r in field if "error" not in r):
+            lines += [
+                "",
+                "**Synthetic rows are pipeline proof, not field evidence.**",
+                "They are the platform's own prediction over a deterministic",
+                "synthetic terrain plus seeded log-normal shadowing (σ 6 dB",
+                "urban / 4 dB rural), so a correct pipeline must land at",
+                "RMSE ≈ σ — under the gates (≤ 8 dB urban, ≤ 6 dB rural).",
+                "They prove the ingest → predict → fit → gate machinery is",
+                "armed end-to-end. Real-world field accuracy remains",
+                "**unproven** until real campaigns are ingested with",
+                "`python -m tools.ingest_drive_test` (CSV or GPX).",
+            ]
+        if not any(not r.get("synthetic") for r in field if "error" not in r):
+            lines += [
+                "",
+                "*No real (non-synthetic) measurement datasets present yet.*",
+            ]
     lines.append("")
     return "\n".join(lines)
 

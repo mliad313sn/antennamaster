@@ -1,0 +1,322 @@
+{
+ "name": "synthetic-rural-pipelineproof",
+ "synthetic": true,
+ "terrain": "ramp",
+ "description": "SYNTHETIC pipeline-proof dataset \u2014 NOT field evidence. Model prediction over the deterministic synthetic-ramp terrain + seeded log-normal shadowing (sigma 4 dB, seed 1806). Proves the ingest->predict->fit->gate pipeline end-to-end; replace with real campaigns via tools/ingest_drive_test.py.",
+ "environment": "rural",
+ "model": "okumura_hata",
+ "shadowing_sigma_db": 4.0,
+ "tx": {
+  "lat": 47.0,
+  "lon": 15.0,
+  "freq_mhz": 806.0,
+  "tx_power_dbm": 43.0,
+  "tx_gain_dbi": 12.0,
+  "losses_db": 2.0,
+  "h_m": 30.0
+ },
+ "rx_height_m": 1.5,
+ "rmse_target_db": 6.0,
+ "points": [
+  {
+   "lat": 47.004492,
+   "lon": 15.0,
+   "rssi_dbm": -58.8
+  },
+  {
+   "lat": 47.01078,
+   "lon": 15.0,
+   "rssi_dbm": -75.8
+  },
+  {
+   "lat": 47.022458,
+   "lon": 15.0,
+   "rssi_dbm": -88.3
+  },
+  {
+   "lat": 47.035932,
+   "lon": 15.0,
+   "rssi_dbm": -97.4
+  },
+  {
+   "lat": 47.053899,
+   "lon": 15.0,
+   "rssi_dbm": -102.5
+  },
+  {
+   "lat": 47.00389,
+   "lon": 15.003293,
+   "rssi_dbm": -65.6
+  },
+  {
+   "lat": 47.009336,
+   "lon": 15.007903,
+   "rssi_dbm": -68.8
+  },
+  {
+   "lat": 47.019449,
+   "lon": 15.016465,
+   "rssi_dbm": -84.9
+  },
+  {
+   "lat": 47.031118,
+   "lon": 15.026343,
+   "rssi_dbm": -96.0
+  },
+  {
+   "lat": 47.046678,
+   "lon": 15.039515,
+   "rssi_dbm": -101.5
+  },
+  {
+   "lat": 47.002246,
+   "lon": 15.005704,
+   "rssi_dbm": -63.2
+  },
+  {
+   "lat": 47.00539,
+   "lon": 15.013688,
+   "rssi_dbm": -74.5
+  },
+  {
+   "lat": 47.011229,
+   "lon": 15.028518,
+   "rssi_dbm": -92.9
+  },
+  {
+   "lat": 47.017966,
+   "lon": 15.045628,
+   "rssi_dbm": -92.7
+  },
+  {
+   "lat": 47.026949,
+   "lon": 15.068442,
+   "rssi_dbm": -100.0
+  },
+  {
+   "lat": 47.0,
+   "lon": 15.006586,
+   "rssi_dbm": -63.0
+  },
+  {
+   "lat": 47.0,
+   "lon": 15.015806,
+   "rssi_dbm": -74.6
+  },
+  {
+   "lat": 47.0,
+   "lon": 15.032929,
+   "rssi_dbm": -85.2
+  },
+  {
+   "lat": 47.0,
+   "lon": 15.052687,
+   "rssi_dbm": -96.5
+  },
+  {
+   "lat": 47.0,
+   "lon": 15.07903,
+   "rssi_dbm": -103.2
+  },
+  {
+   "lat": 46.997754,
+   "lon": 15.005704,
+   "rssi_dbm": -68.3
+  },
+  {
+   "lat": 46.99461,
+   "lon": 15.013688,
+   "rssi_dbm": -84.7
+  },
+  {
+   "lat": 46.988771,
+   "lon": 15.028518,
+   "rssi_dbm": -89.8
+  },
+  {
+   "lat": 46.982034,
+   "lon": 15.045628,
+   "rssi_dbm": -95.2
+  },
+  {
+   "lat": 46.973051,
+   "lon": 15.068442,
+   "rssi_dbm": -104.1
+  },
+  {
+   "lat": 46.99611,
+   "lon": 15.003293,
+   "rssi_dbm": -69.3
+  },
+  {
+   "lat": 46.990664,
+   "lon": 15.007903,
+   "rssi_dbm": -80.2
+  },
+  {
+   "lat": 46.980551,
+   "lon": 15.016465,
+   "rssi_dbm": -78.9
+  },
+  {
+   "lat": 46.968882,
+   "lon": 15.026343,
+   "rssi_dbm": -102.8
+  },
+  {
+   "lat": 46.953322,
+   "lon": 15.039515,
+   "rssi_dbm": -103.6
+  },
+  {
+   "lat": 46.995508,
+   "lon": 15.0,
+   "rssi_dbm": -55.8
+  },
+  {
+   "lat": 46.98922,
+   "lon": 15.0,
+   "rssi_dbm": -71.0
+  },
+  {
+   "lat": 46.977542,
+   "lon": 15.0,
+   "rssi_dbm": -85.8
+  },
+  {
+   "lat": 46.964068,
+   "lon": 15.0,
+   "rssi_dbm": -91.4
+  },
+  {
+   "lat": 46.946101,
+   "lon": 15.0,
+   "rssi_dbm": -98.6
+  },
+  {
+   "lat": 46.99611,
+   "lon": 14.996707,
+   "rssi_dbm": -56.6
+  },
+  {
+   "lat": 46.990664,
+   "lon": 14.992097,
+   "rssi_dbm": -68.7
+  },
+  {
+   "lat": 46.980551,
+   "lon": 14.983535,
+   "rssi_dbm": -76.2
+  },
+  {
+   "lat": 46.968882,
+   "lon": 14.973657,
+   "rssi_dbm": -94.7
+  },
+  {
+   "lat": 46.953322,
+   "lon": 14.960485,
+   "rssi_dbm": -102.0
+  },
+  {
+   "lat": 46.997754,
+   "lon": 14.994296,
+   "rssi_dbm": -60.1
+  },
+  {
+   "lat": 46.99461,
+   "lon": 14.986312,
+   "rssi_dbm": -77.1
+  },
+  {
+   "lat": 46.988771,
+   "lon": 14.971482,
+   "rssi_dbm": -87.3
+  },
+  {
+   "lat": 46.982034,
+   "lon": 14.954372,
+   "rssi_dbm": -93.9
+  },
+  {
+   "lat": 46.973051,
+   "lon": 14.931558,
+   "rssi_dbm": -99.1
+  },
+  {
+   "lat": 47.0,
+   "lon": 14.993414,
+   "rssi_dbm": -62.0
+  },
+  {
+   "lat": 47.0,
+   "lon": 14.984194,
+   "rssi_dbm": -81.7
+  },
+  {
+   "lat": 47.0,
+   "lon": 14.967071,
+   "rssi_dbm": -88.1
+  },
+  {
+   "lat": 47.0,
+   "lon": 14.947313,
+   "rssi_dbm": -92.1
+  },
+  {
+   "lat": 47.0,
+   "lon": 14.92097,
+   "rssi_dbm": -105.0
+  },
+  {
+   "lat": 47.002246,
+   "lon": 14.994296,
+   "rssi_dbm": -57.7
+  },
+  {
+   "lat": 47.00539,
+   "lon": 14.986312,
+   "rssi_dbm": -76.8
+  },
+  {
+   "lat": 47.011229,
+   "lon": 14.971482,
+   "rssi_dbm": -88.1
+  },
+  {
+   "lat": 47.017966,
+   "lon": 14.954372,
+   "rssi_dbm": -106.0
+  },
+  {
+   "lat": 47.026949,
+   "lon": 14.931558,
+   "rssi_dbm": -96.3
+  },
+  {
+   "lat": 47.00389,
+   "lon": 14.996707,
+   "rssi_dbm": -70.0
+  },
+  {
+   "lat": 47.009336,
+   "lon": 14.992097,
+   "rssi_dbm": -74.3
+  },
+  {
+   "lat": 47.019449,
+   "lon": 14.983535,
+   "rssi_dbm": -89.0
+  },
+  {
+   "lat": 47.031118,
+   "lon": 14.973657,
+   "rssi_dbm": -96.9
+  },
+  {
+   "lat": 47.046678,
+   "lon": 14.960485,
+   "rssi_dbm": -109.8
+  }
+ ]
+}

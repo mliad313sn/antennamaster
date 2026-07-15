@@ -8,36 +8,25 @@ import ezdxf
 import numpy as np
 import pytest
 
-from app.services.dem.tiles import TerrariumTileStore
+from tools._ramp_terrain import RampTileStore
 
 
-class FakeTileStore(TerrariumTileStore):
-    """DEM store that synthesizes tiles instead of downloading them.
-
-    The fake world is a gentle east-west ramp: elevation = 100 + 500 * frac_x
-    of the global pixel column, which is smooth, deterministic, and exercises
-    the exact same bilinear/global-pixel sampling code paths as production.
-    """
+class FakeTileStore(RampTileStore):
+    """The shared synthetic-ramp DEM (tools/_ramp_terrain.py) + a fetch
+    counter, so tests, the replay harness and the pipeline-proof generator
+    all see the identical offline world."""
 
     def __init__(self, tmp_path: Path):
-        super().__init__(cache_dir=tmp_path / "dem", zoom=12)
+        super().__init__(cache_dir=tmp_path)
         self.fetch_count = 0
-
-    def _fetch_tile_bytes(self, z, x, y):  # pragma: no cover - never called
-        raise AssertionError("network fetch attempted in tests")
 
     def get_tile(self, z, x, y):
         key = (z, x % (2 ** z), y)
         with self._lock:
-            if key in self._mem:
-                return self._mem[key]
-        self.fetch_count += 1
-        n = 256 * (2 ** z)
-        cols = (x * 256 + np.arange(256)) / n          # 0..1 across the world
-        tile = np.tile(100.0 + 500.0 * cols, (256, 1)).astype(np.float32)
-        with self._lock:
-            self._mem[key] = tile
-        return tile
+            cached = key in self._mem
+        if not cached:
+            self.fetch_count += 1
+        return super().get_tile(z, x, y)
 
 
 @pytest.fixture
