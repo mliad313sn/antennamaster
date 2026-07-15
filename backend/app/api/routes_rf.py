@@ -450,6 +450,146 @@ def frequency_plan(req: FrequencyPlanRequest,
             "noise_floor_dbm": round(noise_dbm, 1)}
 
 
+# ------------------------------------------------------ capacity & traffic
+@router.get("/erlang")
+def erlang(traffic_erlangs: float, channels: int | None = None,
+           gos: float | None = None, kind: str = "b") -> dict:
+    """Erlang B/C dimensioning: blocking for N channels, and/or the channel
+    count a grade of service requires (PMR/TETRA/trunked voice)."""
+    from ..services.rf.capacity import channels_for_gos, erlang_b, erlang_c
+    if kind not in ("b", "c"):
+        raise HTTPException(422, "kind must be 'b' or 'c'")
+    if traffic_erlangs < 0 or traffic_erlangs > 10_000:
+        raise HTTPException(422, "traffic_erlangs out of range")
+    out: dict = {"traffic_erlangs": traffic_erlangs, "kind": kind}
+    fn = erlang_b if kind == "b" else erlang_c
+    if channels is not None:
+        if not (0 <= channels <= 10_000):
+            raise HTTPException(422, "channels out of range")
+        out["blocking_probability"] = round(fn(traffic_erlangs, channels), 5)
+        out["channels"] = channels
+    if gos is not None:
+        if not (0 < gos < 1):
+            raise HTTPException(422, "gos must be in (0,1)")
+        try:
+            out["channels_for_gos"] = channels_for_gos(traffic_erlangs, gos, kind)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        out["gos"] = gos
+    return out
+
+
+class ThroughputMapRequest(BaseModel):
+    sites: list[SiteIn] = Field(min_length=1, max_length=8)
+    technology: str = "custom"
+    radius_km: float = Field(10.0, gt=0.1, le=150.0)
+    bandwidth_mhz: float | None = Field(None, gt=0, le=400)
+    noise_figure_db: float | None = Field(None, ge=0, le=20)
+    overhead: float = Field(0.25, ge=0, lt=1)
+    # Demand layer for the saturation verdict:
+    users_per_cell: int = Field(0, ge=0, le=1_000_000)
+    mbps_per_user: float = Field(0.0, ge=0, le=1000)
+    # Optional frequency plan (from /frequency-plan) applied before SINR:
+    channels: list[int] | None = None
+    aci_db: float = Field(30.0, ge=10, le=60)
+    n_radials: int = Field(72, ge=36, le=360)
+    n_steps: int = Field(48, ge=20, le=200)
+    grid_n: int = Field(128, ge=48, le=256)
+    k_factor: float = Field(4.0 / 3.0, gt=0.1, le=10)
+    clutter_source: str = "none"
+    surface: bool = False
+    freq_mhz: float | None = Field(None, gt=0)
+    model: str | None = None
+    environment: str | None = None
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+    h_ut_m: float | None = Field(None, gt=0)
+
+
+@router.post("/throughput-map")
+def throughput_map(req: ThroughputMapRequest,
+                   user: dict | None = Depends(current_user)) -> dict:
+    """Per-cell capacity from the SINR field (3GPP CQI ladder), with a
+    users×demand saturation verdict per cell — coverage AND capacity."""
+    require_feature(user, "multi_site")
+    check_preset_allowed(user, req.technology)
+    try:
+        tech = get_technology(req.technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "environment", "tx_power_dbm",
+              "tx_gain_dbi", "h_bs_m", "h_ut_m"):
+        v = getattr(req, f)
+        if v is not None:
+            tech[f] = v
+    if tech["model"] not in MODEL_INFO:
+        raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+    if req.channels is not None and len(req.channels) != len(req.sites):
+        raise HTTPException(422, "channels must have one entry per site")
+
+    clutter_fn = _clutter_fn(req.clutter_source)
+    engine = CoverageEngine(resolve_fusion(req.surface))
+    radius_m = req.radius_km * 1000.0
+    computed = []
+    try:
+        with jobs.sim_slot():
+            for s in req.sites:
+                polar = engine.compute_polar(
+                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    n_radials=req.n_radials, n_steps=req.n_steps,
+                    antenna_azimuth_deg=s.antenna_azimuth_deg,
+                    downtilt_deg=s.downtilt_deg, k=req.k_factor,
+                    clutter_heights_fn=clutter_fn)
+                computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
+                                 "radius_m": radius_m, "polar": polar})
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
+
+    bw = req.bandwidth_mhz or tech.get("bandwidth_mhz") or 10.0
+    nf = req.noise_figure_db if req.noise_figure_db is not None \
+        else tech.get("noise_figure_db", 7.0)
+    noise_dbm = -174.0 + 10.0 * float(np.log10(float(bw) * 1e6)) + float(nf)
+
+    from ..services.rf.capacity import cell_capacity, saturation
+    from ..services.rf.freqplan import build_fields
+    fields, best, covered = build_fields(computed, grid_n=req.grid_n)
+    lin = np.where(np.isfinite(fields), 10.0 ** (fields / 10.0), 0.0)
+    noise = 10.0 ** (noise_dbm / 10.0)
+    aci = 10.0 ** (-req.aci_db / 10.0)
+
+    cells = []
+    for i in range(len(computed)):
+        mask = (best == i) & covered
+        S = lin[i]
+        I = np.zeros_like(S)
+        for j in range(len(computed)):
+            if j == i:
+                continue
+            if req.channels is None or req.channels[j] == req.channels[i]:
+                I += lin[j]
+            elif abs(req.channels[j] - req.channels[i]) == 1:
+                I += lin[j] * aci
+        with np.errstate(divide="ignore", invalid="ignore"):
+            sinr_db = 10.0 * np.log10(S / (I + noise))
+        cap = cell_capacity(sinr_db, mask, float(bw), req.overhead)
+        entry = {"site": computed[i].get("name") or f"Site {i + 1}",
+                 "lat": computed[i]["lat"], "lon": computed[i]["lon"], **cap}
+        if req.users_per_cell and req.mbps_per_user:
+            entry["saturation"] = saturation(cap["capacity_mbps"],
+                                             req.users_per_cell,
+                                             req.mbps_per_user)
+        cells.append(entry)
+
+    return {"cells": cells, "bandwidth_mhz": float(bw),
+            "noise_floor_dbm": round(noise_dbm, 1),
+            "overhead": req.overhead,
+            "plan_applied": req.channels is not None,
+            "technology": {**tech, "key": req.technology}}
+
+
 # ----------------------------------------------------------- antennas (MSI)
 @router.post("/antenna")
 async def upload_antenna(file: UploadFile = File(...),
