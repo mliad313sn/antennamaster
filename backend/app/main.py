@@ -18,6 +18,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 from .api.routes_auth import router as auth_router
+from .api.routes_basemap import router as basemap_router
 from .api.routes_dxf import router as dxf_router
 from .api.routes_indoor import router as indoor_router
 from .api.routes_projects import router as projects_router
@@ -75,6 +76,7 @@ app.include_router(indoor_router)
 app.include_router(auth_router)
 app.include_router(projects_router)
 app.include_router(saas_router)
+app.include_router(basemap_router)
 
 
 @app.get("/api/health")

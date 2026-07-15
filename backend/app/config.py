@@ -76,5 +76,12 @@ DEM_CACHE_BUDGET_MB = _env_int("AM_DEM_CACHE_MB", 2048)
 #                                                          [AM_CORS_ORIGINS]
 CORS_ORIGINS = [o.strip() for o in os.environ.get("AM_CORS_ORIGINS", "*").split(",")]
 
-for _d in (DEM_CACHE_DIR, DXF_STORE_DIR, RESULTS_DIR):
+# Offline visual base-map (OSM) tile cache + source.  The local tile server
+# (/api/basemap) serves from here, fetching + caching on demand when online
+# and falling back to disk (then a placeholder) when offline.  [AM_BASEMAP_URL]
+BASEMAP_CACHE_DIR = DATA_DIR / "basemap_tiles"
+BASEMAP_URL = os.environ.get(
+    "AM_BASEMAP_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+
+for _d in (DEM_CACHE_DIR, DXF_STORE_DIR, RESULTS_DIR, BASEMAP_CACHE_DIR):
     _d.mkdir(parents=True, exist_ok=True)

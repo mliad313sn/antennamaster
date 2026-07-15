@@ -52,7 +52,18 @@ export const BASE_LAYERS: { name: string; url: string; attribution: string; maxZ
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
     attribution: 'Tiles &copy; Esri — Source: Esri, HERE, Garmin, USGS',
   },
+  {
+    // Local tile server — serves pre-downloaded OSM tiles from the backend
+    // cache; works with no internet. Pre-warm with tools/download_basemap.py.
+    name: 'Offline cache (local)',
+    url: '/api/basemap/{z}/{x}/{y}.png',
+    attribution: '&copy; OpenStreetMap contributors — cached locally for offline use',
+    maxZoom: 19,
+  },
 ];
+
+// Index of the local/offline base layer (last entry above).
+const OFFLINE_LAYER_INDEX = BASE_LAYERS.length - 1;
 
 // Leaflet's default marker images break under bundlers; use inline SVG pins.
 function pin(color: string): L.DivIcon {
@@ -96,6 +107,39 @@ function FlyTo({ target }: { target: FlyTarget | null }) {
         target.zoom ?? Math.max(map.getZoom(), 13));
     }
   }, [target, map]);
+  return null;
+}
+
+/** Seamless offline fallback: when the browser loses connectivity, overlay
+ *  the locally-cached base-map tiles (served by the backend tile server) on
+ *  top of whatever provider is selected, so the map keeps rendering. The
+ *  overlay is removed the moment connectivity returns, revealing the live
+ *  tiles again. Pre-warm the cache with tools/download_basemap.py. */
+function OfflineFallback() {
+  const map = useMap();
+  useEffect(() => {
+    if (typeof L?.tileLayer !== 'function') return;   // guarded for tests
+    let layer: ReturnType<typeof L.tileLayer> | null = null;
+    const goOffline = () => {
+      if (!layer) {
+        layer = L.tileLayer('/api/basemap/{z}/{x}/{y}.png?offline=true', {
+          maxZoom: 19, zIndex: 250,
+          attribution: 'Cached OSM tiles (offline)',
+        });
+      }
+      if (!map.hasLayer(layer)) layer.addTo(map);
+    };
+    const goOnline = () => { if (layer && map.hasLayer(layer)) map.removeLayer(layer); };
+    const sync = () => (navigator.onLine ? goOnline() : goOffline());
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    sync();
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+      if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+    };
+  }, [map]);
   return null;
 }
 
@@ -180,6 +224,7 @@ export default function MapView({
         <FitToFootprint bounds={overlayBounds} />
         <FlyTo target={flyTarget ?? null} />
         <ViewPersist />
+        <OfflineFallback />
 
         {/* RF coverage raster (signal-strength classes; transparent = unserved). */}
         {coverage && coverageBounds && (
