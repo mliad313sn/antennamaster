@@ -232,6 +232,44 @@ noise: `−174 + 10·log₁₀(BW) + NF + SINR`, and add MIMO gain to the budget
 With clutter enabled the study shows a separate **Clutter (P.2108)** line in
 the loss breakdown (as do foliage, rain and gases).
 
+### Refraction reliability (microwave)
+
+Every profile response also carries a **dual-k reliability check** under
+`rf.refraction` — the standard microwave test that a dependable hop clears
+**100 % of the first Fresnel zone at k = 4/3** (standard atmosphere) **and
+60 % at k = 2/3** (sub-refraction worst case). Fields: `f1_ratio_k43`,
+`f1_ratio_k23`, and a boolean `reliable`. A hop that passes at 4/3 but fails
+at 2/3 will drop out during anomalous propagation.
+
+### Antenna height optimizer
+
+`GET /api/terrain/optimize-heights` returns the **minimum TX and RX height**
+(by bisection, holding the other end fixed) that achieves bare line of sight
+and the 60 %-first-Fresnel rule — the "how tall does the mast need to be?"
+question, answered without trial and error. `null` means the criterion is
+unreachable within the height cap (default 120 m).
+
+---
+
+## 4a. Batch receiver qualification
+
+For fixed-wireless / WISP work — qualifying many subscriber addresses against
+one tower — the **Batch receivers** panel (and `POST /api/rf/batch`) takes a
+list of up to 200 locations (`name,lat,lon` per line) and returns each one's
+distance, RX power, margin, served verdict, LOS and Fresnel clearance in a
+single call. The panel renders a sortable table, colours served/unserved,
+lets you click a row to drop the RX pin there, and exports the whole set as
+**CSV** (`?format=csv`) for a CRM or spreadsheet. It honours the same
+foliage / rain / clutter / DSM settings as the profile study.
+
+## 4b. Best-site search
+
+`POST /api/rf/site-search` ranks an *n × n* grid of candidate TX positions
+over a bounding box (2×2 to 7×7) by coarse served-area fraction — the "where
+should the mast go?" question. It uses low-resolution sweeps to stay
+interactive; re-run the winning coordinate through full coverage. Both batch
+and site-search are Pro-tier features in SaaS mode.
+
 ---
 
 ## 5. Area coverage simulation
@@ -639,6 +677,25 @@ downtilt, optional antenna), `n_radials` 36–360 (default 120), `n_steps`
 20–200 (default 80), `raster_px` default 768. SINR analysis:
 `interference` (default true), `bandwidth_mhz` (0–400, else preset/10),
 `noise_figure_db` (0–20, else preset/7).
+
+### Batch receivers (`POST /api/rf/batch`)
+
+`lat`/`lon` (TX), `receivers` 1–200 (each `lat`, `lon`, optional `name`,
+`rx_height_m`), `technology`, `dxf_id`, `surface`, `k_factor`,
+`foliage_depth_m`, `rain_rate_mm_h`, `clutter_pct`, and the same link-budget
+overrides as coverage. `?format=csv` for a CSV download.
+
+### Best-site search (`POST /api/rf/site-search`)
+
+`south`/`west`/`north`/`east` bbox, `grid_n` 2–7 (default 5), `technology`,
+`radius_km` 0.1–50, `shadow_margin_db`, `clutter_pct`, `k_factor`, `dxf_id`,
+`surface`, and TX-side budget overrides.
+
+### Height optimizer (`GET /api/terrain/optimize-heights`)
+
+`lat1`/`lon1`/`lat2`/`lon2`, `tx_height_m`, `rx_height_m`, `freq_mhz` or
+`technology`, `k_factor`, `max_height_m` (1–500, default 120), `dxf_id`,
+`surface`.
 
 ### Indoor coverage (`POST /api/indoor/coverage`)
 

@@ -69,7 +69,13 @@ Legend: ✅ has it · 🟡 partial · ❌ missing
 | Sector antenna patterns | ✅ parametric | 🟡 | ✅ files | ✅ | ✅ (MSI/planet) |
 | Antenna pattern file import (MSI/ANT) | ✅ | 🟡 | ✅ | ✅ | ✅ |
 | Multi-site / best-server analysis | ✅ | 🟡 | ✅ | ✅ | ✅ |
-| Clutter / land-use layers | ❌ (roadmap) | ❌ | 🟡 | ✅ | ✅ |
+| **Co-channel SINR / interference map** | ✅ reuse-1 S/(I+N) | ❌ | 🟡 | ✅ | ✅ |
+| Clutter / land-use loss | ✅ ITU-R P.2108 (statistical) | ❌ | 🟡 | ✅ (database) | ✅ (database) |
+| **Batch receiver qualification (fixed-wireless)** | ✅ 200/call, CSV | ❌ | 🟡 manual | ✅ | 🟡 |
+| **Antenna height optimizer** | ✅ LOS + 60% F1 | ❌ | ❌ | 🟡 | ✅ |
+| **Dual-k refraction reliability** | ✅ k=4/3 & 2/3 | 🟡 | 🟡 | ✅ | ✅ |
+| **Best-site candidate search** | ✅ grid ranking | ❌ | ❌ | 🟡 | ✅ |
+| Building obstruction (DSM) | ✅ optional `AM_DSM_URL` | ❌ | ❌ | 🟡 | ✅ |
 | Web UI, no install | ✅ | ❌ CLI | ❌ Windows | ✅ SaaS | ❌ desktop |
 | Map provider choice / custom XYZ | ✅ 6 + custom | ❌ | 🟡 | 🟡 | ✅ |
 | Open source / self-hosted | ✅ | ✅ | 🟡 freeware | ❌ | ❌ |
@@ -171,19 +177,51 @@ findings converged strongly; the table shows each finding and its status.
 | On-disk DEM cache unbounded (architect) | ✅ mtime-LRU eviction to AM_DEM_CACHE_MB budget (default 2 GB), swept every 100 downloads |
 | Heavy sims block the threadpool under many concurrent users (architect) | ⏳ roadmap (background job queue) |
 
-## 5. Roadmap (not yet implemented, ordered by value)
+## 5. Deep review round (v7): physics audit, authz hardening, planning tools
+
+Three independent expert reviews (RF/numerics, backend security, frontend/UX)
+drove this round. Every finding was verified before fixing.
+
+**Physics defects fixed (numerically confirmed):**
+- Gaseous attenuation clamped all f ≥ 54 GHz to the 60 GHz peak (~15 dB/km),
+  making E/W-band (71–94 GHz) links uncoverable; replaced with a Lorentzian
+  oxygen-complex model that decays to ~0.8 dB/km through those windows.
+- `fresnel_clearance_ratio` was taken at min-absolute-clearance, not
+  min(clearance/F1) — could pass the 60%-F1 rule on an obstructed path.
+- Deygout `max_edges` was a recursion depth (summed up to 2ⁿ−1 edges,
+  +6 dB in rugged terrain); now a shared total-edge budget.
+- Measured MSI patterns double-counted electrical downtilt.
+
+**Security (cross-tenant IDOR / tier-bypass class):** the DXF/antenna/job
+*read* paths were built without threading `user` through, so ownership and
+tier checks that existed on the *mutation* paths never applied to the
+*consumers*. Closed with a central `resolve_dxf()` guard on every DXF
+consumer, owner-scoped `load_antenna()`, owner-scoped async jobs, and a
+concurrency cap (`sim_slot()`) on the synchronous heavy endpoints.
+
+**New value features:**
+- Batch receiver qualification (`POST /api/rf/batch`, JSON/CSV, ≤200/call) —
+  the fixed-wireless/WISP workflow, with a paste-a-list UI + CSV export.
+- Antenna height optimizer (`GET /api/terrain/optimize-heights`) — minimum
+  TX/RX heights for LOS and 60% first-Fresnel by bisection.
+- Dual-k refraction reliability on every profile (`rf.refraction`).
+- Best-site candidate search (`POST /api/rf/site-search`).
+- Frontend: session now persists the environmental knobs; share links
+  actually open (`/?shared=<token>`); stale-coverage auto-clear; coordinate
+  entry no longer drops pins at longitude 0.
+
+## 6. Roadmap (not yet implemented, ordered by value)
 
 1. **ITM / Longley-Rice** propagation option (parity with SPLAT!/RM verdicts).
-2. ~~Antenna pattern file import~~ ✅ **done (v5)**: MSI Planet upload
-   (`POST /api/rf/antenna`), dBd→dBi conversion, electrical tilt, sum-of-cuts
-   H+V application in the coverage engine, selectable in the study panel.
-3. ~~Multi-site coverage~~ ✅ **done (v5)**: `POST /api/rf/coverage/multi`
-   composites up to 8 sites into a best-server raster (CVD-safe categorical
-   site colors, per-site best-server share stats, union-bbox KMZ/PNG export).
-4. **Clutter** (ESA WorldCover) as a per-pixel additional loss table.
-5. ITU-R P.1546 for broadcast studies; P.530 rain fade for PtP microwave.
-6. Indoor/outdoor penetration-loss presets (O2I from TR 38.901).
-7. Multi-floor indoor (per-storey plans + P.1238 floor losses combined).
-8. Leaky-feeder cable modeling for tunnels (longitudinal loss + coupling).
-9. Georeferencing of floor plans onto the map (reuse the terrain georef
-   modes) so indoor heatmaps can overlay the outdoor coverage.
+2. ITU-R P.1546 for broadcast studies.
+3. Per-pixel clutter *database* (ESA WorldCover) to complement the
+   statistical P.2108 model now shipped.
+4. Indoor/outdoor penetration-loss presets (O2I from TR 38.901).
+5. Leaky-feeder cable modeling for tunnels (longitudinal loss + coupling).
+6. Georeferencing of floor plans onto the map so indoor heatmaps overlay the
+   outdoor coverage.
+7. Frequency-plan-aware SINR (scheduler / reuse-N) beyond the reuse-1
+   worst-case map now shipped.
+
+Done in v7: ~~clutter loss~~ (P.2108), ~~multi-floor indoor~~, ~~SINR /
+interference~~, ~~rain fade for PtP~~, ~~building obstruction~~ (DSM).

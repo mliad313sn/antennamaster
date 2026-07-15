@@ -106,6 +106,16 @@ band plans mergeable from `DATA_DIR/technologies.json` without code changes.
   per-pixel SINR = S/(I+N) (worst-case frequency-reuse-1; thermal floor
   from bandwidth+NF, preset-derived or overridable), a 5-class SINR raster,
   mean SINR, %area ≥ 6 dB and cell-edge (<0 dB) fraction.
+- **Batch receiver qualification**: one TX vs up to 200 receiver/subscriber
+  locations in a single call (fused profile + Deygout + environmental
+  losses + margin verdict each), JSON or CSV — the fixed-wireless/WISP
+  survey workflow.
+- **Best-site search**: rank an n×n grid of candidate TX positions by
+  coarse served-area fraction ("where should the mast go?").
+- **Antenna height optimizer**: minimum TX/RX height (bisection) for LOS and
+  the 60% first-Fresnel rule.
+- **Refraction reliability**: dual-k (4/3 & 2/3) Fresnel-clearance verdict on
+  every profile — standard microwave dependable-hop practice.
 - **Indoor floor-plan coverage**: click-to-place TX on the rendered plan,
   FSPL(3D)+wall crossings per grid cell (vectorized ray/segment tests,
   50–400 px grid), heatmap with walls composited, served %, RX dynamic
@@ -152,7 +162,7 @@ indoor heatmap PNG.
 | Config | 12 `AM_*` env vars (data dir, DEM/DSM URLs, DEM zoom, cache budget, CORS, upload cap, feather, validation threshold, SaaS mode, billing secret) |
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
-| Tests | 95 test functions / 106 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier regression; API workflows) |
+| Tests | 113 test functions / 123 cases (fake DEM world; physics reference values hand-checked; restart & multi-worker simulation; security/tier + consumer-path IDOR regression; planning tools; API workflows) |
 
 ## 7. SaaS & workspace layer
 
