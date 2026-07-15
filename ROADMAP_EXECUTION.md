@@ -11,7 +11,7 @@ Baseline at kickoff: **139 backend tests passing**.
 | **1** | Bidirectional "Talk-Back" & LMR repeaters | 🟢 Complete |
 | **2** | Metro/Mine leaky feeder (radiating cable) | 🟢 Complete |
 | **3** | Automated AP/site placement solver | 🟢 Complete |
-| **4** | Intelligent Copilot & MCP integration | ⬜ Not started |
+| **4** | Intelligent Copilot & MCP integration | 🟢 Complete |
 | **5** | Compliance (EMF), ITM & drive-test calibration | ⬜ Not started |
 
 ---
@@ -68,5 +68,27 @@ Deliverables:
 - [x] Output: AP [x, y, z], channel, served demand points.
 - [x] API: `POST /api/indoor/ap-solve`.
 - [x] Tests: `tests/test_apsolver.py` (8 tests).
-## Phase 4 — Intelligent Copilot & MCP Integration  *(pending)*
+## Phase 4 — Intelligent Copilot & MCP Integration
+
+**Goal:** an AI Design Copilot that *runs* the simulation engines, plus MCP
+tool exposure so external agents can too.
+
+Deliverables:
+- [x] `services/ai/tools.py`: MCP-format tool registry over the self-contained
+      engines (technologies, models, link budget, repeater, leaky feeder,
+      tunnel, TTE) with pure handlers.
+- [x] `services/ai/copilot.py`: agentic loop on the Anthropic Messages API via
+      `httpx` (no SDK dep; base-URL override for local/air-gapped LLMs);
+      **injectable transport** for offline testing; graceful when unconfigured.
+- [x] Vision: `propose_from_floorplan` — wall materials + candidate AP/mast
+      locations from a floor-plan image (tolerant JSON parsing).
+- [x] `backend/mcp_server.py`: optional stdio MCP server (guarded SDK import).
+- [x] API: `GET /api/ai/status`, `GET /api/ai/tools`, `POST /api/ai/tools/{name}`,
+      `POST /api/ai/chat`, `POST /api/ai/vision/floorplan`.
+- [x] Tests: `tests/test_copilot.py` (13 tests, agentic loop verified with a
+      scripted transport — no network).
+
+**Configuration:** set `AM_ANTHROPIC_API_KEY` (or `ANTHROPIC_API_KEY`);
+optional `AM_COPILOT_MODEL` (default `claude-sonnet-5`), `AM_LLM_BASE_URL`
+(local/proxy endpoint), `AM_COPILOT_MAX_TOKENS`.
 ## Phase 5 — Compliance, ITM & Calibration  *(pending)*

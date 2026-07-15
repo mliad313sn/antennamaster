@@ -17,6 +17,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
+from .api.routes_ai import router as ai_router
 from .api.routes_auth import router as auth_router
 from .api.routes_basemap import router as basemap_router
 from .api.routes_dxf import router as dxf_router
@@ -52,6 +53,9 @@ app = FastAPI(
         {"name": "saas", "description": "Accounts, tiers & entitlements, "
          "project workspaces, CAPEX/OPEX estimates, branded PDF reports, "
          "async jobs, audit log, white-labeling."},
+        {"name": "ai", "description": "Design Copilot (agentic tool-use over "
+         "the simulation engines), MCP-format tool registry, and vision "
+         "floor-plan interpretation."},
     ],
 )
 
@@ -121,6 +125,7 @@ app.include_router(auth_router)
 app.include_router(projects_router)
 app.include_router(saas_router)
 app.include_router(basemap_router)
+app.include_router(ai_router)
 
 
 @app.get("/api/health")

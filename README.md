@@ -214,3 +214,8 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/indoor/leaky-cables` | radiating-cable presets (loss dB/100 m, coupling loss) |
 | `POST /api/indoor/leaky-feeder` | **radiating-cable (leaky feeder) design**: RX vs distance, auto inline-amplifier spacing, moving-train continuous-service KPI; cable length direct or measured from a DXF polyline layer |
 | `GET /api/indoor/tte` | through-the-earth VLF link budget |
+| `GET /api/ai/status` | Copilot config (configured?, model, tool count) — no secrets |
+| `GET /api/ai/tools` | MCP-format manifest of simulation tools the Copilot can call |
+| `POST /api/ai/tools/{name}` | invoke a simulation tool by name (offline, deterministic) |
+| `POST /api/ai/chat` | **Design Copilot** — agentic tool-use over the engines, plain-language answer + tool trace (needs `AM_ANTHROPIC_API_KEY`) |
+| `POST /api/ai/vision/floorplan` | vision: propose wall materials + candidate AP/mast locations from a floor-plan image |
