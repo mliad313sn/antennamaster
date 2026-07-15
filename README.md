@@ -124,7 +124,25 @@ free by default; `AM_SAAS_MODE=1` activates tier gating. Endpoints under
 `/api/auth`, `/api/projects`, `/api/saas` — full schema and tier matrix in
 `SaaS_ARCHITECTURE.md`.
 
-## Running
+## Deployment
+
+Three supported ways to run it — full instructions in
+[`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md):
+
+```bash
+docker compose up -d --build   # Docker (servers, air-gapped sites)
+./install.sh && ./launch_simulator.sh   # local install (Linux/macOS; .bat on Windows)
+```
+
+- **Docker** — multi-stage images, private network, persistent `am_data`
+  volume (embedded SQLite, no separate DB); `deploy/package_offline.sh`
+  exports a `.tar` for air-gapped sites.
+- **Local installer** — `install.sh`/`install.bat` (prereq checks → venv →
+  deps → build); `launch_simulator.*` boots both servers, waits for health
+  and opens the browser.
+- **systemd** — `deploy/rf-simulator.service` for a persistent Linux service.
+
+## Running (development)
 
 One command (backend :8000 + frontend :3000):
 
