@@ -207,3 +207,15 @@ cd backend && python -m pytest tests/ -q
 | `POST /api/indoor/coverage` | COST-231 multi-wall heatmap over a DXF floor plan |
 | `GET /api/indoor/tunnel` | tunnel/mine waveguide link profile (Emslie model) |
 | `GET /api/indoor/tte` | through-the-earth VLF link budget |
+| `POST /api/rf/twoway/link` | two-way LMR talk-back verdict (talk-out/talk-in, DAQ, limiting direction) |
+| `POST /api/rf/twoway/coverage` | area talk-back study (reliable both-direction served fraction) |
+| `POST /api/rf/twoway/repeater-cascade` | repeater count/spacing for continuous corridor talk-back |
+| `POST /api/indoor/leaky-feeder` | radiating-cable (leaky feeder) tunnel field profile + amp spacing |
+| `GET /api/indoor/tunnel-das` | distributed-antenna tunnel design (antenna count/spacing) |
+| `POST /api/indoor/auto-place` | automated AP placement + channel plan + capacity + roaming |
+| `GET /api/terrain/itm` | Longley-Rice irregular-terrain path loss with a reliability quantile |
+| `POST /api/rf/compliance` | ICNIRP / FCC OET-65 EMF exposure exclusion-zone distances |
+| `POST /api/rf/calibrate` | drive-test model calibration (offset/slope fit, RMS before/after) |
+| `GET /api/copilot/tools` | machine-readable tool catalog for an AI agent to drive the simulator |
+| `POST /api/copilot/analyze/link` | engine-driven link diagnosis with quantified fixes |
+| `POST /api/copilot/analyze/coverage` | coverage-result diagnosis (holes, interference, band choice) |
