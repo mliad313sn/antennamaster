@@ -298,6 +298,38 @@ def emf_compliance(req: ComplianceRequest) -> dict:
         standard=req.standard, assess_distance_m=req.assess_distance_m)
 
 
+class EmfAntennaIn(BaseModel):
+    label: str = Field("Antenna", max_length=60)
+    freq_mhz: float = Field(gt=0)
+    tx_power_dbm: float = Field(ge=-30, le=90)
+    antenna_gain_dbi: float = Field(ge=-10, le=60)
+    losses_db: float = Field(0.0, ge=0, le=30)
+
+
+class EmfReportRequest(BaseModel):
+    site: dict = Field(default_factory=dict)
+    antennas: list[EmfAntennaIn] = Field(min_length=1, max_length=24)
+    standard: str = "icnirp"
+    ground_reflection: bool = True
+
+
+@router.post("/compliance/report.pdf")
+def emf_report(req: EmfReportRequest,
+               user: dict | None = Depends(current_user)) -> Response:
+    """Ready-to-file EMF dossier: per-antenna ICNIRP/FCC assessment, exclusion
+    -zone summary, method statement and signature blocks — one click from the
+    site data to the document the permitting authority expects."""
+    if req.standard.lower() not in ("icnirp", "fcc"):
+        raise HTTPException(422, "standard must be 'icnirp' or 'fcc'")
+    from ..services.saas.compliance_report import build_emf_report
+    pdf = build_emf_report(req.site, [a.model_dump() for a in req.antennas],
+                           standard=req.standard,
+                           ground_reflection=req.ground_reflection)
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={"Content-Disposition":
+                             'attachment; filename="emf-compliance.pdf"'})
+
+
 # --------------------------------------------------- drive-test calibration
 class MeasurementIn(BaseModel):
     lat: float = Field(ge=-90, le=90)
