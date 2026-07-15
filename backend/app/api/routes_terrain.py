@@ -418,7 +418,6 @@ def terrain_profile_kml(
                for la, lo, e in zip(prof.lats, prof.lons, prof.elevations_m)]
 
     from ..services.gis_kml import kmz_wrap, los_kml
-    from ..services.saas import db
     kml = los_kml(
         tx_lat=lat1, tx_lon=lon1, rx_lat=lat2, rx_lon=lon2,
         tx_ground_m=float(prof.elevations_m[0]),
@@ -426,10 +425,7 @@ def terrain_profile_kml(
         tx_height_m=tx_height_m, rx_height_m=rx_height_m,
         terrain=terrain, los_clear=rf["line_of_sight_clear"],
         title="AntennaMaster line-of-sight")
-    # Audit the export (user + action recorded centrally; see middleware).
-    if user:
-        db.log_action(user["id"], "export_kml",
-                      f"{lat1:.4f},{lon1:.4f} -> {lat2:.4f},{lon2:.4f}")
+    # The export is audit-logged centrally by AuditMiddleware (user + IP).
     if kmz:
         return Response(
             content=kmz_wrap(kml), media_type="application/vnd.google-earth.kmz",

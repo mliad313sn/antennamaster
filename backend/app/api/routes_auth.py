@@ -5,7 +5,7 @@ import os
 import threading
 import time
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, UploadFile
 from pydantic import BaseModel, EmailStr, Field
 
 from ..config import DATA_DIR
@@ -82,18 +82,22 @@ class TierIn(BaseModel):
 
 # --------------------------------------------------------------- endpoints
 @router.post("/register")
-def register(body: RegisterIn) -> dict:
+def register(request: Request, body: RegisterIn) -> dict:
     if db.get_user_by_email(body.email):
         raise HTTPException(409, "An account with this email already exists")
     user = db.create_user(body.email, body.password, name=body.name,
                           role=body.role, org_name=body.org_name)
     token = db.issue_token(user["id"])
-    db.log_action(user["id"], "register", body.role)
+    # The audit middleware records this with the client IP; the request has no
+    # token yet, so stamp the identity it should attribute the action to.
+    request.state.audit_user_id = user["id"]
+    request.state.audit_email = user["email"]
+    request.state.audit_detail = f"role={body.role}"
     return {"token": token, "user": _public(user)}
 
 
 @router.post("/login")
-def login(body: LoginIn) -> dict:
+def login(request: Request, body: LoginIn) -> dict:
     email = body.email.lower()
     if _login_locked(email):
         raise HTTPException(429, "Too many failed attempts - try again later")
@@ -102,7 +106,8 @@ def login(body: LoginIn) -> dict:
         _login_failed(email)
         raise HTTPException(401, "Invalid email or password")
     token = db.issue_token(user["id"])
-    db.log_action(user["id"], "login")
+    request.state.audit_user_id = user["id"]
+    request.state.audit_email = user["email"]
     return {"token": token, "user": _public(user)}
 
 
@@ -139,7 +144,6 @@ def set_tier(body: TierIn, user: dict = Depends(required_user),
                 403, "Plan changes in SaaS mode are made by the billing "
                      "provider, not the client.")
     db.update_user(user["id"], tier=body.tier)
-    db.log_action(user["id"], "tier_change", body.tier)
     return {"user": _public(db.get_user(user["id"]))}
 
 
@@ -148,7 +152,6 @@ def create_api_token(user: dict = Depends(required_user)) -> dict:
     """Long-lived API token for programmatic access (Enterprise)."""
     require_feature(user, "api_access")
     token = db.issue_token(user["id"], kind="api")
-    db.log_action(user["id"], "api_token_issued")
     return {"api_token": token}
 
 
@@ -165,7 +168,6 @@ async def upload_logo(file: UploadFile = File(...),
     path = LOGO_DIR / f"user-{user['id']}.png"
     path.write_bytes(raw)
     db.update_user(user["id"], logo_path=str(path))
-    db.log_action(user["id"], "logo_uploaded")
     return {"ok": True}
 
 

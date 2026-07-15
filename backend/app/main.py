@@ -69,6 +69,50 @@ app.add_middleware(
 # (PNG responses are already compressed and skip this by content check.)
 app.add_middleware(GZipMiddleware, minimum_size=8192)
 
+
+def _client_ip(request) -> str | None:
+    """Best client IP: first hop of X-Forwarded-For (behind a proxy) else the
+    direct peer.  Only the left-most, client-supplied address is used for the
+    record; trust it accordingly (it is evidence, not authorization)."""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else None
+
+
+@app.middleware("http")
+async def audit_middleware(request, call_next):
+    """Centralized OT/IT audit trail: records every critical action (logins,
+    uploads, project changes, data exports) with the acting user and client
+    IP, to the audit log file and the database."""
+    from .services import audit
+    action = audit.classify(request.method, request.url.path)
+    response = await call_next(request)
+    if action is not None and response.status_code < 400:
+        # Identity: an endpoint may stamp request.state (e.g. login, where the
+        # request carries no token yet); otherwise resolve from the bearer.
+        user_id = getattr(request.state, "audit_user_id", None)
+        email = getattr(request.state, "audit_email", None)
+        if user_id is None:
+            auth = request.headers.get("authorization")
+            if auth and auth.lower().startswith("bearer "):
+                try:
+                    from .services.saas import db
+                    u = db.user_for_token(auth.split(" ", 1)[1].strip())
+                    if u:
+                        user_id, email = u.get("id"), u.get("email")
+                except Exception:  # noqa: BLE001
+                    pass
+        detail = getattr(request.state, "audit_detail",
+                         f"{request.method} {request.url.path}")
+        try:
+            audit.record(action, user_id=user_id, email=email,
+                         ip=_client_ip(request), status=response.status_code,
+                         detail=detail)
+        except Exception:  # noqa: BLE001 - auditing must never break a request
+            pass
+    return response
+
 app.include_router(dxf_router)
 app.include_router(terrain_router)
 app.include_router(rf_router)

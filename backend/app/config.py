@@ -85,3 +85,13 @@ BASEMAP_URL = os.environ.get(
 
 for _d in (DEM_CACHE_DIR, DXF_STORE_DIR, RESULTS_DIR, BASEMAP_CACHE_DIR):
     _d.mkdir(parents=True, exist_ok=True)
+
+# Isolated, owner-only storage for CONFIDENTIAL customer data: uploaded DXF
+# site drawings/floor plans and rendered results.  0700 keeps other local
+# users off the site data (OT/IT data-at-rest requirement).  Best-effort:
+# no-ops on filesystems without POSIX modes (e.g. some Windows/containers).
+for _sensitive in (DXF_STORE_DIR, RESULTS_DIR):
+    try:
+        os.chmod(_sensitive, 0o700)
+    except OSError:
+        pass

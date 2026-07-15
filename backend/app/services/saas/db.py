@@ -86,6 +86,17 @@ def _conn():
 def init_db() -> None:
     with _conn() as c:
         c.executescript(_SCHEMA)
+        # Migration: add the client-IP column to older audit_log tables.
+        cols = {r[1] for r in c.execute("PRAGMA table_info(audit_log)").fetchall()}
+        if "ip" not in cols:
+            c.execute("ALTER TABLE audit_log ADD COLUMN ip TEXT")
+    # The database holds password hashes, tokens and audit records — restrict
+    # it to the owning account (OT/IT data-at-rest requirement).
+    try:
+        import os
+        os.chmod(DB_PATH, 0o600)
+    except OSError:
+        pass
 
 
 # -------------------------------------------------------------- passwords
@@ -248,10 +259,11 @@ def _proj(row: sqlite3.Row) -> dict:
 
 
 # -------------------------------------------------------------- audit log
-def log_action(user_id: int | None, action: str, detail: str = "") -> None:
+def log_action(user_id: int | None, action: str, detail: str = "",
+               ip: str | None = None) -> None:
     with _conn() as c:
-        c.execute("INSERT INTO audit_log (user_id, action, detail, ts) "
-                  "VALUES (?,?,?,?)", (user_id, action, detail, time.time()))
+        c.execute("INSERT INTO audit_log (user_id, action, detail, ip, ts) "
+                  "VALUES (?,?,?,?,?)", (user_id, action, detail, ip, time.time()))
 
 
 def list_audit(limit: int = 200, org_name: str | None = None) -> list[dict]:

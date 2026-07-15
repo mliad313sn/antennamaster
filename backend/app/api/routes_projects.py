@@ -36,7 +36,6 @@ def _quota_check(user: dict) -> None:
 def create(body: ProjectIn, user: dict = Depends(required_user)) -> dict:
     _quota_check(user)
     project = db.create_project(user["id"], body.name, body.kind, body.data)
-    db.log_action(user["id"], "project_created", body.name)
     return {"project": project}
 
 
@@ -79,7 +78,6 @@ def duplicate(project_id: int, user: dict = Depends(required_user)) -> dict:
     _quota_check(user)
     copy = db.create_project(user["id"], f"{src['name']} (copy)",
                              src["kind"], src["data"])
-    db.log_action(user["id"], "project_duplicated", src["name"])
     return {"project": copy}
 
 
@@ -87,7 +85,6 @@ def duplicate(project_id: int, user: dict = Depends(required_user)) -> dict:
 def share(project_id: int, user: dict = Depends(required_user)) -> dict:
     _owned(project_id, user)
     token = db.share_project(project_id)
-    db.log_action(user["id"], "project_shared", str(project_id))
     return {"share_token": token, "url": f"/api/projects/shared/{token}"}
 
 

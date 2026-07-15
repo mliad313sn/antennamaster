@@ -127,7 +127,7 @@ def report_pdf(req: ReportRequest,
         org = user.get("org_name") or ""
         if user.get("logo_path") and Path(user["logo_path"]).exists():
             logo = Path(user["logo_path"]).read_bytes()
-        db.log_action(user["id"], "pdf_export", req.title)
+        # PDF export is audit-logged centrally by AuditMiddleware (user + IP).
 
     pdf = build_report(title=req.title, org_name=org, logo_png=logo,
                        study=study, profile_points=points, rf=rf,
@@ -155,9 +155,7 @@ def coverage_async(req: CoverageRequest,
         jobs.run_in_thread(job_id, _run)
     except jobs.JobsBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
-    if user:
-        db.log_action(user["id"], "coverage_async",
-                      f"{req.technology} r={req.radius_km}km")
+    # Queueing is audit-logged centrally by AuditMiddleware (user + IP).
     return {"job_id": job_id, "poll": f"/api/saas/jobs/{job_id}"}
 
 
