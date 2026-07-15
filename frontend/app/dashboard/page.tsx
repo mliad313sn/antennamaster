@@ -84,16 +84,24 @@ export default function Dashboard() {
                 <span className="v" style={{ display: 'flex', gap: 4 }}>
                   <Link href={`/?project=${p.id}`}><button>Open</button></Link>
                   <button onClick={async () => {
-                    await duplicateProject(p.id);
-                    setProjects(await listProjects());
+                    try {
+                      await duplicateProject(p.id);
+                      setProjects(await listProjects());
+                    } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
                   }}>Duplicate</button>
                   <button onClick={async () => {
-                    const t = await shareProject(p.id);
-                    setShareUrl(`${location.origin}/api/projects/shared/${t}`);
+                    try {
+                      const t = await shareProject(p.id);
+                      // A real app link the recipient can open (no auth): the
+                      // planner reads ?shared=<token> via the public endpoint.
+                      setShareUrl(`${location.origin}/?shared=${t}`);
+                    } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
                   }}>Share</button>
                   <button onClick={async () => {
-                    await deleteProject(p.id);
-                    setProjects(await listProjects());
+                    try {
+                      await deleteProject(p.id);
+                      setProjects(await listProjects());
+                    } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
                   }} aria-label={`Delete ${p.name}`}>🗑</button>
                 </span>
               </div>

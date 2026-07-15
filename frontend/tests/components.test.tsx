@@ -3,7 +3,7 @@
  * profile without exploding the DOM, the map must mount with full props
  * (Leaflet mocked for jsdom), and the dashboards/wizard must render.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -158,5 +158,24 @@ describe('Study & Indoor panels render', () => {
     render(<IndoorStudio onClose={() => {}} />);
     expect(screen.getByText('Tunnel link')).toBeInTheDocument();
     expect(screen.getByText('Through-the-earth')).toBeInTheDocument();
+  });
+
+  it('BatchPanel prompts for a technology, then parses a receiver list', async () => {
+    const { default: BatchPanel } = await import('@/components/BatchPanel');
+    const base = {
+      tx: { lat: 47, lng: 15 }, dxfId: null,
+      foliageDepth: 0, rainRate: 0, clutterPct: 0, surfaceOn: false,
+    };
+    const { rerender } = render(<BatchPanel {...base} technology={null} />);
+    expect(screen.getByText(/Select a technology/)).toBeInTheDocument();
+
+    rerender(<BatchPanel {...base} technology="gsm900" />);
+    const box = screen.getByLabelText(/Receiver list/);
+    fireEvent.change(box, { target: {
+      value: 'Farm A,47.05,15.42\n47.06,15.44\ngarbage line\n' } });
+    // Two valid rows, one skipped.
+    expect(screen.getByText(/2 valid, 1 skipped/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Qualify 2 receivers/ }))
+      .toBeEnabled();
   });
 });

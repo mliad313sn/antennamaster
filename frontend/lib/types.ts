@@ -165,6 +165,13 @@ export interface ProfileResponse {
     worst_obstruction_v: number;
     k_factor: number;
     freq_mhz: number;
+    refraction?: {
+      f1_ratio_k43: number;
+      f1_ratio_k23: number;
+      clear_k43_100pct_f1: boolean;
+      clear_k23_60pct_f1: boolean;
+      reliable: boolean;
+    };
     tx_height_m: number;
     rx_height_m: number;
   };
@@ -237,4 +244,37 @@ export interface SiteEntry {
   name: string;
   antenna_azimuth_deg?: number | null;
   downtilt_deg?: number;
+}
+
+export interface BatchReceiverRow {
+  name: string;
+  lat: number;
+  lon: number;
+  distance_m: number;
+  rx_power_dbm: number;
+  margin_db: number;
+  served: boolean;
+  los_clear: boolean;
+  fresnel_clearance_ratio: number;
+}
+
+export interface BatchResponse {
+  receivers: BatchReceiverRow[];
+  summary: { total: number; served: number; served_fraction: number };
+}
+
+export interface SiteCandidate {
+  rank: number;
+  lat: number;
+  lon: number;
+  served_area_fraction: number;
+  tx_elevation_m: number;
+}
+
+export interface OptimizeHeightsResponse {
+  freq_mhz: number;
+  criteria: Record<'los' | 'f1_60', {
+    min_tx_height_m: number | null;
+    min_rx_height_m: number | null;
+  }>;
 }

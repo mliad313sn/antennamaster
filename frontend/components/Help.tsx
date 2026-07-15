@@ -25,6 +25,9 @@ const GLOSSARY: Record<string, string> = {
   deygout: 'Deygout diffraction: estimates the dB lost when hills/buildings '
     + 'block the path, by treating the strongest obstacles as knife edges '
     + '(up to 3, recursively).',
+  batch: 'Batch qualification: evaluate many receiver/subscriber locations '
+    + 'against one transmitter at once — each row gets its own terrain '
+    + 'profile, diffraction and served/margin verdict. Export as CSV.',
   clutter: 'Clutter (ITU-R P.2108): statistical extra loss from buildings/'
     + 'street furniture the elevation data cannot see. The percentage is the '
     + 'share of locations covered: 50% = median city, 90% = conservative.',

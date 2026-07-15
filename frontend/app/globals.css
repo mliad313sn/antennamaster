@@ -188,6 +188,17 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .stat-line .k { color: var(--ink-secondary); }
 .stat-line .v { font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* Batch receiver table */
+.batch-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.batch-table th, .batch-table td {
+  text-align: left; padding: 3px 6px;
+  border-bottom: 1px solid var(--hairline);
+  font-variant-numeric: tabular-nums;
+}
+.batch-table th { color: var(--ink-secondary); font-weight: 600; position: sticky; top: 0;
+  background: var(--surface); }
+.batch-table tbody tr:hover { background: var(--surface-hover, rgba(127,127,127,0.08)); }
+
 /* Modal (DXF wizard) */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(11, 11, 11, 0.45);

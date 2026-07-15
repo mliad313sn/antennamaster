@@ -1,5 +1,6 @@
 /** Thin fetch wrappers for the terrain backend (proxied through /api). */
 import type {
+  BatchResponse, OptimizeHeightsResponse, SiteCandidate,
   AntennaInfo, CoverageResponse, GeorefRequest, GeorefResponse,
   IndoorCoverageResponse, Material, ModelInfo, ProfileResponse, Technology,
   TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
@@ -279,4 +280,80 @@ export async function fetchSurfaceAvailable(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ------------------------------------------------- planning tools
+export async function batchReceivers(params: {
+  lat: number; lon: number; technology: string;
+  receivers: { lat: number; lon: number; name?: string }[];
+  dxfId?: string | null; kFactor?: number;
+  foliageDepthM?: number; rainRateMmH?: number; clutterPct?: number;
+  surface?: boolean; hBsM?: number;
+}): Promise<BatchResponse> {
+  return jsonOrThrow(await fetch('/api/rf/batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      lat: params.lat, lon: params.lon, technology: params.technology,
+      receivers: params.receivers,
+      dxf_id: params.dxfId ?? undefined,
+      foliage_depth_m: params.foliageDepthM,
+      rain_rate_mm_h: params.rainRateMmH,
+      clutter_pct: params.clutterPct,
+      surface: params.surface || undefined,
+      h_bs_m: params.hBsM,
+    }),
+  }));
+}
+
+/** CSV download of a batch run (same body, format=csv). */
+export async function batchReceiversCsv(body: object): Promise<Blob> {
+  const r = await fetch('/api/rf/batch?format=csv', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.blob();
+}
+
+export async function optimizeHeights(params: {
+  lat1: number; lon1: number; lat2: number; lon2: number;
+  txHeight: number; rxHeight: number; freqMhz: number;
+  technology?: string | null; dxfId?: string | null; surface?: boolean;
+}): Promise<OptimizeHeightsResponse> {
+  const q = new URLSearchParams({
+    lat1: String(params.lat1), lon1: String(params.lon1),
+    lat2: String(params.lat2), lon2: String(params.lon2),
+    tx_height_m: String(params.txHeight),
+    rx_height_m: String(params.rxHeight),
+  });
+  if (!params.technology) q.set('freq_mhz', String(params.freqMhz));
+  if (params.technology) q.set('technology', params.technology);
+  if (params.dxfId) q.set('dxf_id', params.dxfId);
+  if (params.surface) q.set('surface', 'true');
+  return jsonOrThrow(await fetch(`/api/terrain/optimize-heights?${q}`));
+}
+
+export async function searchBestSite(params: {
+  south: number; west: number; north: number; east: number;
+  technology: string; radiusKm: number; gridN?: number;
+  clutterPct?: number; shadowMarginDb?: number;
+  dxfId?: string | null; surface?: boolean; hBsM?: number;
+}): Promise<{ candidates: SiteCandidate[] }> {
+  return jsonOrThrow(await fetch('/api/rf/site-search', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      south: params.south, west: params.west,
+      north: params.north, east: params.east,
+      technology: params.technology, radius_km: params.radiusKm,
+      grid_n: params.gridN ?? 5,
+      clutter_pct: params.clutterPct,
+      shadow_margin_db: params.shadowMarginDb,
+      dxf_id: params.dxfId ?? undefined,
+      surface: params.surface || undefined,
+      h_bs_m: params.hBsM,
+    }),
+  }));
 }

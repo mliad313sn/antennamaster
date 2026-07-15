@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AuthPanel from '@/components/AuthPanel';
+import BatchPanel from '@/components/BatchPanel';
 import DxfWizard from '@/components/DxfWizard';
 import Help from '@/components/Help';
 import IndoorStudio from '@/components/IndoorStudio';
@@ -86,6 +87,24 @@ export default function Home() {
   useEffect(() => {
     fetchMe().then(setUser).catch(() => {});
     const params = new URLSearchParams(window.location.search);
+    const sharedToken = params.get('shared');
+    if (sharedToken) {
+      // Public read-only project link: no auth required, served by the
+      // token endpoint that strips owner/token fields.
+      fetch(`/api/projects/shared/${sharedToken}`)
+        .then(async (r) => {
+          if (r.ok) {
+            const body = await r.json();
+            if (body?.project?.data) {
+              localStorage.setItem(STORE_KEY, JSON.stringify(body.project.data));
+              window.location.replace('/');
+            }
+          } else {
+            setSaveMsg('This shared link is invalid or has been revoked.');
+          }
+        }).catch(() => setSaveMsg('Could not load the shared project.'));
+      return;
+    }
     const pid = params.get('project');
     if (pid) {
       fetch(`/api/projects/${pid}`, { headers: authHeaders() })
@@ -129,6 +148,16 @@ export default function Home() {
   // Surface-model (DSM) availability: shows the DSM toggle only when the
   // backend has AM_DSM_URL configured.
   useEffect(() => { fetchSurfaceAvailable().then(setSurfaceAvailable); }, []);
+
+  // Drop a stale coverage raster when the inputs that produced it change
+  // (TX position or technology): keeping it painted invites the classic
+  // "screenshot the wrong map" mistake.  Skips the first render so a
+  // restored session keeps any coverage the user re-runs.
+  const coverageDeps = useRef(false);
+  useEffect(() => {
+    if (!coverageDeps.current) { coverageDeps.current = true; return; }
+    setCoverage(null);
+  }, [tx?.lat, tx?.lng, technology]);
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'auto') root.removeAttribute('data-theme');
@@ -150,6 +179,10 @@ export default function Home() {
         if (s.technology) setTechnology(s.technology);
         if (s.model) setModel(s.model);
         if (s.environment) setEnvironment(s.environment);
+        if (typeof s.foliageDepth === 'number') setFoliageDepth(s.foliageDepth);
+        if (typeof s.rainRate === 'number') setRainRate(s.rainRate);
+        if (typeof s.clutterPct === 'number') setClutterPct(s.clutterPct);
+        if (typeof s.surfaceOn === 'boolean') setSurfaceOn(s.surfaceOn);
         if (s.customTileUrl) setCustomTileUrl(s.customTileUrl);
         // Rebind a georeferenced DXF (server rebuilds its grid on demand).
         if (s.dxfId) {
@@ -166,11 +199,13 @@ export default function Home() {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         tx, rx, txHeight, rxHeight, freqMhz,
         technology, model, environment, customTileUrl,
+        foliageDepth, rainRate, clutterPct, surfaceOn,
         dxfId: georef?.dxf_id ?? null,
       }));
     } catch { /* storage full/unavailable */ }
   }, [restored, tx, rx, txHeight, rxHeight, freqMhz, technology, model,
-      environment, customTileUrl, georef]);
+      environment, customTileUrl, foliageDepth, rainRate, clutterPct,
+      surfaceOn, georef]);
 
   // --------------------------------------------------------- placement
   const handlePlace = useCallback((p: LatLng) => {
@@ -196,15 +231,16 @@ export default function Home() {
   }, [rx]);
 
   function editCoord(field: keyof typeof coordDraft, value: string) {
-    setCoordDraft((d) => ({ ...d, [field]: value }));
-    const v = parseFloat(value);
-    if (!Number.isFinite(v)) return;
+    const nextDraft = { ...coordDraft, [field]: value };
+    setCoordDraft(nextDraft);
     const which = field.startsWith('tx') ? 'tx' : 'rx';
-    const axis = field.endsWith('Lat') ? 'lat' : 'lng';
-    const setter = which === 'tx' ? setTx : setRx;
-    const current = which === 'tx' ? tx : rx;
-    setter({ lat: axis === 'lat' ? v : current?.lat ?? 0,
-             lng: axis === 'lng' ? v : current?.lng ?? 0 });
+    // Only commit a point once BOTH axes of that endpoint parse finite, so
+    // typing one coordinate before the other exists can't drop a pin at
+    // longitude 0 (off the coast of nowhere) and fire a bogus fetch.
+    const latV = parseFloat(which === 'tx' ? nextDraft.txLat : nextDraft.rxLat);
+    const lngV = parseFloat(which === 'tx' ? nextDraft.txLng : nextDraft.rxLng);
+    if (!Number.isFinite(latV) || !Number.isFinite(lngV)) return;
+    (which === 'tx' ? setTx : setRx)({ lat: latV, lng: lngV });
   }
 
   function swapEnds() {
@@ -248,8 +284,14 @@ export default function Home() {
       if (hits?.[0]) {
         setFlyTarget({ lat: parseFloat(hits[0].lat), lng: parseFloat(hits[0].lon),
                        zoom: 13, seq: flySeq.current++ });
+      } else {
+        setSaveMsg(`No results for “${q}”.`);
+        setTimeout(() => setSaveMsg(null), 5000);
       }
-    } catch { /* offline / blocked: ignore */ }
+    } catch {
+      setSaveMsg('Search needs internet (offline). Type “lat, lon” to jump directly.');
+      setTimeout(() => setSaveMsg(null), 6000);
+    }
   }
 
   // ---------------------------------------------- profile (debounced)
@@ -455,6 +497,16 @@ export default function Home() {
             surfaceAvailable={surfaceAvailable}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={setCoverage}
+          />
+
+          <BatchPanel
+            tx={tx} technology={technology} dxfId={georef?.dxf_id ?? null}
+            foliageDepth={foliageDepth} rainRate={rainRate}
+            clutterPct={clutterPct} surfaceOn={surfaceOn}
+            onFocusReceiver={(lat, lon) => {
+              setRx({ lat, lng: lon });
+              setFlyTarget({ lat, lng: lon, zoom: 14, seq: flySeq.current++ });
+            }}
           />
 
           <div className="panel">
