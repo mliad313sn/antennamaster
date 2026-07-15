@@ -10,8 +10,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, simulateCoverage,
-  simulateMultiCoverage, uploadAntenna,
+  fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, frequencyPlan,
+  simulateCoverage, simulateMultiCoverage, uploadAntenna,
 } from '@/lib/api';
 import Help from '@/components/Help';
 import type {
@@ -38,6 +38,8 @@ export interface StudyPanelProps {
   onClutterChange: (v: number) => void;
   surfaceOn: boolean;
   onSurfaceChange: (v: boolean) => void;
+  worldcoverOn: boolean;
+  onWorldcoverChange: (v: boolean) => void;
   surfaceAvailable: boolean;
   study: StudyResult | null;
   coverage: CoverageResponse | null;
@@ -76,6 +78,9 @@ export default function StudyPanel(props: StudyPanelProps) {
   const [sites, setSites] = useState<SiteEntry[]>([]);
   const [multiRaw, setMultiRaw] = useState<CoverageResponse | null>(null);
   const [sinrView, setSinrView] = useState(false);
+  const [freqPlan, setFreqPlan] = useState<any | null>(null);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planChannels, setPlanChannels] = useState(3);
 
   function showMultiView(sinr: boolean) {
     if (!multiRaw) return;
@@ -138,12 +143,32 @@ export default function StudyPanel(props: StudyPanelProps) {
         shadowMarginDb: shadowMargin, hBsM: props.txHeight || undefined,
         clutterPct: props.clutterPct || undefined,
         surface: props.surfaceOn || undefined,
+        clutterSource: props.worldcoverOn ? 'worldcover' : undefined,
         txPowerDbm: numOr(ovrPower), rxSensitivityDbm: numOr(ovrSens),
       });
       setMultiRaw(resp);
       setSinrView(false);
       props.onCoverage(resp);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  async function runFrequencyPlan() {
+    if (!props.technology || sites.length < 2) return;
+    setPlanBusy(true);
+    setError(null);
+    try {
+      const resp = await frequencyPlan({
+        sites, technology: props.technology, radius_km: radiusKm,
+        n_channels: planChannels,
+        model: props.model ?? undefined,
+        environment: props.environment ?? undefined,
+        surface: props.surfaceOn || undefined,
+        clutter_source: props.worldcoverOn ? 'worldcover' : undefined,
+        h_bs_m: props.txHeight || undefined,
+        tx_power_dbm: numOr(ovrPower), tx_gain_dbi: numOr(ovrTxGain),
+      });
+      setFreqPlan(resp);
+    } catch (e) { setError((e as Error).message); } finally { setPlanBusy(false); }
   }
 
   const selectedTech = useMemo(
@@ -183,6 +208,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         rainRateMmH: props.rainRate || undefined,
         clutterPct: props.clutterPct || undefined,
         surface: props.surfaceOn || undefined,
+        clutterSource: props.worldcoverOn ? 'worldcover' : undefined,
         hBsM: props.txHeight || undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
@@ -407,6 +433,15 @@ export default function StudyPanel(props: StudyPanelProps) {
                   title="ITU-R P.2108 statistical urban clutter — 0 = off, 50 = median, 90 = conservative planning"
                   onChange={(e) => props.onClutterChange(parseFloat(e.target.value) || 0)} />
               </div>
+              <div>
+                <label>{t('study.worldcover')}</label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}
+                  title="ESA WorldCover 10 m land cover — per-pixel P.1812 representative clutter heights (trees 15 m, built-up 10 m) applied to the terrain profile. Needs internet on first use; tiles are cached.">
+                  <input type="checkbox" checked={props.worldcoverOn}
+                    onChange={(e) => props.onWorldcoverChange(e.target.checked)} />
+                  {t('study.worldcoverLabel')}
+                </label>
+              </div>
               {props.surfaceAvailable && (
                 <div>
                   <label>{t('study.surfaceModel')}</label>
@@ -488,6 +523,49 @@ export default function StudyPanel(props: StudyPanelProps) {
                   disabled={busy} onClick={runMultiCoverage}>
                   {busy ? t('study.simulating') : t('study.bestServer', { count: sites.length })}
                 </button>
+              )}
+              {/* ---------------- automatic frequency / PCI plan ---------- */}
+              {sites.length >= 2 && sites.length <= 8 && (
+                <>
+                  <div className="row" style={{ marginTop: 4, alignItems: 'flex-end' }}>
+                    <div>
+                      <label>{t('study.planChannels')}</label>
+                      <input type="number" min={2} max={12} value={planChannels}
+                        onChange={(e) => setPlanChannels(Math.min(12, Math.max(2, parseInt(e.target.value) || 3)))} />
+                    </div>
+                    <button style={{ flex: 1 }} disabled={planBusy}
+                      title="Interference-matrix graph colouring: channel + PCI per site, with the SINR gain vs reuse-1 measured on the same grid"
+                      onClick={runFrequencyPlan}>
+                      {planBusy ? t('study.simulating') : t('study.freqPlan')}
+                    </button>
+                  </div>
+                  {freqPlan && (
+                    <div style={{ marginTop: 4 }}>
+                      {freqPlan.assignments?.map((a: any) => (
+                        <div key={a.site} className="stat-line">
+                          <span className="k">{a.site}</span>
+                          <span className="v">
+                            {t('study.channel')} {a.channel + 1}
+                            {a.pci !== undefined && <> · PCI {a.pci} (mod3 {a.pci_mod3})</>}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="stat-line">
+                        <span className="k">{t('study.sinrBaseline')}</span>
+                        <span className="v">
+                          {freqPlan.sinr_reuse1_baseline?.mean_sinr_db ?? '—'} dB →{' '}
+                          <b>{freqPlan.sinr_after_plan?.mean_sinr_db ?? '—'} dB</b>
+                          {freqPlan.gain_mean_sinr_db !== null && freqPlan.gain_mean_sinr_db !== undefined && (
+                            <> ({freqPlan.gain_mean_sinr_db >= 0 ? '+' : ''}{freqPlan.gain_mean_sinr_db} dB)</>
+                          )}
+                        </span>
+                      </div>
+                      <button style={{ width: '100%', marginTop: 2 }} onClick={() => setFreqPlan(null)}>
+                        {t('study.clearPlan')}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 

@@ -79,6 +79,7 @@ export default function Home() {
   const [rainRate, setRainRate] = useState(0);
   const [clutterPct, setClutterPct] = useState(0);
   const [surfaceOn, setSurfaceOn] = useState(false);
+  const [worldcoverOn, setWorldcoverOn] = useState(false);
   const [surfaceAvailable, setSurfaceAvailable] = useState(false);
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
 
@@ -215,6 +216,7 @@ export default function Home() {
         if (typeof s.rainRate === 'number') setRainRate(s.rainRate);
         if (typeof s.clutterPct === 'number') setClutterPct(s.clutterPct);
         if (typeof s.surfaceOn === 'boolean') setSurfaceOn(s.surfaceOn);
+        if (typeof s.worldcoverOn === 'boolean') setWorldcoverOn(s.worldcoverOn);
         if (s.customTileUrl) setCustomTileUrl(s.customTileUrl);
         // Rebind a georeferenced DXF (server rebuilds its grid on demand).
         if (s.dxfId) {
@@ -231,13 +233,13 @@ export default function Home() {
       localStorage.setItem(STORE_KEY, JSON.stringify({
         tx, rx, txHeight, rxHeight, freqMhz,
         technology, model, environment, customTileUrl,
-        foliageDepth, rainRate, clutterPct, surfaceOn,
+        foliageDepth, rainRate, clutterPct, surfaceOn, worldcoverOn,
         dxfId: georef?.dxf_id ?? null,
       }));
     } catch { /* storage full/unavailable */ }
   }, [restored, tx, rx, txHeight, rxHeight, freqMhz, technology, model,
       environment, customTileUrl, foliageDepth, rainRate, clutterPct,
-      surfaceOn, georef]);
+      surfaceOn, worldcoverOn, georef]);
 
   // --------------------------------------------------------- placement
   const handlePlace = useCallback((p: LatLng) => {
@@ -341,6 +343,7 @@ export default function Home() {
         technology, model, environment,
         foliageDepthM: foliageDepth, rainRateMmH: rainRate,
         clutterPct, surface: surfaceOn,
+        clutterSource: worldcoverOn ? 'worldcover' : undefined,
       })
         .then((p) => { if (!cancelled) setProfile(p); })
         .catch((e) => { if (!cancelled) setProfileError((e as Error).message); })
@@ -348,7 +351,7 @@ export default function Home() {
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [tx, rx, txHeight, rxHeight, freqMhz, georef, technology, model, environment,
-      foliageDepth, rainRate, clutterPct, surfaceOn]);
+      foliageDepth, rainRate, clutterPct, surfaceOn, worldcoverOn]);
 
   const validation = georef?.validation;
   const transform = georef?.transform;
@@ -547,6 +550,7 @@ export default function Home() {
             rainRate={rainRate} onRainChange={setRainRate}
             clutterPct={clutterPct} onClutterChange={setClutterPct}
             surfaceOn={surfaceOn} onSurfaceChange={setSurfaceOn}
+            worldcoverOn={worldcoverOn} onWorldcoverChange={setWorldcoverOn}
             surfaceAvailable={surfaceAvailable}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={setCoverage}

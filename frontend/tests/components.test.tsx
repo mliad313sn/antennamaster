@@ -146,6 +146,7 @@ describe('Study & Indoor panels render', () => {
         rainRate={0} onRainChange={() => {}}
         clutterPct={0} onClutterChange={() => {}}
         surfaceOn={false} onSurfaceChange={() => {}}
+        worldcoverOn={false} onWorldcoverChange={() => {}}
         surfaceAvailable={false}
         study={null} coverage={null} onCoverage={() => {}}
       />,

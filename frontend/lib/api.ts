@@ -40,7 +40,7 @@ export async function fetchProfile(params: {
   txHeight: number; rxHeight: number; freqMhz: number; samples?: number;
   technology?: string | null; model?: string | null; environment?: string | null;
   foliageDepthM?: number; rainRateMmH?: number;
-  clutterPct?: number; surface?: boolean;
+  clutterPct?: number; surface?: boolean; clutterSource?: string;
 }): Promise<ProfileResponse> {
   const q = new URLSearchParams({
     lat1: String(params.lat1), lon1: String(params.lon1),
@@ -60,6 +60,7 @@ export async function fetchProfile(params: {
   if (params.rainRateMmH) q.set('rain_rate_mm_h', String(params.rainRateMmH));
   if (params.clutterPct) q.set('clutter_pct', String(params.clutterPct));
   if (params.surface) q.set('surface', 'true');
+  if (params.clutterSource) q.set('clutter_source', params.clutterSource);
   return jsonOrThrow(await fetch(`/api/terrain/profile?${q.toString()}`));
 }
 
@@ -82,7 +83,7 @@ export async function simulateCoverage(params: {
   antennaId?: string | null;
   downtiltDeg?: number; shadowMarginDb?: number;
   foliageDepthM?: number; rainRateMmH?: number;
-  clutterPct?: number; surface?: boolean;
+  clutterPct?: number; surface?: boolean; clutterSource?: string;
   hBsM?: number;
   // Real site link-budget overrides (the preset is only a starting point):
   txPowerDbm?: number; txGainDbi?: number; rxGainDbi?: number;
@@ -107,6 +108,7 @@ export async function simulateCoverage(params: {
       rain_rate_mm_h: params.rainRateMmH,
       clutter_pct: params.clutterPct,
       surface: params.surface || undefined,
+      clutter_source: params.clutterSource || undefined,
       h_bs_m: params.hBsM,
       tx_power_dbm: params.txPowerDbm,
       tx_gain_dbi: params.txGainDbi,
@@ -263,7 +265,7 @@ export async function simulateMultiCoverage(params: {
   technology: string; radiusKm: number; dxfId: string | null;
   antennaId?: string | null; model?: string | null; environment?: string | null;
   shadowMarginDb?: number; hBsM?: number;
-  clutterPct?: number; surface?: boolean;
+  clutterPct?: number; surface?: boolean; clutterSource?: string;
   txPowerDbm?: number; rxSensitivityDbm?: number;
 }): Promise<CoverageResponse> {
   return jsonOrThrow(await fetch('/api/rf/coverage/multi', {
@@ -283,6 +285,7 @@ export async function simulateMultiCoverage(params: {
       shadow_margin_db: params.shadowMarginDb,
       clutter_pct: params.clutterPct,
       surface: params.surface || undefined,
+      clutter_source: params.clutterSource || undefined,
       h_bs_m: params.hBsM,
       tx_power_dbm: params.txPowerDbm,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
@@ -423,6 +426,37 @@ export async function itmStudy(params: Record<string, string | number>): Promise
 // Copilot engine-driven link diagnosis.
 export async function copilotAnalyzeLink(body: object): Promise<any> {
   return postJson('/api/copilot/analyze/link', body);
+}
+
+function getWithParams(path: string, params: Record<string, string | number | boolean>) {
+  const q = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])));
+  return fetch(`${path}?${q.toString()}`).then(jsonOrThrow) as Promise<any>;
+}
+
+// Official ITU-R P.1812 basic transmission loss (30 MHz - 6 GHz).
+export async function p1812Study(params: Record<string, string | number | boolean>): Promise<any> {
+  return getWithParams('/api/terrain/p1812', params);
+}
+
+// ITU-R P.530 annual availability of a PtP hop.
+export async function availabilityStudy(params: Record<string, string | number | boolean>): Promise<any> {
+  return getWithParams('/api/terrain/availability', params);
+}
+
+// Automatic frequency / PCI plan over a site cluster.
+export async function frequencyPlan(body: object): Promise<any> {
+  return postJson('/api/rf/frequency-plan', body);
+}
+
+// Ready-to-file EMF dossier (PDF blob).
+export async function emfReportPdf(body: object): Promise<Blob> {
+  const r = await fetch('/api/rf/compliance/report.pdf', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.blob();
 }
 
 // Leaky-feeder (radiating cable) tunnel study.

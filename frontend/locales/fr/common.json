@@ -127,7 +127,14 @@
     "viewSinr": "SINR / interférence",
     "equipment": "Équipement (préremplit les réglages)",
     "equipmentNone": "— choisir un équipement (facultatif) —",
-    "equipmentApplied": "Réglages RF remplis depuis cet équipement — modifiez un champ ci-dessous pour remplacer."
+    "equipmentApplied": "Réglages RF remplis depuis cet équipement — modifiez un champ ci-dessous pour remplacer.",
+    "worldcover": "Fouillis réel",
+    "worldcoverLabel": "WorldCover 10 m",
+    "planChannels": "Canaux",
+    "freqPlan": "Plan de fréquences / PCI",
+    "channel": "Canal",
+    "sinrBaseline": "SINR moyen (réutilisation-1 → plan)",
+    "clearPlan": "Effacer le plan"
   },
   "batch": {
     "title": "Récepteurs en lot",
@@ -145,7 +152,8 @@
     "colKm": "km",
     "colMargin": "Marge",
     "colLos": "Visée",
-    "downloadCsv": "Télécharger le CSV"
+    "downloadCsv": "Télécharger le CSV",
+    "qualify": "Qualifier {{count}} récepteurs"
   },
   "simple": {
     "heading": "Que voulez-vous connecter ?",
@@ -405,7 +413,28 @@
     "variability": "Ajustement de variabilité",
     "regime": "régime",
     "roughness": "Rugosité du terrain Δh",
-    "copilotHint": "Exécute le profil + l'optimiseur de hauteurs, puis explique le résultat avec des correctifs chiffrés."
+    "copilotHint": "Exécute le profil + l'optimiseur de hauteurs, puis explique le résultat avec des correctifs chiffrés.",
+    "tabP1812": "P.1812",
+    "tabAvail": "Disponibilité",
+    "engineExact": "ITM NTIA (exact)",
+    "engineItu": "UIT-R P.1812 (code de référence)",
+    "freeSpace": "Perte en espace libre",
+    "refAtten": "Affaiblissement de référence",
+    "excessFs": "Excès sur l'espace libre",
+    "timePct": "% temps (p)",
+    "locPct": "% emplacements (pL)",
+    "worldcover": "Fouillis WorldCover (10 m)",
+    "p1812Hint": "Affaiblissement point-zone UIT-R P.1812 officiel (30 MHz – 6 GHz) sur le profil de terrain réel. Activez WorldCover pour alimenter l'entrée fouillis de la Recommandation avec l'occupation du sol ESA à 10 m.",
+    "availHint": "Disponibilité annuelle d'un bond hertzien point à point (UIT-R P.530 multitrajets + pluie P.837/P.838), à partir de la marge d'évanouissement réelle du bilan de liaison sur le terrain.",
+    "rainZone": "Zone de pluie (P.837)",
+    "dn1": "dN₁ (unités N)",
+    "availability": "Disponibilité annuelle",
+    "downtime": "Indisponibilité",
+    "year": "an",
+    "outMultipath": "Coupure multitrajets",
+    "outRain": "Coupure pluie",
+    "marginUsed": "Marge d'évanouissement utilisée",
+    "emfPdf": "⤓ Dossier de conformité CEM (PDF)"
   },
   "globe": {
     "view2d": "2D",

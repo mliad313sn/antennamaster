@@ -127,7 +127,14 @@
     "viewSinr": "SINR / interference",
     "equipment": "Equipment (auto-fills settings)",
     "equipmentNone": "— choose equipment (optional) —",
-    "equipmentApplied": "RF settings filled from this equipment — edit any field below to override."
+    "equipmentApplied": "RF settings filled from this equipment — edit any field below to override.",
+    "worldcover": "Real clutter",
+    "worldcoverLabel": "WorldCover 10 m",
+    "planChannels": "Channels",
+    "freqPlan": "Frequency / PCI plan",
+    "channel": "Channel",
+    "sinrBaseline": "Mean SINR (reuse-1 → plan)",
+    "clearPlan": "Clear plan"
   },
   "batch": {
     "title": "Batch receivers",
@@ -145,7 +152,8 @@
     "colKm": "km",
     "colMargin": "Margin",
     "colLos": "LOS",
-    "downloadCsv": "Download CSV"
+    "downloadCsv": "Download CSV",
+    "qualify": "Qualify {{count}} receivers"
   },
   "simple": {
     "heading": "What are you trying to connect?",
@@ -405,7 +413,28 @@
     "variability": "Variability adjustment",
     "regime": "regime",
     "roughness": "Terrain roughness Δh",
-    "copilotHint": "Runs the profile + height optimizer, then explains the result with quantified fixes."
+    "copilotHint": "Runs the profile + height optimizer, then explains the result with quantified fixes.",
+    "tabP1812": "P.1812",
+    "tabAvail": "Availability",
+    "engineExact": "NTIA ITM (exact)",
+    "engineItu": "ITU-R P.1812 (reference code)",
+    "freeSpace": "Free-space loss",
+    "refAtten": "Reference attenuation",
+    "excessFs": "Excess over free space",
+    "timePct": "Time % (p)",
+    "locPct": "Location % (pL)",
+    "worldcover": "WorldCover clutter (10 m)",
+    "p1812Hint": "Official ITU-R P.1812 point-to-area path loss (30 MHz – 6 GHz) over the real terrain profile. Enable WorldCover to feed the Recommendation's clutter input from 10 m ESA land cover.",
+    "availHint": "Annual availability of a microwave PtP hop (ITU-R P.530 multipath + P.837/P.838 rain), using the hop's real link-budget fade margin over the terrain.",
+    "rainZone": "Rain zone (P.837)",
+    "dn1": "dN₁ (N-units)",
+    "availability": "Annual availability",
+    "downtime": "Downtime",
+    "year": "year",
+    "outMultipath": "Multipath outage",
+    "outRain": "Rain outage",
+    "marginUsed": "Fade margin used",
+    "emfPdf": "⤓ EMF compliance dossier (PDF)"
   },
   "globe": {
     "view2d": "2D",
