@@ -10,6 +10,7 @@
  * 3. Through-the-earth: VLF induction link through conductive ground.
  */
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Area, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
@@ -26,6 +27,7 @@ import type {
 type Tab = 'plan' | 'tunnel' | 'tte';
 
 export default function IndoorStudio({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('plan');
   useEffect(() => {
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -36,20 +38,14 @@ export default function IndoorStudio({ onClose }: { onClose: () => void }) {
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" style={{ width: 860 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
-          <h2>Indoor &amp; underground studies</h2>
-          <button onClick={onClose} aria-label="Close">✕</button>
+          <h2>{t('indoor.title')}</h2>
+          <button onClick={onClose} aria-label={t('indoor.close')}>✕</button>
         </div>
         <div className="modal-body">
           <div className="mode-tabs">
-            <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>
-              Floor plan / mine coverage
-            </button>
-            <button className={tab === 'tunnel' ? 'active' : ''} onClick={() => setTab('tunnel')}>
-              Tunnel link
-            </button>
-            <button className={tab === 'tte' ? 'active' : ''} onClick={() => setTab('tte')}>
-              Through-the-earth
-            </button>
+            <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>{t('indoor.tabPlan')}</button>
+            <button className={tab === 'tunnel' ? 'active' : ''} onClick={() => setTab('tunnel')}>{t('indoor.tabTunnel')}</button>
+            <button className={tab === 'tte' ? 'active' : ''} onClick={() => setTab('tte')}>{t('indoor.tabTte')}</button>
           </div>
           {tab === 'plan' && <PlanStudy />}
           {tab === 'tunnel' && <TunnelStudy />}
@@ -62,6 +58,7 @@ export default function IndoorStudio({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------- plan tab
 function PlanStudy() {
+  const { t } = useTranslation();
   const [upload, setUpload] = useState<UploadResponse | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
   const [layerMats, setLayerMats] = useState<Record<string, string>>({});
@@ -143,23 +140,17 @@ function PlanStudy() {
     <div>
       {!upload && (
         <>
-          <p className="hint">
-            Upload a DXF floor plan, metro station or mine gallery layout. LINE /
-            POLYLINE / ARC entities become walls; assign a material to each layer,
-            click the plan to place the transmitter, then run the multi-wall
-            coverage simulation. No georeferencing needed — everything runs in
-            drawing coordinates.
-          </p>
+          <p className="hint">{t('indoor.planIntro')}</p>
           <input type="file" accept=".dxf"
             onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
-          {busy && <p className="hint">Parsing…</p>}
+          {busy && <p className="hint">{t('indoor.parsing')}</p>}
         </>
       )}
 
       {upload && (
         <div style={{ display: 'flex', gap: 14 }}>
           <div style={{ width: 260, flexShrink: 0 }}>
-            <h3 style={{ margin: '0 0 6px', fontSize: 13 }}>Layer materials</h3>
+            <h3 style={{ margin: '0 0 6px', fontSize: 13 }}>{t('indoor.layerMaterials')}</h3>
             <div style={{ maxHeight: 220, overflowY: 'auto' }}>
               {upload.layers.filter((l) => l.entity_count > 0).map((l) => (
                 <div key={l.name} style={{ marginBottom: 6 }}>
@@ -180,62 +171,62 @@ function PlanStudy() {
             </div>
             <div className="row" style={{ marginTop: 8 }}>
               <div>
-                <label>Units</label>
+                <label>{t('indoor.units')}</label>
                 <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
-                  <option value={1}>Meters</option>
-                  <option value={0.3048}>Feet</option>
-                  <option value={0.01}>Centimeters</option>
-                  <option value={0.001}>Millimeters</option>
+                  <option value={1}>{t('indoor.meters')}</option>
+                  <option value={0.3048}>{t('indoor.feet')}</option>
+                  <option value={0.01}>{t('indoor.centimeters')}</option>
+                  <option value={0.001}>{t('indoor.millimeters')}</option>
                 </select>
               </div>
               <div>
-                <label>Freq (MHz)</label>
+                <label>{t('indoor.freqMhz')}</label>
                 <input type="number" value={freqMhz}
                   onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>Floors crossed</label>
+                <label>{t('indoor.floorsCrossed')}</label>
                 <input type="number" min={0} max={30} value={floors}
-                  title="Slabs between TX and the mapped floor — COST-231 penetration (saturates non-linearly)"
+                  title={t('indoor.floorsTitle')}
                   onChange={(e) => setFloors(Math.max(0, parseInt(e.target.value) || 0))} />
               </div>
               <div>
-                <label>Floor loss (dB)</label>
+                <label>{t('indoor.floorLoss')}</label>
                 <input type="number" min={0} max={40} step={0.1} value={floorLoss}
-                  title="Per-slab penetration; 18.3 dB = standard concrete slab"
+                  title={t('indoor.floorLossTitle')}
                   onChange={(e) => setFloorLoss(parseFloat(e.target.value) || 18.3)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>TX power (dBm)</label>
+                <label>{t('indoor.txPower')}</label>
                 <input type="number" value={txPower}
                   onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} />
               </div>
               <div>
-                <label>Sensitivity (dBm)</label>
+                <label>{t('indoor.sensitivity')}</label>
                 <input type="number" value={sensitivity}
                   onChange={(e) => setSensitivity(parseFloat(e.target.value) || -82)} />
               </div>
             </div>
             <button className="primary" style={{ width: '100%', marginTop: 6 }}
               disabled={!tx || busy} onClick={run}>
-              {busy ? 'Simulating…' : tx ? 'Run coverage' : 'Click the plan to place TX'}
+              {busy ? t('indoor.simulating') : tx ? t('indoor.runCoverage') : t('indoor.clickToPlace')}
             </button>
             {result && (
               <>
                 <div className="stat-line" style={{ marginTop: 8 }}>
-                  <span className="k">Served area</span>
+                  <span className="k">{t('indoor.servedArea')}</span>
                   <span className="v">{(result.stats.served_area_fraction * 100).toFixed(0)}%</span>
                 </div>
-                <div className="stat-line"><span className="k">Walls</span><span className="v">{result.stats.walls}</span></div>
+                <div className="stat-line"><span className="k">{t('indoor.walls')}</span><span className="v">{result.stats.walls}</span></div>
                 <div className="stat-line">
-                  <span className="k">RX dynamic range</span>
+                  <span className="k">{t('indoor.rxDynamicRange')}</span>
                   <span className="v">{result.stats.min_rx_power_dbm.toFixed(0)} … {result.stats.max_rx_power_dbm.toFixed(0)} dBm</span>
                 </div>
-                <a className="download-link" href={result.png_url} download>⤓ Download heatmap PNG</a>
+                <a className="download-link" href={result.png_url} download>⤓ {t('indoor.downloadHeatmap')}</a>
                 <div style={{ marginTop: 4 }}>
                   {result.legend.map((l) => (
                     <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
@@ -251,24 +242,24 @@ function PlanStudy() {
             {result ? (
               /* Heatmap replaces the preview; click returns to TX placement */
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={result.png_url} alt="Indoor coverage heatmap"
+              <img src={result.png_url} alt={t('indoor.heatmapAlt')}
                 style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }}
                 ref={imgRef} onClick={planClick} />
             ) : preview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={preview.url} alt="Floor plan preview"
+              <img src={preview.url} alt={t('indoor.previewAlt')}
                 style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }}
                 ref={imgRef} onClick={planClick} />
             ) : (
-              <p className="hint">No structural layers selected.</p>
+              <p className="hint">{t('indoor.noLayers')}</p>
             )}
             {tx && !result && (
-              <p className="hint">TX at ({tx.x.toFixed(1)}, {tx.y.toFixed(1)}) drawing units — run the simulation.</p>
+              <p className="hint">{t('indoor.txAt', { x: tx.x.toFixed(1), y: tx.y.toFixed(1) })}</p>
             )}
             {preview && (
               <div className="row" style={{ maxWidth: 320 }}>
                 <div>
-                  <label htmlFor="tx-x">TX X (drawing units)</label>
+                  <label htmlFor="tx-x">{t('indoor.txX')}</label>
                   <input id="tx-x" type="number" value={tx?.x ?? ''}
                     onChange={(e) => {
                       const v = parseFloat(e.target.value);
@@ -276,7 +267,7 @@ function PlanStudy() {
                     }} />
                 </div>
                 <div>
-                  <label htmlFor="tx-y">TX Y</label>
+                  <label htmlFor="tx-y">{t('indoor.txY')}</label>
                   <input id="tx-y" type="number" value={tx?.y ?? ''}
                     onChange={(e) => {
                       const v = parseFloat(e.target.value);
@@ -295,6 +286,7 @@ function PlanStudy() {
 
 // -------------------------------------------------------------- tunnel tab
 function TunnelStudy() {
+  const { t } = useTranslation();
   const [presets, setPresets] = useState<UndergroundPresets | null>(null);
   const [freq, setFreq] = useState(450);
   const [width, setWidth] = useState(4);
@@ -322,39 +314,35 @@ function TunnelStudy() {
 
   return (
     <div>
-      <p className="hint">
-        Waveguide-regime propagation in a tunnel or mine gallery (Emslie model):
-        free space up to the modal breakpoint, then linear dB/m attenuation.
-        Higher frequencies travel farther — the opposite of open terrain.
-      </p>
+      <p className="hint">{t('indoor.tunnelIntro')}</p>
       <div className="row">
-        <div><label>Frequency (MHz)</label><input type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
-        <div><label>Width (m)</label><input type="number" value={width} onChange={(e) => setWidth(parseFloat(e.target.value) || 4)} /></div>
-        <div><label>Height (m)</label><input type="number" value={height} onChange={(e) => setHeight(parseFloat(e.target.value) || 3)} /></div>
-        <div><label>Length (m)</label><input type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 3000)} /></div>
+        <div><label>{t('indoor.frequencyMhz')}</label><input type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
+        <div><label>{t('indoor.widthM')}</label><input type="number" value={width} onChange={(e) => setWidth(parseFloat(e.target.value) || 4)} /></div>
+        <div><label>{t('indoor.heightM')}</label><input type="number" value={height} onChange={(e) => setHeight(parseFloat(e.target.value) || 3)} /></div>
+        <div><label>{t('indoor.lengthM')}</label><input type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 3000)} /></div>
       </div>
       <div className="row">
         <div>
-          <label>Wall material</label>
+          <label>{t('indoor.wallMaterial')}</label>
           <select value={wall} onChange={(e) => setWall(e.target.value)}>
             {(presets?.tunnel_walls ?? []).map((w) => (
               <option key={w.key} value={w.key}>{w.label} (εr {w.eps_r})</option>
             ))}
           </select>
         </div>
-        <div><label>TX power (dBm)</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 37)} /></div>
-        <div><label>TX gain (dBi)</label><input type="number" value={txGain} onChange={(e) => setTxGain(parseFloat(e.target.value) || 6)} /></div>
-        <div><label>Sensitivity (dBm)</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -110)} /></div>
+        <div><label>{t('indoor.txPower')}</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 37)} /></div>
+        <div><label>{t('indoor.txGain')}</label><input type="number" value={txGain} onChange={(e) => setTxGain(parseFloat(e.target.value) || 6)} /></div>
+        <div><label>{t('indoor.sensitivity')}</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -110)} /></div>
       </div>
       <button className="primary" disabled={busy} onClick={run}>
-        {busy ? 'Computing…' : 'Compute tunnel link'}
+        {busy ? t('indoor.computing') : t('indoor.computeTunnel')}
       </button>
       {result && (
         <>
           <div className="row" style={{ marginTop: 10 }}>
-            <div className="stat-line"><span className="k">Attenuation</span><span className="v">{result.alpha_db_per_m.toFixed(3)} dB/m</span></div>
-            <div className="stat-line"><span className="k">Breakpoint</span><span className="v">{result.breakpoint_m.toFixed(0)} m</span></div>
-            <div className="stat-line"><span className="k">Max range</span><span className="v">{result.max_range_m.toFixed(0)} m</span></div>
+            <div className="stat-line"><span className="k">{t('indoor.attenuation')}</span><span className="v">{result.alpha_db_per_m.toFixed(3)} dB/m</span></div>
+            <div className="stat-line"><span className="k">{t('indoor.breakpoint')}</span><span className="v">{result.breakpoint_m.toFixed(0)} m</span></div>
+            <div className="stat-line"><span className="k">{t('indoor.maxRange')}</span><span className="v">{result.max_range_m.toFixed(0)} m</span></div>
           </div>
           <div style={{ height: 240 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -364,15 +352,15 @@ function TunnelStudy() {
                   label={{ value: 'm', position: 'insideBottomRight', offset: -2, fontSize: 11, fill: 'var(--ink-muted)' }} />
                 <YAxis width={52} tick={{ fontSize: 11, fill: 'var(--ink-muted)' }} stroke="var(--baseline)"
                   label={{ value: 'dBm', position: 'insideTopLeft', offset: 4, fontSize: 11, fill: 'var(--ink-muted)' }} />
-                <Tooltip formatter={(v: number) => [`${Number(v).toFixed(1)} dBm`, 'RX power']}
+                <Tooltip formatter={(v: number) => [`${Number(v).toFixed(1)} dBm`, t('indoor.rxPower')]}
                   labelFormatter={(l) => `${l} m`} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area dataKey="rx_power_dbm" name="RX power" stroke="#2a78d6"
+                <Area dataKey="rx_power_dbm" name={t('indoor.rxPower')} stroke="#2a78d6"
                   fill="#2a78d6" fillOpacity={0.3} strokeWidth={2} dot={false}
                   isAnimationActive={false} />
                 <ReferenceLine y={sensitivity} stroke="var(--status-critical)"
                   strokeDasharray="6 4"
-                  label={{ value: 'sensitivity', fontSize: 11, fill: 'var(--status-critical)', position: 'insideBottomLeft' }} />
+                  label={{ value: t('indoor.sensitivityLine'), fontSize: 11, fill: 'var(--status-critical)', position: 'insideBottomLeft' }} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -385,6 +373,7 @@ function TunnelStudy() {
 
 // ----------------------------------------------------------------- TTE tab
 function TteStudy() {
+  const { t } = useTranslation();
   const [presets, setPresets] = useState<UndergroundPresets | null>(null);
   const [freqHz, setFreqHz] = useState(5000);
   const [depth, setDepth] = useState(100);
@@ -409,17 +398,12 @@ function TteStudy() {
 
   return (
     <div>
-      <p className="hint">
-        Through-the-earth link (mine paging / cave rescue): a VLF magnetic loop
-        couples through conductive ground. Loss = skin-depth attenuation +
-        near-field (1/r³) spreading — which is why only very low frequencies
-        get through.
-      </p>
+      <p className="hint">{t('indoor.tteIntro')}</p>
       <div className="row">
-        <div><label>Frequency (Hz)</label><input type="number" value={freqHz} onChange={(e) => setFreqHz(parseFloat(e.target.value) || 5000)} /></div>
-        <div><label>Depth (m)</label><input type="number" value={depth} onChange={(e) => setDepth(parseFloat(e.target.value) || 100)} /></div>
+        <div><label>{t('indoor.frequencyHz')}</label><input type="number" value={freqHz} onChange={(e) => setFreqHz(parseFloat(e.target.value) || 5000)} /></div>
+        <div><label>{t('indoor.depthM')}</label><input type="number" value={depth} onChange={(e) => setDepth(parseFloat(e.target.value) || 100)} /></div>
         <div>
-          <label>Ground</label>
+          <label>{t('indoor.ground')}</label>
           <select value={earth} onChange={(e) => setEarth(e.target.value)}>
             {(presets?.earth ?? []).map((g) => (
               <option key={g.key} value={g.key}>{g.label} ({g.sigma} S/m)</option>
@@ -428,23 +412,23 @@ function TteStudy() {
         </div>
       </div>
       <div className="row">
-        <div><label>TX power (dBm)</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 30)} /></div>
-        <div><label>Sensitivity (dBm)</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -130)} /></div>
+        <div><label>{t('indoor.txPower')}</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 30)} /></div>
+        <div><label>{t('indoor.sensitivity')}</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -130)} /></div>
       </div>
       <button className="primary" disabled={busy} onClick={run}>
-        {busy ? 'Computing…' : 'Compute TTE link'}
+        {busy ? t('indoor.computing') : t('indoor.computeTte')}
       </button>
       {result && (
         <div style={{ marginTop: 10 }}>
-          <div className="stat-line"><span className="k">Skin depth</span><span className="v">{result.skin_depth_m.toFixed(1)} m</span></div>
-          <div className="stat-line"><span className="k">Ground attenuation</span><span className="v">{result.attenuation_db.toFixed(1)} dB</span></div>
-          <div className="stat-line"><span className="k">Near-field spreading</span><span className="v">{result.spreading_db.toFixed(1)} dB</span></div>
-          <div className="stat-line"><span className="k">Total path loss</span><span className="v">{result.total_loss_db.toFixed(1)} dB</span></div>
-          <div className="stat-line"><span className="k">RX power</span><span className="v">{result.rx_power_dbm.toFixed(1)} dBm</span></div>
+          <div className="stat-line"><span className="k">{t('indoor.skinDepth')}</span><span className="v">{result.skin_depth_m.toFixed(1)} m</span></div>
+          <div className="stat-line"><span className="k">{t('indoor.groundAtten')}</span><span className="v">{result.attenuation_db.toFixed(1)} dB</span></div>
+          <div className="stat-line"><span className="k">{t('indoor.nearFieldSpread')}</span><span className="v">{result.spreading_db.toFixed(1)} dB</span></div>
+          <div className="stat-line"><span className="k">{t('indoor.totalLoss')}</span><span className="v">{result.total_loss_db.toFixed(1)} dB</span></div>
+          <div className="stat-line"><span className="k">{t('indoor.rxPower')}</span><span className="v">{result.rx_power_dbm.toFixed(1)} dBm</span></div>
           <div className="stat-line">
-            <span className="k">Margin</span>
+            <span className="k">{t('indoor.margin')}</span>
             <span className="v" style={{ color: result.served ? 'var(--status-good)' : 'var(--status-critical)' }}>
-              {result.margin_db.toFixed(1)} dB {result.served ? '(link works)' : '(no link)'}
+              {result.margin_db.toFixed(1)} dB {result.served ? t('indoor.linkWorks') : t('indoor.noLink')}
             </span>
           </div>
         </div>
