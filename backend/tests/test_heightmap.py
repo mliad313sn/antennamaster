@@ -31,12 +31,21 @@ def test_heightmap_matches_fake_ramp(fake_store):
     # The fake world ramps west->east; a tile's heights must therefore
     # increase along each row (west to east).
     fusion = TerrainFusionService(store=fake_store)
-    raw = heightmap_int16(fusion, 4, 8, 4, size=33)
+    # Force real sampling at a low level for the test (min_detail_level=0).
+    raw = heightmap_int16(fusion, 4, 8, 4, size=33, min_detail_level=0)
     arr = np.frombuffer(raw, dtype=np.int16).reshape(33, 33)
     assert arr.shape == (33, 33)
     # Monotonic increase eastward (allow ties from int rounding).
     assert arr[0, -1] >= arr[0, 0]
     assert np.all(np.diff(arr[0].astype(int)) >= 0)
+
+
+def test_low_zoom_returns_flat_tile(fake_store):
+    # Below the detail level a tile is flat (no hemisphere-wide DEM fetch).
+    fusion = TerrainFusionService(store=fake_store)
+    arr = np.frombuffer(heightmap_int16(fusion, 2, 0, 0, size=33),
+                        dtype=np.int16)
+    assert np.all(arr == 0)
 
 
 def test_heightmap_api(client):

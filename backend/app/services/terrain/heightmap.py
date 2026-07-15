@@ -33,14 +33,26 @@ def tile_rectangle(level: int, x: int, y: int) -> tuple[float, float, float, flo
     return west, south, east, north
 
 
+# Below this Cesium level a single tile spans a huge area; sampling real
+# elevation there would fetch hundreds of DEM tiles for no visible relief.
+# We return a flat sea-level tile and let real relief refine as the user zooms
+# toward the area of interest (standard terrain level-of-detail behaviour).
+MIN_DETAIL_LEVEL = 8
+
+
 def heightmap_int16(fusion, level: int, x: int, y: int, size: int = 65,
-                    grid=None, georef=None) -> bytes:
+                    grid=None, georef=None,
+                    min_detail_level: int = MIN_DETAIL_LEVEL) -> bytes:
     """int16 (metres, row-major north->south, west->east) heightmap for a tile.
 
     ``size`` is the grid edge (Cesium wants a fixed width==height, default 65).
     Sampling reuses the fused-terrain service, so the 3D relief matches the 2D
-    physics; an optional DXF grid/georef refines the patch it covers.
+    physics; an optional DXF grid/georef refines the patch it covers.  Levels
+    below ``min_detail_level`` return a flat tile to avoid fetching the whole
+    hemisphere's DEM for a coarse view.
     """
+    if level < min_detail_level:
+        return np.zeros((size, size), dtype=np.int16).tobytes()
     west, south, east, north = tile_rectangle(level, x, y)
     lons = np.linspace(west, east, size)
     # Row 0 = north; Cesium heightmap rows run north -> south.
