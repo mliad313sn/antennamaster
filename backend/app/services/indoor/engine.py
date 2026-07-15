@@ -83,23 +83,23 @@ def cost231_floor_loss_db(n_floors: int, floor_loss_db: float = 18.3,
     return float(floor_loss_db * n ** ((n + 2.0) / (n + 1.0) - b))
 
 
-def simulate_indoor(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
-                    unit_scale: float = 1.0,
-                    tx_power_dbm: float = 20.0, tx_gain_dbi: float = 3.0,
-                    rx_gain_dbi: float = 0.0, losses_db: float = 0.0,
-                    rx_sensitivity_dbm: float = -82.0,
-                    tx_height_m: float = 2.5, rx_height_m: float = 1.2,
-                    floors_crossed: int = 0, floor_height_m: float = 3.0,
-                    floor_loss_db: float = 18.3,
-                    grid_px: int = 200, raster_px: int = 900) -> IndoorResult:
-    """Multi-wall coverage heatmap over the floor plan's bounding box.
+def rx_power_field(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
+                   unit_scale: float = 1.0,
+                   tx_power_dbm: float = 20.0, tx_gain_dbi: float = 3.0,
+                   rx_gain_dbi: float = 0.0, losses_db: float = 0.0,
+                   tx_height_m: float = 2.5, rx_height_m: float = 1.2,
+                   floors_crossed: int = 0, floor_height_m: float = 3.0,
+                   floor_loss_db: float = 18.3,
+                   grid_px: int = 200) -> tuple[np.ndarray, tuple, bool]:
+    """Raw RX-power grid (dBm) for ONE transmitter over the plan's bbox.
 
-    ``floors_crossed`` > 0 evaluates the RX grid that many storeys away from
-    the TX floor: the 3D distance gains the vertical stack and the COST-231
-    floor-penetration term (non-linear in n) is added.  The wall plan is
-    still the RX floor's plan (that is the floor whose coverage is drawn).
+    The reusable core of the multi-wall engine: `simulate_indoor` rasterizes
+    one field; the DAS engine combines several (one per antenna) on the same
+    grid — the grid geometry depends only on the walls, so fields from
+    different TX positions are element-wise combinable.
+
+    Returns (rx_dbm (ny,nx), (x0,y0,x1,y1) padded bbox, used_p1238).
     """
-    warnings: list[str] = []
     x0, y0, x1, y1 = walls.bbox() if walls.count else (tx_x - 50, tx_y - 50,
                                                        tx_x + 50, tx_y + 50)
     pad = 0.04 * max(x1 - x0, y1 - y0, 1.0)
@@ -134,9 +134,6 @@ def simulate_indoor(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
             u = (qp[0] * r[:, 1] - qp[1] * r[:, 0]) / np.where(ok, denom, 1.0)
             crossed = ok & (t > 0.0) & (t < 1.0) & (u >= 0.0) & (u <= 1.0)
             wall_loss += np.where(crossed, per_wall_loss[i], 0.0)
-    else:
-        warnings.append("No wall segments on the selected layers - falling "
-                        "back to the ITU-R P.1238 site-general indoor model.")
 
     # ---- path loss + link budget ------------------------------------------
     d2d = np.hypot(cells[:, 0] - tx_x, cells[:, 1] - tx_y) * unit_scale
@@ -151,7 +148,40 @@ def simulate_indoor(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
         loss = _fspl_db(d3d, freq_mhz) + wall_loss \
             + cost231_floor_loss_db(floors_crossed, floor_loss_db)
     rx = tx_power_dbm + tx_gain_dbi + rx_gain_dbi - losses_db - loss
-    margin = (rx - rx_sensitivity_dbm).reshape(ny, nx)
+    return rx.reshape(ny, nx), (x0, y0, x1, y1), use_p1238
+
+
+def simulate_indoor(walls: WallSet, tx_x: float, tx_y: float, freq_mhz: float,
+                    unit_scale: float = 1.0,
+                    tx_power_dbm: float = 20.0, tx_gain_dbi: float = 3.0,
+                    rx_gain_dbi: float = 0.0, losses_db: float = 0.0,
+                    rx_sensitivity_dbm: float = -82.0,
+                    tx_height_m: float = 2.5, rx_height_m: float = 1.2,
+                    floors_crossed: int = 0, floor_height_m: float = 3.0,
+                    floor_loss_db: float = 18.3,
+                    grid_px: int = 200, raster_px: int = 900) -> IndoorResult:
+    """Multi-wall coverage heatmap over the floor plan's bounding box.
+
+    ``floors_crossed`` > 0 evaluates the RX grid that many storeys away from
+    the TX floor: the 3D distance gains the vertical stack and the COST-231
+    floor-penetration term (non-linear in n) is added.  The wall plan is
+    still the RX floor's plan (that is the floor whose coverage is drawn).
+    """
+    warnings: list[str] = []
+    rx_grid, (x0, y0, x1, y1), use_p1238 = rx_power_field(
+        walls, tx_x, tx_y, freq_mhz, unit_scale=unit_scale,
+        tx_power_dbm=tx_power_dbm, tx_gain_dbi=tx_gain_dbi,
+        rx_gain_dbi=rx_gain_dbi, losses_db=losses_db,
+        tx_height_m=tx_height_m, rx_height_m=rx_height_m,
+        floors_crossed=floors_crossed, floor_height_m=floor_height_m,
+        floor_loss_db=floor_loss_db, grid_px=grid_px)
+    if use_p1238:
+        warnings.append("No wall segments on the selected layers - falling "
+                        "back to the ITU-R P.1238 site-general indoor model.")
+    w, h = x1 - x0, y1 - y0
+    ny, nx = rx_grid.shape
+    rx = rx_grid.ravel()
+    margin = (rx_grid - rx_sensitivity_dbm)
 
     # ---- raster: heatmap + walls composited -------------------------------
     if w >= h:

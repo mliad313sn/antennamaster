@@ -207,6 +207,111 @@ def auto_place(req: AutoPlaceRequest,
         raise HTTPException(502, f"Auto-placement failed: {exc}") from exc
 
 
+class DasRequest(BaseModel):
+    dxf_id: str
+    layer_materials: dict[str, str]
+    unit_scale: float = Field(1.0, gt=0)
+    freq_mhz: float = Field(2442.0, gt=0)
+    source_power_dbm: float = Field(30.0, ge=-30, le=60)
+    tree: dict                                   # DAS component tree
+    rx_gain_dbi: float = Field(0.0, ge=-10, le=20)
+    rx_sensitivity_dbm: float = Field(-82.0, le=0)
+    tx_height_m: float = Field(2.7, gt=0)
+    rx_height_m: float = Field(1.2, gt=0)
+    grid_px: int = Field(200, ge=50, le=400)
+
+
+@router.post("/das")
+def das_design(req: DasRequest,
+               user: dict | None = Depends(current_user)) -> dict:
+    """Solve a DAS component tree (cables, splitters, tap couplers → antennas)
+    and render the combined multi-antenna coverage: per-antenna delivered
+    power/EIRP + strongest-server heatmap over the floor plan."""
+    require_feature(user, "indoor_studio")
+    session = _session_or_404(req.dxf_id, user)
+    walls = extract_walls(session.document(), req.layer_materials)
+    if walls.count == 0:
+        raise HTTPException(422, "No wall segments on the selected layers")
+
+    from ..services.indoor.das import DasError, das_coverage, solve_das
+    try:
+        antennas = solve_das(req.source_power_dbm, req.tree)
+    except DasError as exc:
+        raise HTTPException(422, f"Invalid DAS tree: {exc}") from exc
+
+    result = das_coverage(walls, antennas, req.freq_mhz,
+                          unit_scale=req.unit_scale,
+                          rx_gain_dbi=req.rx_gain_dbi,
+                          rx_sensitivity_dbm=req.rx_sensitivity_dbm,
+                          tx_height_m=req.tx_height_m,
+                          rx_height_m=req.rx_height_m, grid_px=req.grid_px)
+    results_store.save("indoor", result.result_id, result.png,
+                       {"bounds_dxf": result.bounds_dxf})
+    return {"result_id": result.result_id,
+            "png_url": f"/api/indoor/coverage/{result.result_id}.png",
+            "bounds_dxf": result.bounds_dxf, "legend": result.legend,
+            "stats": result.stats, "antennas": antennas}
+
+
+class FloorIn(BaseModel):
+    level: int = Field(ge=-10, le=200)
+    dxf_id: str
+    layer_materials: dict[str, str]
+
+
+class FloorStackRequest(BaseModel):
+    floors: list[FloorIn] = Field(min_length=1, max_length=30)
+    tx_level: int = Field(0, ge=-10, le=200)
+    tx_x: float
+    tx_y: float
+    unit_scale: float = Field(1.0, gt=0)
+    freq_mhz: float = Field(2442.0, gt=0)
+    tx_power_dbm: float = Field(20.0, ge=-30, le=60)
+    tx_gain_dbi: float = Field(3.0, ge=-10, le=30)
+    rx_gain_dbi: float = Field(0.0, ge=-10, le=20)
+    losses_db: float = Field(0.0, ge=0, le=30)
+    rx_sensitivity_dbm: float = Field(-82.0, le=0)
+    floor_height_m: float = Field(3.0, ge=2, le=6)
+    floor_loss_db: float = Field(18.3, ge=0, le=40)
+    grid_px: int = Field(150, ge=50, le=400)
+
+
+@router.post("/stack")
+def floor_stack(req: FloorStackRequest,
+                user: dict | None = Depends(current_user)) -> dict:
+    """Multi-floor building study: one plan per storey, a single TX on
+    ``tx_level``; each floor's heatmap uses ITS OWN walls plus the COST-231
+    slab penetration for the storeys crossed — the whole building at once."""
+    require_feature(user, "indoor_studio")
+    floors_out = []
+    for fl in sorted(req.floors, key=lambda f: f.level):
+        session = _session_or_404(fl.dxf_id, user)
+        walls = extract_walls(session.document(), fl.layer_materials)
+        crossed = abs(fl.level - req.tx_level)
+        try:
+            result = simulate_indoor(
+                walls, req.tx_x, req.tx_y, req.freq_mhz,
+                unit_scale=req.unit_scale, tx_power_dbm=req.tx_power_dbm,
+                tx_gain_dbi=req.tx_gain_dbi, rx_gain_dbi=req.rx_gain_dbi,
+                losses_db=req.losses_db,
+                rx_sensitivity_dbm=req.rx_sensitivity_dbm,
+                floors_crossed=crossed, floor_height_m=req.floor_height_m,
+                floor_loss_db=req.floor_loss_db, grid_px=req.grid_px)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        results_store.save("indoor", result.result_id, result.png,
+                           {"bounds_dxf": result.bounds_dxf})
+        floors_out.append({
+            "level": fl.level, "floors_crossed": crossed,
+            "result_id": result.result_id,
+            "png_url": f"/api/indoor/coverage/{result.result_id}.png",
+            "bounds_dxf": result.bounds_dxf,
+            "stats": result.stats, "warnings": result.warnings})
+    served = [f["stats"]["served_area_fraction"] for f in floors_out]
+    return {"tx_level": req.tx_level, "floors": floors_out,
+            "building_mean_served_fraction": round(sum(served) / len(served), 4)}
+
+
 @router.get("/coverage/{result_id}.png")
 def indoor_coverage_png(result_id: str) -> Response:
     hit = results_store.load("indoor", result_id)
