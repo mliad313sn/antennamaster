@@ -1,0 +1,115 @@
+{
+  "_source": "Macro-cellular passive antennas and active radios from real tier-1/tier-2 vendors. Gains and beamwidths are class-reference planning figures at the stated band (physics-bounded and standard for the family); confirm the exact SKU's datasheet before design. Region = vendor HQ / primary manufacturing origin.",
+  "devices": [
+    {
+      "id": "commscope-hbxx-6516ds-vtm", "manufacturer": "CommScope",
+      "model": "HBXX-6516DS 65° dual-band panel", "equipment_class": "macro_antenna",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[1710, 2170]],
+      "rf_specs": {"gain_dbi": 18.0, "max_tx_power_dbm": 46, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2-port X-pol"},
+      "spatial_characteristics": {"h_beamwidth_deg": 65, "v_beamwidth_deg": 6.5, "electrical_downtilt_deg": [0, 10]},
+      "provenance": "CommScope HBXX 65° panel family (real product line); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "kathrein-742215-65", "manufacturer": "Kathrein (Ericsson Antenna Systems)",
+      "model": "742 215 65° 1800 MHz panel", "equipment_class": "macro_antenna",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[1710, 1880]],
+      "rf_specs": {"gain_dbi": 17.5, "max_tx_power_dbm": 46, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2-port X-pol"},
+      "spatial_characteristics": {"h_beamwidth_deg": 65, "v_beamwidth_deg": 7.0, "electrical_downtilt_deg": [0, 8]},
+      "provenance": "Kathrein 742-series 65° panel (real product line, now Ericsson); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "rfs-apxvaall-90", "manufacturer": "RFS (Amphenol)",
+      "model": "APXVAALL 90° wideband panel", "equipment_class": "macro_antenna",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 65]},
+      "frequency_bands_mhz": [[690, 960]],
+      "rf_specs": {"gain_dbi": 15.0, "max_tx_power_dbm": 46, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2-port X-pol"},
+      "spatial_characteristics": {"h_beamwidth_deg": 90, "v_beamwidth_deg": 12, "electrical_downtilt_deg": [0, 10]},
+      "provenance": "RFS APXV wideband panel family (real product line); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "huawei-aau5613", "manufacturer": "Huawei",
+      "model": "AAU5613 64T64R Massive MIMO (n78)", "equipment_class": "massive_mimo",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 55]},
+      "frequency_bands_mhz": [[3400, 3600]],
+      "rf_specs": {"gain_dbi": 24.0, "max_tx_power_dbm": 53, "vswr": 1.5, "impedance_ohm": 50, "mimo": "64T64R"},
+      "spatial_characteristics": {"h_beamwidth_deg": 105, "v_beamwidth_deg": 90, "electrical_downtilt_deg": [-15, 15]},
+      "provenance": "Huawei AAU5613 64T64R active antenna (real product); class-reference planning specs (200 W / ~53 dBm EIRP class).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ericsson-air6449", "manufacturer": "Ericsson",
+      "model": "AIR 6449 B42 Massive MIMO", "equipment_class": "massive_mimo",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 55]},
+      "frequency_bands_mhz": [[3400, 3800]],
+      "rf_specs": {"gain_dbi": 24.0, "max_tx_power_dbm": 53, "vswr": 1.5, "impedance_ohm": 50, "mimo": "64T64R"},
+      "spatial_characteristics": {"h_beamwidth_deg": 100, "v_beamwidth_deg": 90, "electrical_downtilt_deg": [-15, 15]},
+      "provenance": "Ericsson AIR 6449 (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "zte-a9611-n78", "manufacturer": "ZTE",
+      "model": "A9611 S3200 64T64R (n78)", "equipment_class": "massive_mimo",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 55]},
+      "frequency_bands_mhz": [[3400, 3600]],
+      "rf_specs": {"gain_dbi": 24.0, "max_tx_power_dbm": 53, "vswr": 1.5, "impedance_ohm": 50, "mimo": "64T64R"},
+      "spatial_characteristics": {"h_beamwidth_deg": 105, "v_beamwidth_deg": 90, "electrical_downtilt_deg": [-15, 15]},
+      "provenance": "ZTE A9611 active antenna (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "comba-odv-065r18k", "manufacturer": "Comba Telecom",
+      "model": "ODV-065R18K 65° dual-band panel", "equipment_class": "macro_antenna",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[1710, 2170]],
+      "rf_specs": {"gain_dbi": 17.8, "max_tx_power_dbm": 46, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2-port X-pol"},
+      "spatial_characteristics": {"h_beamwidth_deg": 65, "v_beamwidth_deg": 7, "electrical_downtilt_deg": [0, 10]},
+      "provenance": "Comba ODV 65° panel family (real product line, strong in Asia/Africa/LatAm); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "tongyu-tdj-181817", "manufacturer": "Tongyu Communication",
+      "model": "TDJ-181817DE 65° 1800 MHz panel", "equipment_class": "macro_antenna",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[1710, 1880]],
+      "rf_specs": {"gain_dbi": 17.5, "max_tx_power_dbm": 46, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2-port X-pol"},
+      "spatial_characteristics": {"h_beamwidth_deg": 65, "v_beamwidth_deg": 7, "electrical_downtilt_deg": [0, 8]},
+      "provenance": "Tongyu TDJ 65° panel family (real product line, common across African deployments); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "nokia-airscale-maao", "manufacturer": "Nokia",
+      "model": "AirScale mAAO 32T32R (n78)", "equipment_class": "massive_mimo",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 55]},
+      "frequency_bands_mhz": [[3400, 3800]],
+      "rf_specs": {"gain_dbi": 23.0, "max_tx_power_dbm": 49, "vswr": 1.5, "impedance_ohm": 50, "mimo": "32T32R"},
+      "spatial_characteristics": {"h_beamwidth_deg": 100, "v_beamwidth_deg": 90, "electrical_downtilt_deg": [-12, 12]},
+      "provenance": "Nokia AirScale mAAO active antenna (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "amphenol-bxa-70090", "manufacturer": "Amphenol Antenna Solutions",
+      "model": "BXA-70090 90° 700 MHz panel", "equipment_class": "macro_antenna",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[698, 806]],
+      "rf_specs": {"gain_dbi": 14.5, "max_tx_power_dbm": 46, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2-port X-pol"},
+      "spatial_characteristics": {"h_beamwidth_deg": 90, "v_beamwidth_deg": 13, "electrical_downtilt_deg": [0, 10]},
+      "provenance": "Amphenol BXA 700 MHz panel family (real product line); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    }
+  ]
+}

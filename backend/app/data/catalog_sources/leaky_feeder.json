@@ -1,0 +1,102 @@
+{
+  "_source": "Radiating (leaky-feeder) coaxial cables. RADIAFLEX RLKW 1-1/4\" numbers are transcribed from the RFS/Amphenol A-series datasheet; other sizes/vendors are class-reference planning figures scaled within the family and MUST be confirmed against the vendor datasheet before design.",
+  "devices": [
+    {
+      "id": "rfs-radiaflex-rlkw-114",
+      "manufacturer": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKW 1-1/4\" A-series",
+      "equipment_class": "leaky_feeder",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-40, 60], "flame": "IEC 60332-1"},
+      "frequency_bands_mhz": [[75, 1000]],
+      "rf_specs": {"impedance_ohm": 50, "vswr": 1.5},
+      "leaky_feeder_specs": {
+        "diameter_in": 1.25, "coupling_ref_m": 2.0,
+        "points": [
+          {"freq_mhz": 450, "atten_db_per_100m": 1.92, "coupling_db_50": 66, "coupling_db_95": 70},
+          {"freq_mhz": 900, "atten_db_per_100m": 3.16, "coupling_db_50": 62, "coupling_db_95": 67},
+          {"freq_mhz": 1800, "atten_db_per_100m": 7.60, "coupling_db_50": 54, "coupling_db_95": 62}
+        ]
+      },
+      "provenance": "RFS/Amphenol RADIAFLEX RLKW A-series product data (rfsworld.com / also.com datasheet)",
+      "spec_confidence": "datasheet"
+    },
+    {
+      "id": "rfs-radiaflex-rlku-114",
+      "manufacturer": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKU 1-1/4\" (fire-retardant jacket)",
+      "equipment_class": "leaky_feeder",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-40, 60], "flame": "IEC 60332-3"},
+      "frequency_bands_mhz": [[75, 1000]],
+      "rf_specs": {"impedance_ohm": 50, "vswr": 1.5},
+      "leaky_feeder_specs": {
+        "diameter_in": 1.25, "coupling_ref_m": 2.0,
+        "points": [
+          {"freq_mhz": 450, "atten_db_per_100m": 1.92, "coupling_db_50": 66, "coupling_db_95": 70},
+          {"freq_mhz": 900, "atten_db_per_100m": 3.16, "coupling_db_50": 62, "coupling_db_95": 67},
+          {"freq_mhz": 1800, "atten_db_per_100m": 7.60, "coupling_db_50": 54, "coupling_db_95": 62}
+        ]
+      },
+      "provenance": "RFS RADIAFLEX RLKU — same radiating RF performance as RLKW, low-fire-hazard jacket (tunnel/metro fire code). Rebrand/variant of the RLKW RF core.",
+      "spec_confidence": "datasheet"
+    },
+    {
+      "id": "rfs-radiaflex-rlkw-12",
+      "manufacturer": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKW 1/2\" A-series",
+      "equipment_class": "leaky_feeder",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[75, 2700]],
+      "rf_specs": {"impedance_ohm": 50, "vswr": 1.5},
+      "leaky_feeder_specs": {
+        "diameter_in": 0.5, "coupling_ref_m": 2.0,
+        "points": [
+          {"freq_mhz": 900, "atten_db_per_100m": 7.0, "coupling_db_50": 68, "coupling_db_95": 74},
+          {"freq_mhz": 1800, "atten_db_per_100m": 11.0, "coupling_db_50": 63, "coupling_db_95": 70}
+        ]
+      },
+      "provenance": "Class-reference: 1/2\" radiating coax scales to higher longitudinal loss than 1-1/4\"; figures are planning-level and must be confirmed against the RLKW 1/2\" datasheet.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "commscope-radiax-fxl-114",
+      "manufacturer": "CommScope (Andrew)",
+      "model": "RADIAX FXL 1-1/4\" radiating cable",
+      "equipment_class": "leaky_feeder",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-40, 60], "flame": "riser/plenum options"},
+      "frequency_bands_mhz": [[150, 2500]],
+      "rf_specs": {"impedance_ohm": 50, "vswr": 1.5},
+      "leaky_feeder_specs": {
+        "diameter_in": 1.25, "coupling_ref_m": 2.0,
+        "points": [
+          {"freq_mhz": 800, "atten_db_per_100m": 4.6, "coupling_db_50": 68, "coupling_db_95": 72},
+          {"freq_mhz": 1900, "atten_db_per_100m": 8.0, "coupling_db_50": 60, "coupling_db_95": 67}
+        ]
+      },
+      "provenance": "CommScope RADIAX FXL family (real product line). Numeric points are class-reference planning figures — confirm against the CommScope FXL datasheet before a real design.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "rfs-radiaflex-rlkw-158",
+      "manufacturer": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKW 1-5/8\" A-series",
+      "equipment_class": "leaky_feeder",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[75, 1000]],
+      "rf_specs": {"impedance_ohm": 50, "vswr": 1.5},
+      "leaky_feeder_specs": {
+        "diameter_in": 1.625, "coupling_ref_m": 2.0,
+        "points": [
+          {"freq_mhz": 450, "atten_db_per_100m": 1.35, "coupling_db_50": 67, "coupling_db_95": 71},
+          {"freq_mhz": 900, "atten_db_per_100m": 2.3, "coupling_db_50": 63, "coupling_db_95": 68}
+        ]
+      },
+      "provenance": "Class-reference: 1-5/8\" radiating coax has lower longitudinal loss than 1-1/4\" (larger conductor). Confirm against the RLKW 1-5/8\" datasheet.",
+      "spec_confidence": "class_reference"
+    }
+  ]
+}

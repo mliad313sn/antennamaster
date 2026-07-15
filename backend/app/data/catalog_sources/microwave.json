@@ -1,0 +1,93 @@
+{
+  "_source": "PtP / PtMP microwave and mmWave backhaul from real vendors. Band, integrated-antenna gain and system power are class-reference planning figures for the family; confirm the exact model/antenna combination against the datasheet.",
+  "devices": [
+    {
+      "id": "cambium-ptp550", "manufacturer": "Cambium Networks",
+      "model": "PTP 550 (5 GHz, integrated)", "equipment_class": "microwave_ptp",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": "IP66", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[4900, 6050]],
+      "rf_specs": {"gain_dbi": 23.0, "max_tx_power_dbm": 27, "rx_sensitivity_dbm": -87, "vswr": 1.5, "impedance_ohm": 50, "mimo": "2x2 MIMO"},
+      "spatial_characteristics": {"h_beamwidth_deg": 8, "v_beamwidth_deg": 8},
+      "provenance": "Cambium PTP 550 (real product); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "ceragon-ip20c", "manufacturer": "Ceragon Networks",
+      "model": "IP-20C 6-42 GHz radio", "equipment_class": "microwave_ptp",
+      "region_of_origin": "Middle East",
+      "environment_rating": {"ip": "IP66", "atex": false, "temp_c": [-45, 55]},
+      "frequency_bands_mhz": [[6000, 42000]],
+      "rf_specs": {"gain_dbi": 38.0, "max_tx_power_dbm": 25, "rx_sensitivity_dbm": -70, "vswr": 1.3, "impedance_ohm": 50, "mimo": "1+0/2+0"},
+      "spatial_characteristics": {"h_beamwidth_deg": 2, "v_beamwidth_deg": 2},
+      "provenance": "Ceragon IP-20C licensed microwave (real product); antenna gain depends on dish size — 38 dBi is a common 0.3 m/18 GHz figure.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "aviat-wtm4800", "manufacturer": "Aviat Networks",
+      "model": "WTM 4800 multi-band", "equipment_class": "microwave_ptp",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": "IP66", "atex": false, "temp_c": [-45, 55]},
+      "frequency_bands_mhz": [[6000, 42000]],
+      "rf_specs": {"gain_dbi": 38.0, "max_tx_power_dbm": 25, "rx_sensitivity_dbm": -70, "vswr": 1.3, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 2, "v_beamwidth_deg": 2},
+      "provenance": "Aviat WTM 4800 licensed microwave (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "siklu-eh8010", "manufacturer": "Siklu",
+      "model": "EtherHaul-8010 E-band (71-86 GHz)", "equipment_class": "mmwave_ptp",
+      "region_of_origin": "Middle East",
+      "environment_rating": {"ip": "IP67", "atex": false, "temp_c": [-45, 55]},
+      "frequency_bands_mhz": [[71000, 86000]],
+      "rf_specs": {"gain_dbi": 43.0, "max_tx_power_dbm": 10, "rx_sensitivity_dbm": -60, "vswr": 1.5, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 1, "v_beamwidth_deg": 1},
+      "provenance": "Siklu EtherHaul E-band radio (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ericsson-minilink-6352", "manufacturer": "Ericsson",
+      "model": "MINI-LINK 6352 (6-42 GHz)", "equipment_class": "microwave_ptp",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-33, 55]},
+      "frequency_bands_mhz": [[6000, 42000]],
+      "rf_specs": {"gain_dbi": 38.0, "max_tx_power_dbm": 25, "rx_sensitivity_dbm": -70, "vswr": 1.3, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 2, "v_beamwidth_deg": 2},
+      "provenance": "Ericsson MINI-LINK 6352 (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "nec-ipasolink-vr", "manufacturer": "NEC",
+      "model": "iPASOLINK VR (6-42 GHz)", "equipment_class": "microwave_ptp",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-45, 55]},
+      "frequency_bands_mhz": [[6000, 42000]],
+      "rf_specs": {"gain_dbi": 38.0, "max_tx_power_dbm": 25, "rx_sensitivity_dbm": -70, "vswr": 1.3, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 2, "v_beamwidth_deg": 2},
+      "provenance": "NEC iPASOLINK VR (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "huawei-rtn380h", "manufacturer": "Huawei",
+      "model": "RTN 380H E-band (80 GHz)", "equipment_class": "mmwave_ptp",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": "IP65", "atex": false, "temp_c": [-40, 55]},
+      "frequency_bands_mhz": [[71000, 86000]],
+      "rf_specs": {"gain_dbi": 43.0, "max_tx_power_dbm": 10, "rx_sensitivity_dbm": -60, "vswr": 1.5, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 1, "v_beamwidth_deg": 1},
+      "provenance": "Huawei RTN 380H E-band (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "mimosa-b5c", "manufacturer": "Mimosa (Airspan)",
+      "model": "B5c connectorized 5 GHz", "equipment_class": "microwave_ptp",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": "IP67", "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[4900, 6400]],
+      "rf_specs": {"gain_dbi": 0.0, "max_tx_power_dbm": 27, "rx_sensitivity_dbm": -87, "vswr": 1.5, "impedance_ohm": 50, "mimo": "4x4 MIMO"},
+      "spatial_characteristics": {"h_beamwidth_deg": 8, "v_beamwidth_deg": 8},
+      "provenance": "Mimosa B5c connectorized radio (real product; antenna added separately, hence 0 dBi integrated).",
+      "spec_confidence": "class_reference"
+    }
+  ]
+}

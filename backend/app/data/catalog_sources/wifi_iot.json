@@ -1,0 +1,343 @@
+{
+  "_source": "Enterprise Wi-Fi APs, LoRaWAN gateways and IoT modules from real vendors. Gain / power are class-reference planning figures. Includes a genuine OEM-rebrand case (LoRaWAN gateways built on the same Semtech concentrator reference design) so the dedup stage can be demonstrated.",
+  "devices": [
+    {
+      "id": "cambium-xv3-8",
+      "manufacturer": "Cambium Networks",
+      "model": "XV3-8 Wi-Fi 6 AP",
+      "equipment_class": "wifi_ap",
+      "region_of_origin": "North America",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          0,
+          40
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          5150,
+          5875
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 6.0,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "8x8 (5 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "Cambium XV3-8 Wi-Fi 6 AP (real product); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "aruba-ap635",
+      "manufacturer": "HPE Aruba Networking",
+      "model": "AP-635 Wi-Fi 6E",
+      "equipment_class": "wifi_ap",
+      "region_of_origin": "North America",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          0,
+          50
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          5925,
+          7125
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 5.5,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "2x2 (6 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "Aruba AP-635 Wi-Fi 6E (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ubiquiti-u6-mesh-pro",
+      "manufacturer": "Ubiquiti",
+      "model": "UniFi U6-Mesh Pro outdoor",
+      "equipment_class": "wifi_ap",
+      "region_of_origin": "North America",
+      "environment_rating": {
+        "ip": "IP54",
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          5150,
+          5875
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 5.5,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "4x4 (5 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "Ubiquiti UniFi outdoor AP (real product line); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ruckus-t750",
+      "manufacturer": "RUCKUS (CommScope)",
+      "model": "T750 outdoor Wi-Fi 6",
+      "equipment_class": "wifi_ap",
+      "region_of_origin": "North America",
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -40,
+          65
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          5150,
+          5875
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 6.0,
+        "max_tx_power_dbm": 24,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "4x4 (5 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "RUCKUS T750 outdoor Wi-Fi 6 (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "kerlink-wirnet-istation",
+      "manufacturer": "Kerlink",
+      "model": "Wirnet iStation LoRaWAN gateway",
+      "equipment_class": "iot_gateway",
+      "region_of_origin": "Europe",
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          863,
+          870
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 3.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "Kerlink Wirnet iStation (real product); SX1301/1302, -139 dBm SF12 class-reference.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "multitech-conduit-ap",
+      "manufacturer": "MultiTech",
+      "model": "Conduit AP LoRaWAN gateway",
+      "equipment_class": "iot_gateway",
+      "region_of_origin": "North America",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          0,
+          55
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          902,
+          928
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 3.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "MultiTech Conduit AP (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "rak-wisgate-edge-lite2",
+      "manufacturer": "RAKwireless",
+      "model": "WisGate Edge Lite 2 (868, SX1302)",
+      "equipment_class": "iot_gateway",
+      "region_of_origin": "Asia",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -20,
+          55
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          863,
+          870
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 2.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "RAKwireless WisGate Edge Lite 2 (real product), Semtech SX1302 8-channel concentrator reference design.",
+      "spec_confidence": "published_typical",
+      "oem_reference": "semtech-sx1302-8ch-eu868"
+    },
+    {
+      "id": "seeed-sensecap-m2-868",
+      "manufacturer": "Seeed Studio",
+      "model": "SenseCAP M2 (868, SX1302)",
+      "equipment_class": "iot_gateway",
+      "region_of_origin": "Asia",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -20,
+          55
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          863,
+          870
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 2.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "provenance": "Seeed SenseCAP M2 (real product) — same Semtech SX1302 8-channel concentrator reference design as the RAK WisGate; identical RF, different brand (OEM rebrand).",
+      "spec_confidence": "published_typical",
+      "oem_reference": "semtech-sx1302-8ch-eu868"
+    },
+    {
+      "id": "quectel-bg95-m3",
+      "manufacturer": "Quectel",
+      "model": "BG95-M3 LTE-M/NB-IoT/GNSS module",
+      "equipment_class": "iot_module",
+      "region_of_origin": "Asia",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          85
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          617,
+          2200
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 0.0,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -108,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "provenance": "Quectel BG95-M3 (real product); LTE-M ~23 dBm, class-reference sensitivity.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ublox-max-m10",
+      "manufacturer": "u-blox",
+      "model": "MAX-M10 GNSS receiver",
+      "equipment_class": "gnss",
+      "region_of_origin": "Europe",
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          85
+        ]
+      },
+      "frequency_bands_mhz": [
+        [
+          1559,
+          1610
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 0.0,
+        "max_tx_power_dbm": 0.0,
+        "rx_sensitivity_dbm": -167,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "provenance": "u-blox MAX-M10 GNSS (real product); -167 dBm tracking sensitivity class-reference (receive-only).",
+      "spec_confidence": "class_reference"
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "_source": "Land-mobile-radio / PMR / TETRA repeaters and antennas from real vendors. Output power and receiver sensitivity are class-reference engineering-standard figures for the family (e.g. UHF repeater ~25-50 W, 12 dB SINAD sensitivity ~ -119 dBm/0.25 µV); confirm the exact model's datasheet.",
+  "devices": [
+    {
+      "id": "motorola-mtr3000-uhf", "manufacturer": "Motorola Solutions",
+      "model": "MTR3000 UHF repeater", "equipment_class": "lmr_repeater",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-30, 60]},
+      "frequency_bands_mhz": [[403, 470]],
+      "rf_specs": {"max_tx_power_dbm": 47, "rx_sensitivity_dbm": -119, "vswr": 1.5, "impedance_ohm": 50},
+      "provenance": "Motorola MTR3000 repeater (real product); 50 W = 47 dBm, 0.25 µV (-119 dBm) 12 dB SINAD class-reference.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "motorola-slr8000-vhf", "manufacturer": "Motorola Solutions",
+      "model": "SLR 8000 VHF repeater", "equipment_class": "lmr_repeater",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-30, 60]},
+      "frequency_bands_mhz": [[136, 174]],
+      "rf_specs": {"max_tx_power_dbm": 47, "rx_sensitivity_dbm": -121, "vswr": 1.5, "impedance_ohm": 50},
+      "provenance": "Motorola SLR 8000 repeater (real product); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "hytera-rd985-uhf", "manufacturer": "Hytera",
+      "model": "RD985 UHF DMR repeater", "equipment_class": "lmr_repeater",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-30, 60]},
+      "frequency_bands_mhz": [[400, 470]],
+      "rf_specs": {"max_tx_power_dbm": 47, "rx_sensitivity_dbm": -119, "vswr": 1.5, "impedance_ohm": 50},
+      "provenance": "Hytera RD985 DMR repeater (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "tait-tb9400-uhf", "manufacturer": "Tait Communications",
+      "model": "TB9400 P25/DMR base/repeater", "equipment_class": "lmr_repeater",
+      "region_of_origin": "Oceania",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-30, 60]},
+      "frequency_bands_mhz": [[400, 470]],
+      "rf_specs": {"max_tx_power_dbm": 46, "rx_sensitivity_dbm": -119, "vswr": 1.5, "impedance_ohm": 50},
+      "provenance": "Tait TB9400 base/repeater (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "hytera-mt680-tetra", "manufacturer": "Hytera",
+      "model": "ACCESSNET-T TETRA base station", "equipment_class": "lmr_repeater",
+      "region_of_origin": "Asia",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-30, 60]},
+      "frequency_bands_mhz": [[380, 430]],
+      "rf_specs": {"max_tx_power_dbm": 44, "rx_sensitivity_dbm": -112, "vswr": 1.5, "impedance_ohm": 50},
+      "provenance": "TETRA base station class-reference (25 W, -112 dBm reference sensitivity per ETSI TETRA).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "sinclair-sd214-uhf", "manufacturer": "Sinclair (Norsat)",
+      "model": "SD214 UHF dipole array", "equipment_class": "lmr_antenna",
+      "region_of_origin": "North America",
+      "environment_rating": {"ip": null, "atex": false, "temp_c": [-40, 60]},
+      "frequency_bands_mhz": [[406, 512]],
+      "rf_specs": {"gain_dbi": 9.0, "max_tx_power_dbm": 47, "vswr": 1.5, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 360, "v_beamwidth_deg": 20},
+      "provenance": "Sinclair SD214 4-dipole omni array (real product); ~6.5 dBd = 9 dBi class-reference.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "kathrein-k751-vhf-mobile", "manufacturer": "Kathrein",
+      "model": "K751 VHF vehicular whip", "equipment_class": "lmr_antenna",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP67", "atex": false, "temp_c": [-40, 85]},
+      "frequency_bands_mhz": [[136, 174]],
+      "rf_specs": {"gain_dbi": 2.15, "max_tx_power_dbm": 44, "vswr": 1.5, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 360, "v_beamwidth_deg": 40},
+      "provenance": "VHF quarter/half-wave vehicular whip class-reference (0 dBd = 2.15 dBi).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "rfs-cxl700-tunnel", "manufacturer": "RFS (Amphenol)",
+      "model": "CXL700 tunnel/confined-space yagi", "equipment_class": "tunnel_antenna",
+      "region_of_origin": "Europe",
+      "environment_rating": {"ip": "IP65", "atex": true, "temp_c": [-40, 70]},
+      "frequency_bands_mhz": [[380, 470]],
+      "rf_specs": {"gain_dbi": 10.0, "max_tx_power_dbm": 43, "vswr": 1.5, "impedance_ohm": 50},
+      "spatial_characteristics": {"h_beamwidth_deg": 60, "v_beamwidth_deg": 60},
+      "provenance": "Directional tunnel/gallery antenna class-reference (ATEX-rated, ~10 dBi UHF yagi for confined-space DAS).",
+      "spec_confidence": "class_reference"
+    }
+  ]
+}

@@ -1,112 +1,2048 @@
 {
   "_meta": {
-    "description": "AntennaMaster hardware catalog — indicative equipment profiles for the Simple/Expert Equipment Selector. Specs are realistic planning ballparks, not vendor datasheet guarantees; override per link as needed. Extend or replace by dropping a hardware_catalog.json into AM_DATA_DIR.",
-    "version": 1
+    "description": "AntennaMaster hardware catalog. Entries with 'equipment_class' come from curated source records (app/data/catalog_sources/) carrying per-record 'provenance' and 'spec_confidence' (datasheet | published_typical | class_reference). Values marked class_reference are engineering-standard planning figures for the family, NOT vendor datasheet guarantees — confirm the exact SKU before design. Extend by dropping a JSON into catalog_sources or AM_DATA_DIR and re-running tools/ingest_catalog.py.",
+    "version": 2,
+    "counts": {
+      "total": 52,
+      "legacy_generic": 13,
+      "ingested": 39,
+      "merged_rebrands": 2,
+      "by_equipment_class": {
+        "gnss": 1,
+        "iot_gateway": 3,
+        "iot_module": 1,
+        "leaky_feeder": 4,
+        "legacy_generic": 13,
+        "lmr_antenna": 2,
+        "lmr_repeater": 5,
+        "macro_antenna": 6,
+        "massive_mimo": 4,
+        "microwave_ptp": 6,
+        "mmwave_ptp": 2,
+        "tunnel_antenna": 1,
+        "wifi_ap": 4
+      },
+      "by_region": {
+        "Asia": 10,
+        "Europe": 12,
+        "Middle East": 2,
+        "North America": 14,
+        "Oceania": 1,
+        "Unknown": 13
+      },
+      "by_confidence": {
+        "class_reference": 30,
+        "datasheet": 1,
+        "legacy": 13,
+        "published_typical": 8
+      }
+    }
   },
   "equipment": [
     {
-      "id": "wifi_ap_24_sector",
-      "vendor": "Generic", "model": "Outdoor AP 2.4 GHz Sector",
-      "category": "Wi-Fi", "band_label": "2.4 GHz (802.11n)",
-      "technology": "wifi2400", "model_key": "tr38901_umi", "environment": "nlos",
-      "freq_mhz": 2442.0, "tx_power_dbm": 20.0, "rx_sensitivity_dbm": -90.0,
-      "antenna_gain_dbi": 8.0, "beamwidth_deg": 90.0, "bandwidth_mhz": 20.0
+      "id": "quectel-bg95-m3",
+      "vendor": "Quectel",
+      "model": "BG95-M3 LTE-M/NB-IoT/GNSS module",
+      "category": "Embedded IoT / RedCap module",
+      "equipment_class": "iot_module",
+      "band_label": "617 MHz–2.2 GHz",
+      "technology": "lora868",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 1408.5,
+      "tx_power_dbm": 23.0,
+      "rx_sensitivity_dbm": -108.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          617,
+          2200
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 0.0,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -108,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          85
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "Quectel BG95-M3 (real product); LTE-M ~23 dBm, class-reference sensitivity.",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "wifi_ptmp_5ghz",
-      "vendor": "Generic", "model": "5 GHz PtMP Base",
-      "category": "Wi-Fi", "band_label": "5.5 GHz (802.11ac)",
-      "technology": "wifi5800", "model_key": "tr38901_umi", "environment": "los",
-      "freq_mhz": 5500.0, "tx_power_dbm": 23.0, "rx_sensitivity_dbm": -88.0,
-      "antenna_gain_dbi": 16.0, "beamwidth_deg": 30.0, "bandwidth_mhz": 40.0
+      "id": "aruba-ap635",
+      "vendor": "HPE Aruba Networking",
+      "model": "AP-635 Wi-Fi 6E",
+      "category": "Enterprise Wi-Fi AP",
+      "equipment_class": "wifi_ap",
+      "band_label": "5.925–7.125 GHz",
+      "technology": "wifi5800",
+      "model_key": "tr38901_umi",
+      "environment": "urban",
+      "freq_mhz": 6525.0,
+      "tx_power_dbm": 23.0,
+      "rx_sensitivity_dbm": -82.0,
+      "antenna_gain_dbi": 5.5,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          5925,
+          7125
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 5.5,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "2x2 (6 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          0,
+          50
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Aruba AP-635 Wi-Fi 6E (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "wifi6_ap_omni",
-      "vendor": "Generic", "model": "Wi-Fi 6 Outdoor Omni",
-      "category": "Wi-Fi", "band_label": "5.8 GHz (802.11ax)",
-      "technology": "wifi5800", "model_key": "tr38901_umi", "environment": "nlos",
-      "freq_mhz": 5800.0, "tx_power_dbm": 24.0, "rx_sensitivity_dbm": -85.0,
-      "antenna_gain_dbi": 6.0, "beamwidth_deg": 360.0, "bandwidth_mhz": 80.0
+      "id": "ruckus-t750",
+      "vendor": "RUCKUS (CommScope)",
+      "model": "T750 outdoor Wi-Fi 6",
+      "category": "Enterprise Wi-Fi AP",
+      "equipment_class": "wifi_ap",
+      "band_label": "5.15–5.875 GHz",
+      "technology": "wifi5800",
+      "model_key": "tr38901_umi",
+      "environment": "urban",
+      "freq_mhz": 5512.5,
+      "tx_power_dbm": 24.0,
+      "rx_sensitivity_dbm": -82.0,
+      "antenna_gain_dbi": 6.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          5150,
+          5875
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 6.0,
+        "max_tx_power_dbm": 24,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "4x4 (5 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -40,
+          65
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "RUCKUS T750 outdoor Wi-Fi 6 (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "cbrs_b48_smallcell",
-      "vendor": "Generic", "model": "CBRS B48 Small Cell",
-      "category": "Private LTE", "band_label": "3.6 GHz CBRS (B48)",
-      "technology": "private_lte_b48", "model_key": "tr38901_uma", "environment": "nlos",
-      "freq_mhz": 3625.0, "tx_power_dbm": 30.0, "rx_sensitivity_dbm": -102.0,
-      "antenna_gain_dbi": 15.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 20.0
+      "id": "ubiquiti-u6-mesh-pro",
+      "vendor": "Ubiquiti",
+      "model": "UniFi U6-Mesh Pro outdoor",
+      "category": "Enterprise Wi-Fi AP",
+      "equipment_class": "wifi_ap",
+      "band_label": "5.15–5.875 GHz",
+      "technology": "wifi5800",
+      "model_key": "tr38901_umi",
+      "environment": "urban",
+      "freq_mhz": 5512.5,
+      "tx_power_dbm": 23.0,
+      "rx_sensitivity_dbm": -82.0,
+      "antenna_gain_dbi": 5.5,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          5150,
+          5875
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 5.5,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "4x4 (5 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": "IP54",
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Ubiquiti UniFi outdoor AP (real product line); class-reference planning specs.",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "private_5g_n77_gnb",
-      "vendor": "Generic", "model": "Private 5G n77 gNodeB",
-      "category": "Private LTE", "band_label": "3.9 GHz (n77)",
-      "technology": "private_nr_n77", "model_key": "tr38901_uma", "environment": "nlos",
-      "freq_mhz": 3900.0, "tx_power_dbm": 47.0, "rx_sensitivity_dbm": -95.0,
-      "antenna_gain_dbi": 24.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 100.0
+      "id": "cambium-xv3-8",
+      "vendor": "Cambium Networks",
+      "model": "XV3-8 Wi-Fi 6 AP",
+      "category": "Enterprise Wi-Fi AP",
+      "equipment_class": "wifi_ap",
+      "band_label": "5.15–5.875 GHz",
+      "technology": "wifi5800",
+      "model_key": "tr38901_umi",
+      "environment": "urban",
+      "freq_mhz": 5512.5,
+      "tx_power_dbm": 23.0,
+      "rx_sensitivity_dbm": -82.0,
+      "antenna_gain_dbi": 6.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          5150,
+          5875
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 6.0,
+        "max_tx_power_dbm": 23,
+        "rx_sensitivity_dbm": -82,
+        "vswr": 2.0,
+        "impedance_ohm": 50,
+        "mimo": "8x8 (5 GHz)"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          0,
+          40
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Cambium XV3-8 Wi-Fi 6 AP (real product); class-reference planning specs.",
+      "spec_confidence": "published_typical"
     },
     {
-      "id": "private_lte_iot_gw",
-      "vendor": "Generic", "model": "LTE-M / NB-IoT Gateway",
-      "category": "Private LTE", "band_label": "3.6 GHz narrowband",
-      "technology": "private_lte_iot", "model_key": "tr38901_uma", "environment": "nlos",
-      "freq_mhz": 3625.0, "tx_power_dbm": 23.0, "rx_sensitivity_dbm": -120.0,
-      "antenna_gain_dbi": 5.0, "beamwidth_deg": 360.0, "bandwidth_mhz": 1.4
+      "id": "ublox-max-m10",
+      "vendor": "u-blox",
+      "model": "MAX-M10 GNSS receiver",
+      "category": "GNSS / GPS tracker",
+      "equipment_class": "gnss",
+      "band_label": "1.559–1.61 GHz",
+      "technology": "custom",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 1584.5,
+      "tx_power_dbm": 0.0,
+      "rx_sensitivity_dbm": -167.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          1559,
+          1610
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 0.0,
+        "max_tx_power_dbm": 0.0,
+        "rx_sensitivity_dbm": -167,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          85
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "u-blox MAX-M10 GNSS (real product); -167 dBm tracking sensitivity class-reference (receive-only).",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "private_lte_b3_macro",
-      "vendor": "Generic", "model": "Private LTE B3 Macro",
-      "category": "Private LTE", "band_label": "1.8 GHz (B3)",
-      "technology": "lte1800", "model_key": "cost231_hata", "environment": "urban",
-      "freq_mhz": 1842.0, "tx_power_dbm": 43.0, "rx_sensitivity_dbm": -103.0,
-      "antenna_gain_dbi": 17.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 20.0
+      "id": "multitech-conduit-ap",
+      "vendor": "MultiTech",
+      "model": "Conduit AP LoRaWAN gateway",
+      "category": "IoT / LoRaWAN gateway",
+      "equipment_class": "iot_gateway",
+      "band_label": "902–928 MHz",
+      "technology": "lora868",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 915.0,
+      "tx_power_dbm": 27.0,
+      "rx_sensitivity_dbm": -139.0,
+      "antenna_gain_dbi": 3.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          902,
+          928
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 3.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          0,
+          55
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "MultiTech Conduit AP (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "ptp_18ghz_03m",
-      "vendor": "Generic", "model": "18 GHz PtP ODU (0.3 m dish)",
-      "category": "PTP Microwave", "band_label": "18 GHz licensed",
-      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
-      "freq_mhz": 18000.0, "tx_power_dbm": 20.0, "rx_sensitivity_dbm": -70.0,
-      "antenna_gain_dbi": 34.0, "beamwidth_deg": 3.0, "bandwidth_mhz": 56.0
+      "id": "kerlink-wirnet-istation",
+      "vendor": "Kerlink",
+      "model": "Wirnet iStation LoRaWAN gateway",
+      "category": "IoT / LoRaWAN gateway",
+      "equipment_class": "iot_gateway",
+      "band_label": "863–870 MHz",
+      "technology": "lora868",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 866.5,
+      "tx_power_dbm": 27.0,
+      "rx_sensitivity_dbm": -139.0,
+      "antenna_gain_dbi": 3.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          863,
+          870
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 3.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Kerlink Wirnet iStation (real product); SX1301/1302, -139 dBm SF12 class-reference.",
+      "spec_confidence": "published_typical"
     },
     {
-      "id": "ptp_23ghz_06m",
-      "vendor": "Generic", "model": "23 GHz PtP (0.6 m dish)",
-      "category": "PTP Microwave", "band_label": "23 GHz licensed",
-      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
-      "freq_mhz": 23000.0, "tx_power_dbm": 18.0, "rx_sensitivity_dbm": -68.0,
-      "antenna_gain_dbi": 38.0, "beamwidth_deg": 2.0, "bandwidth_mhz": 56.0
+      "id": "rak-wisgate-edge-lite2",
+      "vendor": "RAKwireless",
+      "model": "WisGate Edge Lite 2 (868, SX1302)",
+      "category": "IoT / LoRaWAN gateway",
+      "equipment_class": "iot_gateway",
+      "band_label": "863–870 MHz",
+      "technology": "lora868",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 866.5,
+      "tx_power_dbm": 27.0,
+      "rx_sensitivity_dbm": -139.0,
+      "antenna_gain_dbi": 2.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          863,
+          870
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 2.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -139,
+        "vswr": 2.0,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 30
+      },
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -20,
+          55
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "RAKwireless WisGate Edge Lite 2 (real product), Semtech SX1302 8-channel concentrator reference design.",
+      "spec_confidence": "published_typical",
+      "oem_reference": "semtech-sx1302-8ch-eu868",
+      "also_sold_as": [
+        "Seeed Studio SenseCAP M2 (868, SX1302)"
+      ]
     },
     {
-      "id": "ptp_6ghz_12m",
-      "vendor": "Generic", "model": "6 GHz Licensed PtP (1.2 m dish)",
-      "category": "PTP Microwave", "band_label": "6 GHz licensed",
-      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
-      "freq_mhz": 6000.0, "tx_power_dbm": 27.0, "rx_sensitivity_dbm": -74.0,
-      "antenna_gain_dbi": 34.0, "beamwidth_deg": 3.0, "bandwidth_mhz": 30.0
+      "id": "hytera-mt680-tetra",
+      "vendor": "Hytera",
+      "model": "ACCESSNET-T TETRA base station",
+      "category": "LMR / PMR repeater",
+      "equipment_class": "lmr_repeater",
+      "band_label": "380–430 MHz",
+      "technology": "tetra400",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 405.0,
+      "tx_power_dbm": 44.0,
+      "rx_sensitivity_dbm": -112.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          380,
+          430
+        ]
+      ],
+      "rf_specs": {
+        "max_tx_power_dbm": 44,
+        "rx_sensitivity_dbm": -112,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "TETRA base station class-reference (25 W, -112 dBm reference sensitivity per ETSI TETRA).",
+      "spec_confidence": "class_reference"
     },
     {
-      "id": "ptp_60ghz_shorthaul",
-      "vendor": "Generic", "model": "60 GHz Short-Haul PtP",
-      "category": "PTP Microwave", "band_label": "60 GHz unlicensed (V-band)",
-      "technology": "ptp18000", "model_key": "fspl", "environment": "los",
-      "freq_mhz": 60000.0, "tx_power_dbm": 10.0, "rx_sensitivity_dbm": -60.0,
-      "antenna_gain_dbi": 40.0, "beamwidth_deg": 1.5, "bandwidth_mhz": 500.0
+      "id": "motorola-mtr3000-uhf",
+      "vendor": "Motorola Solutions",
+      "model": "MTR3000 UHF repeater",
+      "category": "LMR / PMR repeater",
+      "equipment_class": "lmr_repeater",
+      "band_label": "403–470 MHz",
+      "technology": "tetra400",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 436.5,
+      "tx_power_dbm": 47.0,
+      "rx_sensitivity_dbm": -119.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          403,
+          470
+        ]
+      ],
+      "rf_specs": {
+        "max_tx_power_dbm": 47,
+        "rx_sensitivity_dbm": -119,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Motorola MTR3000 repeater (real product); 50 W = 47 dBm, 0.25 µV (-119 dBm) 12 dB SINAD class-reference.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "hytera-rd985-uhf",
+      "vendor": "Hytera",
+      "model": "RD985 UHF DMR repeater",
+      "category": "LMR / PMR repeater",
+      "equipment_class": "lmr_repeater",
+      "band_label": "400–470 MHz",
+      "technology": "tetra400",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 435.0,
+      "tx_power_dbm": 47.0,
+      "rx_sensitivity_dbm": -119.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          400,
+          470
+        ]
+      ],
+      "rf_specs": {
+        "max_tx_power_dbm": 47,
+        "rx_sensitivity_dbm": -119,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "Hytera RD985 DMR repeater (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "motorola-slr8000-vhf",
+      "vendor": "Motorola Solutions",
+      "model": "SLR 8000 VHF repeater",
+      "category": "LMR / PMR repeater",
+      "equipment_class": "lmr_repeater",
+      "band_label": "136–174 MHz",
+      "technology": "tetra400",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 155.0,
+      "tx_power_dbm": 47.0,
+      "rx_sensitivity_dbm": -121.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          136,
+          174
+        ]
+      ],
+      "rf_specs": {
+        "max_tx_power_dbm": 47,
+        "rx_sensitivity_dbm": -121,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Motorola SLR 8000 repeater (real product); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "tait-tb9400-uhf",
+      "vendor": "Tait Communications",
+      "model": "TB9400 P25/DMR base/repeater",
+      "category": "LMR / PMR repeater",
+      "equipment_class": "lmr_repeater",
+      "band_label": "400–470 MHz",
+      "technology": "tetra400",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 435.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -119.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          400,
+          470
+        ]
+      ],
+      "rf_specs": {
+        "max_tx_power_dbm": 46,
+        "rx_sensitivity_dbm": -119,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -30,
+          60
+        ]
+      },
+      "region_of_origin": "Oceania",
+      "provenance": "Tait TB9400 base/repeater (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "kathrein-k751-vhf-mobile",
+      "vendor": "Kathrein",
+      "model": "K751 VHF vehicular whip",
+      "category": "LMR base / vehicular antenna",
+      "equipment_class": "lmr_antenna",
+      "band_label": "136–174 MHz",
+      "technology": "vhf150",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 155.0,
+      "tx_power_dbm": 44.0,
+      "rx_sensitivity_dbm": -119.0,
+      "antenna_gain_dbi": 2.15,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          136,
+          174
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 2.15,
+        "max_tx_power_dbm": 44,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 40
+      },
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -40,
+          85
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "VHF quarter/half-wave vehicular whip class-reference (0 dBd = 2.15 dBi).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "sinclair-sd214-uhf",
+      "vendor": "Sinclair (Norsat)",
+      "model": "SD214 UHF dipole array",
+      "category": "LMR base / vehicular antenna",
+      "equipment_class": "lmr_antenna",
+      "band_label": "406–512 MHz",
+      "technology": "vhf150",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 459.0,
+      "tx_power_dbm": 47.0,
+      "rx_sensitivity_dbm": -119.0,
+      "antenna_gain_dbi": 9.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          406,
+          512
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 9.0,
+        "max_tx_power_dbm": 47,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 360,
+        "v_beamwidth_deg": 20
+      },
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Sinclair SD214 4-dipole omni array (real product); ~6.5 dBd = 9 dBi class-reference.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "rfs-radiaflex-rlkw-114",
+      "vendor": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKW 1-1/4\" A-series",
+      "category": "Leaky feeder / radiating cable",
+      "equipment_class": "leaky_feeder",
+      "band_label": "75 MHz–1 GHz",
+      "technology": "custom",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 537.5,
+      "tx_power_dbm": 20.0,
+      "rx_sensitivity_dbm": -95.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          75,
+          1000
+        ]
+      ],
+      "rf_specs": {
+        "impedance_ohm": 50,
+        "vswr": 1.5
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ],
+        "flame": "IEC 60332-1"
+      },
+      "region_of_origin": "Europe",
+      "provenance": "RFS/Amphenol RADIAFLEX RLKW A-series product data (rfsworld.com / also.com datasheet)",
+      "spec_confidence": "datasheet",
+      "leaky_feeder_specs": {
+        "diameter_in": 1.25,
+        "coupling_ref_m": 2.0,
+        "points": [
+          {
+            "freq_mhz": 450,
+            "atten_db_per_100m": 1.92,
+            "coupling_db_50": 66,
+            "coupling_db_95": 70
+          },
+          {
+            "freq_mhz": 900,
+            "atten_db_per_100m": 3.16,
+            "coupling_db_50": 62,
+            "coupling_db_95": 67
+          },
+          {
+            "freq_mhz": 1800,
+            "atten_db_per_100m": 7.6,
+            "coupling_db_50": 54,
+            "coupling_db_95": 62
+          }
+        ]
+      },
+      "also_sold_as": [
+        "RFS (Amphenol) RADIAFLEX RLKU 1-1/4\" (fire-retardant jacket)"
+      ]
+    },
+    {
+      "id": "rfs-radiaflex-rlkw-158",
+      "vendor": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKW 1-5/8\" A-series",
+      "category": "Leaky feeder / radiating cable",
+      "equipment_class": "leaky_feeder",
+      "band_label": "75 MHz–1 GHz",
+      "technology": "custom",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 537.5,
+      "tx_power_dbm": 20.0,
+      "rx_sensitivity_dbm": -95.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          75,
+          1000
+        ]
+      ],
+      "rf_specs": {
+        "impedance_ohm": 50,
+        "vswr": 1.5
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Class-reference: 1-5/8\" radiating coax has lower longitudinal loss than 1-1/4\" (larger conductor). Confirm against the RLKW 1-5/8\" datasheet.",
+      "spec_confidence": "class_reference",
+      "leaky_feeder_specs": {
+        "diameter_in": 1.625,
+        "coupling_ref_m": 2.0,
+        "points": [
+          {
+            "freq_mhz": 450,
+            "atten_db_per_100m": 1.35,
+            "coupling_db_50": 67,
+            "coupling_db_95": 71
+          },
+          {
+            "freq_mhz": 900,
+            "atten_db_per_100m": 2.3,
+            "coupling_db_50": 63,
+            "coupling_db_95": 68
+          }
+        ]
+      }
+    },
+    {
+      "id": "rfs-radiaflex-rlkw-12",
+      "vendor": "RFS (Amphenol)",
+      "model": "RADIAFLEX RLKW 1/2\" A-series",
+      "category": "Leaky feeder / radiating cable",
+      "equipment_class": "leaky_feeder",
+      "band_label": "75 MHz–2.7 GHz",
+      "technology": "custom",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 1387.5,
+      "tx_power_dbm": 20.0,
+      "rx_sensitivity_dbm": -95.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          75,
+          2700
+        ]
+      ],
+      "rf_specs": {
+        "impedance_ohm": 50,
+        "vswr": 1.5
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Class-reference: 1/2\" radiating coax scales to higher longitudinal loss than 1-1/4\"; figures are planning-level and must be confirmed against the RLKW 1/2\" datasheet.",
+      "spec_confidence": "class_reference",
+      "leaky_feeder_specs": {
+        "diameter_in": 0.5,
+        "coupling_ref_m": 2.0,
+        "points": [
+          {
+            "freq_mhz": 900,
+            "atten_db_per_100m": 7.0,
+            "coupling_db_50": 68,
+            "coupling_db_95": 74
+          },
+          {
+            "freq_mhz": 1800,
+            "atten_db_per_100m": 11.0,
+            "coupling_db_50": 63,
+            "coupling_db_95": 70
+          }
+        ]
+      }
+    },
+    {
+      "id": "commscope-radiax-fxl-114",
+      "vendor": "CommScope (Andrew)",
+      "model": "RADIAX FXL 1-1/4\" radiating cable",
+      "category": "Leaky feeder / radiating cable",
+      "equipment_class": "leaky_feeder",
+      "band_label": "150 MHz–2.5 GHz",
+      "technology": "custom",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 1325.0,
+      "tx_power_dbm": 20.0,
+      "rx_sensitivity_dbm": -95.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 360.0,
+      "frequency_bands_mhz": [
+        [
+          150,
+          2500
+        ]
+      ],
+      "rf_specs": {
+        "impedance_ohm": 50,
+        "vswr": 1.5
+      },
+      "spatial_characteristics": {},
+      "environment_rating": {
+        "ip": null,
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ],
+        "flame": "riser/plenum options"
+      },
+      "region_of_origin": "North America",
+      "provenance": "CommScope RADIAX FXL family (real product line). Numeric points are class-reference planning figures — confirm against the CommScope FXL datasheet before a real design.",
+      "spec_confidence": "class_reference",
+      "leaky_feeder_specs": {
+        "diameter_in": 1.25,
+        "coupling_ref_m": 2.0,
+        "points": [
+          {
+            "freq_mhz": 800,
+            "atten_db_per_100m": 4.6,
+            "coupling_db_50": 68,
+            "coupling_db_95": 72
+          },
+          {
+            "freq_mhz": 1900,
+            "atten_db_per_100m": 8.0,
+            "coupling_db_50": 60,
+            "coupling_db_95": 67
+          }
+        ]
+      }
+    },
+    {
+      "id": "kathrein-742215-65",
+      "vendor": "Kathrein (Ericsson Antenna Systems)",
+      "model": "742 215 65° 1800 MHz panel",
+      "category": "Macro cellular antenna",
+      "equipment_class": "macro_antenna",
+      "band_label": "1.71–1.88 GHz",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 1795.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -105.0,
+      "antenna_gain_dbi": 17.5,
+      "beamwidth_deg": 65.0,
+      "frequency_bands_mhz": [
+        [
+          1710,
+          1880
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 17.5,
+        "max_tx_power_dbm": 46,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2-port X-pol"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 65,
+        "v_beamwidth_deg": 7.0,
+        "electrical_downtilt_deg": [
+          0,
+          8
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Kathrein 742-series 65° panel (real product line, now Ericsson); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "rfs-apxvaall-90",
+      "vendor": "RFS (Amphenol)",
+      "model": "APXVAALL 90° wideband panel",
+      "category": "Macro cellular antenna",
+      "equipment_class": "macro_antenna",
+      "band_label": "690–960 MHz",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 825.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -105.0,
+      "antenna_gain_dbi": 15.0,
+      "beamwidth_deg": 90.0,
+      "frequency_bands_mhz": [
+        [
+          690,
+          960
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 15.0,
+        "max_tx_power_dbm": 46,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2-port X-pol"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 90,
+        "v_beamwidth_deg": 12,
+        "electrical_downtilt_deg": [
+          0,
+          10
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          65
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "RFS APXV wideband panel family (real product line); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "amphenol-bxa-70090",
+      "vendor": "Amphenol Antenna Solutions",
+      "model": "BXA-70090 90° 700 MHz panel",
+      "category": "Macro cellular antenna",
+      "equipment_class": "macro_antenna",
+      "band_label": "698–806 MHz",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 752.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -105.0,
+      "antenna_gain_dbi": 14.5,
+      "beamwidth_deg": 90.0,
+      "frequency_bands_mhz": [
+        [
+          698,
+          806
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 14.5,
+        "max_tx_power_dbm": 46,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2-port X-pol"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 90,
+        "v_beamwidth_deg": 13,
+        "electrical_downtilt_deg": [
+          0,
+          10
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Amphenol BXA 700 MHz panel family (real product line); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "commscope-hbxx-6516ds-vtm",
+      "vendor": "CommScope",
+      "model": "HBXX-6516DS 65° dual-band panel",
+      "category": "Macro cellular antenna",
+      "equipment_class": "macro_antenna",
+      "band_label": "1.71–2.17 GHz",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 1940.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -105.0,
+      "antenna_gain_dbi": 18.0,
+      "beamwidth_deg": 65.0,
+      "frequency_bands_mhz": [
+        [
+          1710,
+          2170
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 18.0,
+        "max_tx_power_dbm": 46,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2-port X-pol"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 65,
+        "v_beamwidth_deg": 6.5,
+        "electrical_downtilt_deg": [
+          0,
+          10
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "CommScope HBXX 65° panel family (real product line); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "comba-odv-065r18k",
+      "vendor": "Comba Telecom",
+      "model": "ODV-065R18K 65° dual-band panel",
+      "category": "Macro cellular antenna",
+      "equipment_class": "macro_antenna",
+      "band_label": "1.71–2.17 GHz",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 1940.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -105.0,
+      "antenna_gain_dbi": 17.8,
+      "beamwidth_deg": 65.0,
+      "frequency_bands_mhz": [
+        [
+          1710,
+          2170
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 17.8,
+        "max_tx_power_dbm": 46,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2-port X-pol"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 65,
+        "v_beamwidth_deg": 7,
+        "electrical_downtilt_deg": [
+          0,
+          10
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "Comba ODV 65° panel family (real product line, strong in Asia/Africa/LatAm); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "tongyu-tdj-181817",
+      "vendor": "Tongyu Communication",
+      "model": "TDJ-181817DE 65° 1800 MHz panel",
+      "category": "Macro cellular antenna",
+      "equipment_class": "macro_antenna",
+      "band_label": "1.71–1.88 GHz",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 1795.0,
+      "tx_power_dbm": 46.0,
+      "rx_sensitivity_dbm": -105.0,
+      "antenna_gain_dbi": 17.5,
+      "beamwidth_deg": 65.0,
+      "frequency_bands_mhz": [
+        [
+          1710,
+          1880
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 17.5,
+        "max_tx_power_dbm": 46,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2-port X-pol"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 65,
+        "v_beamwidth_deg": 7,
+        "electrical_downtilt_deg": [
+          0,
+          8
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "Tongyu TDJ 65° panel family (real product line, common across African deployments); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "zte-a9611-n78",
+      "vendor": "ZTE",
+      "model": "A9611 S3200 64T64R (n78)",
+      "category": "Massive-MIMO active radio",
+      "equipment_class": "massive_mimo",
+      "band_label": "3.4–3.6 GHz",
+      "technology": "nr3500",
+      "model_key": "tr38901_uma",
+      "environment": "urban",
+      "freq_mhz": 3500.0,
+      "tx_power_dbm": 53.0,
+      "rx_sensitivity_dbm": -100.0,
+      "antenna_gain_dbi": 24.0,
+      "beamwidth_deg": 105.0,
+      "frequency_bands_mhz": [
+        [
+          3400,
+          3600
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 24.0,
+        "max_tx_power_dbm": 53,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "64T64R"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 105,
+        "v_beamwidth_deg": 90,
+        "electrical_downtilt_deg": [
+          -15,
+          15
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          55
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "ZTE A9611 active antenna (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "huawei-aau5613",
+      "vendor": "Huawei",
+      "model": "AAU5613 64T64R Massive MIMO (n78)",
+      "category": "Massive-MIMO active radio",
+      "equipment_class": "massive_mimo",
+      "band_label": "3.4–3.6 GHz",
+      "technology": "nr3500",
+      "model_key": "tr38901_uma",
+      "environment": "urban",
+      "freq_mhz": 3500.0,
+      "tx_power_dbm": 53.0,
+      "rx_sensitivity_dbm": -100.0,
+      "antenna_gain_dbi": 24.0,
+      "beamwidth_deg": 105.0,
+      "frequency_bands_mhz": [
+        [
+          3400,
+          3600
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 24.0,
+        "max_tx_power_dbm": 53,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "64T64R"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 105,
+        "v_beamwidth_deg": 90,
+        "electrical_downtilt_deg": [
+          -15,
+          15
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          55
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "Huawei AAU5613 64T64R active antenna (real product); class-reference planning specs (200 W / ~53 dBm EIRP class).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ericsson-air6449",
+      "vendor": "Ericsson",
+      "model": "AIR 6449 B42 Massive MIMO",
+      "category": "Massive-MIMO active radio",
+      "equipment_class": "massive_mimo",
+      "band_label": "3.4–3.8 GHz",
+      "technology": "nr3500",
+      "model_key": "tr38901_uma",
+      "environment": "urban",
+      "freq_mhz": 3600.0,
+      "tx_power_dbm": 53.0,
+      "rx_sensitivity_dbm": -100.0,
+      "antenna_gain_dbi": 24.0,
+      "beamwidth_deg": 100.0,
+      "frequency_bands_mhz": [
+        [
+          3400,
+          3800
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 24.0,
+        "max_tx_power_dbm": 53,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "64T64R"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 100,
+        "v_beamwidth_deg": 90,
+        "electrical_downtilt_deg": [
+          -15,
+          15
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          55
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Ericsson AIR 6449 (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "nokia-airscale-maao",
+      "vendor": "Nokia",
+      "model": "AirScale mAAO 32T32R (n78)",
+      "category": "Massive-MIMO active radio",
+      "equipment_class": "massive_mimo",
+      "band_label": "3.4–3.8 GHz",
+      "technology": "nr3500",
+      "model_key": "tr38901_uma",
+      "environment": "urban",
+      "freq_mhz": 3600.0,
+      "tx_power_dbm": 49.0,
+      "rx_sensitivity_dbm": -100.0,
+      "antenna_gain_dbi": 23.0,
+      "beamwidth_deg": 100.0,
+      "frequency_bands_mhz": [
+        [
+          3400,
+          3800
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 23.0,
+        "max_tx_power_dbm": 49,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "32T32R"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 100,
+        "v_beamwidth_deg": 90,
+        "electrical_downtilt_deg": [
+          -12,
+          12
+        ]
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          55
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Nokia AirScale mAAO active antenna (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
     },
     {
       "id": "tetra_base",
-      "vendor": "Generic", "model": "TETRA Base Station",
-      "category": "PMR / PPDR", "band_label": "400 MHz TETRA",
-      "technology": "tetra400", "model_key": "okumura_hata", "environment": "suburban",
-      "freq_mhz": 420.0, "tx_power_dbm": 40.0, "rx_sensitivity_dbm": -112.0,
-      "antenna_gain_dbi": 9.0, "beamwidth_deg": 65.0, "bandwidth_mhz": 0.025
+      "vendor": "Generic",
+      "model": "TETRA Base Station",
+      "category": "PMR / PPDR",
+      "band_label": "400 MHz TETRA",
+      "technology": "tetra400",
+      "model_key": "okumura_hata",
+      "environment": "suburban",
+      "freq_mhz": 420.0,
+      "tx_power_dbm": 40.0,
+      "rx_sensitivity_dbm": -112.0,
+      "antenna_gain_dbi": 9.0,
+      "beamwidth_deg": 65.0,
+      "bandwidth_mhz": 0.025
     },
     {
       "id": "vhf_repeater",
-      "vendor": "Generic", "model": "VHF Land-Mobile Repeater",
-      "category": "PMR / PPDR", "band_label": "150 MHz VHF",
-      "technology": "vhf150", "model_key": "okumura_hata", "environment": "open",
-      "freq_mhz": 155.0, "tx_power_dbm": 44.0, "rx_sensitivity_dbm": -116.0,
-      "antenna_gain_dbi": 3.0, "beamwidth_deg": 360.0, "bandwidth_mhz": 0.0125
+      "vendor": "Generic",
+      "model": "VHF Land-Mobile Repeater",
+      "category": "PMR / PPDR",
+      "band_label": "150 MHz VHF",
+      "technology": "vhf150",
+      "model_key": "okumura_hata",
+      "environment": "open",
+      "freq_mhz": 155.0,
+      "tx_power_dbm": 44.0,
+      "rx_sensitivity_dbm": -116.0,
+      "antenna_gain_dbi": 3.0,
+      "beamwidth_deg": 360.0,
+      "bandwidth_mhz": 0.0125
+    },
+    {
+      "id": "ptp_18ghz_03m",
+      "vendor": "Generic",
+      "model": "18 GHz PtP ODU (0.3 m dish)",
+      "category": "PTP Microwave",
+      "band_label": "18 GHz licensed",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "los",
+      "freq_mhz": 18000.0,
+      "tx_power_dbm": 20.0,
+      "rx_sensitivity_dbm": -70.0,
+      "antenna_gain_dbi": 34.0,
+      "beamwidth_deg": 3.0,
+      "bandwidth_mhz": 56.0
+    },
+    {
+      "id": "ptp_23ghz_06m",
+      "vendor": "Generic",
+      "model": "23 GHz PtP (0.6 m dish)",
+      "category": "PTP Microwave",
+      "band_label": "23 GHz licensed",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "los",
+      "freq_mhz": 23000.0,
+      "tx_power_dbm": 18.0,
+      "rx_sensitivity_dbm": -68.0,
+      "antenna_gain_dbi": 38.0,
+      "beamwidth_deg": 2.0,
+      "bandwidth_mhz": 56.0
+    },
+    {
+      "id": "ptp_6ghz_12m",
+      "vendor": "Generic",
+      "model": "6 GHz Licensed PtP (1.2 m dish)",
+      "category": "PTP Microwave",
+      "band_label": "6 GHz licensed",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "los",
+      "freq_mhz": 6000.0,
+      "tx_power_dbm": 27.0,
+      "rx_sensitivity_dbm": -74.0,
+      "antenna_gain_dbi": 34.0,
+      "beamwidth_deg": 3.0,
+      "bandwidth_mhz": 30.0
+    },
+    {
+      "id": "ptp_60ghz_shorthaul",
+      "vendor": "Generic",
+      "model": "60 GHz Short-Haul PtP",
+      "category": "PTP Microwave",
+      "band_label": "60 GHz unlicensed (V-band)",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "los",
+      "freq_mhz": 60000.0,
+      "tx_power_dbm": 10.0,
+      "rx_sensitivity_dbm": -60.0,
+      "antenna_gain_dbi": 40.0,
+      "beamwidth_deg": 1.5,
+      "bandwidth_mhz": 500.0
+    },
+    {
+      "id": "cbrs_b48_smallcell",
+      "vendor": "Generic",
+      "model": "CBRS B48 Small Cell",
+      "category": "Private LTE",
+      "band_label": "3.6 GHz CBRS (B48)",
+      "technology": "private_lte_b48",
+      "model_key": "tr38901_uma",
+      "environment": "nlos",
+      "freq_mhz": 3625.0,
+      "tx_power_dbm": 30.0,
+      "rx_sensitivity_dbm": -102.0,
+      "antenna_gain_dbi": 15.0,
+      "beamwidth_deg": 65.0,
+      "bandwidth_mhz": 20.0
+    },
+    {
+      "id": "private_lte_iot_gw",
+      "vendor": "Generic",
+      "model": "LTE-M / NB-IoT Gateway",
+      "category": "Private LTE",
+      "band_label": "3.6 GHz narrowband",
+      "technology": "private_lte_iot",
+      "model_key": "tr38901_uma",
+      "environment": "nlos",
+      "freq_mhz": 3625.0,
+      "tx_power_dbm": 23.0,
+      "rx_sensitivity_dbm": -120.0,
+      "antenna_gain_dbi": 5.0,
+      "beamwidth_deg": 360.0,
+      "bandwidth_mhz": 1.4
+    },
+    {
+      "id": "private_5g_n77_gnb",
+      "vendor": "Generic",
+      "model": "Private 5G n77 gNodeB",
+      "category": "Private LTE",
+      "band_label": "3.9 GHz (n77)",
+      "technology": "private_nr_n77",
+      "model_key": "tr38901_uma",
+      "environment": "nlos",
+      "freq_mhz": 3900.0,
+      "tx_power_dbm": 47.0,
+      "rx_sensitivity_dbm": -95.0,
+      "antenna_gain_dbi": 24.0,
+      "beamwidth_deg": 65.0,
+      "bandwidth_mhz": 100.0
+    },
+    {
+      "id": "private_lte_b3_macro",
+      "vendor": "Generic",
+      "model": "Private LTE B3 Macro",
+      "category": "Private LTE",
+      "band_label": "1.8 GHz (B3)",
+      "technology": "lte1800",
+      "model_key": "cost231_hata",
+      "environment": "urban",
+      "freq_mhz": 1842.0,
+      "tx_power_dbm": 43.0,
+      "rx_sensitivity_dbm": -103.0,
+      "antenna_gain_dbi": 17.0,
+      "beamwidth_deg": 65.0,
+      "bandwidth_mhz": 20.0
+    },
+    {
+      "id": "mimosa-b5c",
+      "vendor": "Mimosa (Airspan)",
+      "model": "B5c connectorized 5 GHz",
+      "category": "PtP / PtMP microwave",
+      "equipment_class": "microwave_ptp",
+      "band_label": "4.9–6.4 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 5650.0,
+      "tx_power_dbm": 27.0,
+      "rx_sensitivity_dbm": -87.0,
+      "antenna_gain_dbi": 0.0,
+      "beamwidth_deg": 8.0,
+      "frequency_bands_mhz": [
+        [
+          4900,
+          6400
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 0.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -87,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "4x4 MIMO"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 8,
+        "v_beamwidth_deg": 8
+      },
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Mimosa B5c connectorized radio (real product; antenna added separately, hence 0 dBi integrated).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ceragon-ip20c",
+      "vendor": "Ceragon Networks",
+      "model": "IP-20C 6-42 GHz radio",
+      "category": "PtP / PtMP microwave",
+      "equipment_class": "microwave_ptp",
+      "band_label": "6–42 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 24000.0,
+      "tx_power_dbm": 25.0,
+      "rx_sensitivity_dbm": -70.0,
+      "antenna_gain_dbi": 38.0,
+      "beamwidth_deg": 2.0,
+      "frequency_bands_mhz": [
+        [
+          6000,
+          42000
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 38.0,
+        "max_tx_power_dbm": 25,
+        "rx_sensitivity_dbm": -70,
+        "vswr": 1.3,
+        "impedance_ohm": 50,
+        "mimo": "1+0/2+0"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 2,
+        "v_beamwidth_deg": 2
+      },
+      "environment_rating": {
+        "ip": "IP66",
+        "atex": false,
+        "temp_c": [
+          -45,
+          55
+        ]
+      },
+      "region_of_origin": "Middle East",
+      "provenance": "Ceragon IP-20C licensed microwave (real product); antenna gain depends on dish size — 38 dBi is a common 0.3 m/18 GHz figure.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "ericsson-minilink-6352",
+      "vendor": "Ericsson",
+      "model": "MINI-LINK 6352 (6-42 GHz)",
+      "category": "PtP / PtMP microwave",
+      "equipment_class": "microwave_ptp",
+      "band_label": "6–42 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 24000.0,
+      "tx_power_dbm": 25.0,
+      "rx_sensitivity_dbm": -70.0,
+      "antenna_gain_dbi": 38.0,
+      "beamwidth_deg": 2.0,
+      "frequency_bands_mhz": [
+        [
+          6000,
+          42000
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 38.0,
+        "max_tx_power_dbm": 25,
+        "rx_sensitivity_dbm": -70,
+        "vswr": 1.3,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 2,
+        "v_beamwidth_deg": 2
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -33,
+          55
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Ericsson MINI-LINK 6352 (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "cambium-ptp550",
+      "vendor": "Cambium Networks",
+      "model": "PTP 550 (5 GHz, integrated)",
+      "category": "PtP / PtMP microwave",
+      "equipment_class": "microwave_ptp",
+      "band_label": "4.9–6.05 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 5475.0,
+      "tx_power_dbm": 27.0,
+      "rx_sensitivity_dbm": -87.0,
+      "antenna_gain_dbi": 23.0,
+      "beamwidth_deg": 8.0,
+      "frequency_bands_mhz": [
+        [
+          4900,
+          6050
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 23.0,
+        "max_tx_power_dbm": 27,
+        "rx_sensitivity_dbm": -87,
+        "vswr": 1.5,
+        "impedance_ohm": 50,
+        "mimo": "2x2 MIMO"
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 8,
+        "v_beamwidth_deg": 8
+      },
+      "environment_rating": {
+        "ip": "IP66",
+        "atex": false,
+        "temp_c": [
+          -40,
+          60
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Cambium PTP 550 (real product); class-reference planning specs.",
+      "spec_confidence": "published_typical"
+    },
+    {
+      "id": "aviat-wtm4800",
+      "vendor": "Aviat Networks",
+      "model": "WTM 4800 multi-band",
+      "category": "PtP / PtMP microwave",
+      "equipment_class": "microwave_ptp",
+      "band_label": "6–42 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 24000.0,
+      "tx_power_dbm": 25.0,
+      "rx_sensitivity_dbm": -70.0,
+      "antenna_gain_dbi": 38.0,
+      "beamwidth_deg": 2.0,
+      "frequency_bands_mhz": [
+        [
+          6000,
+          42000
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 38.0,
+        "max_tx_power_dbm": 25,
+        "rx_sensitivity_dbm": -70,
+        "vswr": 1.3,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 2,
+        "v_beamwidth_deg": 2
+      },
+      "environment_rating": {
+        "ip": "IP66",
+        "atex": false,
+        "temp_c": [
+          -45,
+          55
+        ]
+      },
+      "region_of_origin": "North America",
+      "provenance": "Aviat WTM 4800 licensed microwave (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "nec-ipasolink-vr",
+      "vendor": "NEC",
+      "model": "iPASOLINK VR (6-42 GHz)",
+      "category": "PtP / PtMP microwave",
+      "equipment_class": "microwave_ptp",
+      "band_label": "6–42 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 24000.0,
+      "tx_power_dbm": 25.0,
+      "rx_sensitivity_dbm": -70.0,
+      "antenna_gain_dbi": 38.0,
+      "beamwidth_deg": 2.0,
+      "frequency_bands_mhz": [
+        [
+          6000,
+          42000
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 38.0,
+        "max_tx_power_dbm": 25,
+        "rx_sensitivity_dbm": -70,
+        "vswr": 1.3,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 2,
+        "v_beamwidth_deg": 2
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -45,
+          55
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "NEC iPASOLINK VR (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "rfs-cxl700-tunnel",
+      "vendor": "RFS (Amphenol)",
+      "model": "CXL700 tunnel/confined-space yagi",
+      "category": "Tunnel / confined-space antenna",
+      "equipment_class": "tunnel_antenna",
+      "band_label": "380–470 MHz",
+      "technology": "pmr446",
+      "model_key": "okumura_hata",
+      "environment": "urban",
+      "freq_mhz": 425.0,
+      "tx_power_dbm": 43.0,
+      "rx_sensitivity_dbm": -100.0,
+      "antenna_gain_dbi": 10.0,
+      "beamwidth_deg": 60.0,
+      "frequency_bands_mhz": [
+        [
+          380,
+          470
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 10.0,
+        "max_tx_power_dbm": 43,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 60,
+        "v_beamwidth_deg": 60
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": true,
+        "temp_c": [
+          -40,
+          70
+        ]
+      },
+      "region_of_origin": "Europe",
+      "provenance": "Directional tunnel/gallery antenna class-reference (ATEX-rated, ~10 dBi UHF yagi for confined-space DAS).",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "wifi_ptmp_5ghz",
+      "vendor": "Generic",
+      "model": "5 GHz PtMP Base",
+      "category": "Wi-Fi",
+      "band_label": "5.5 GHz (802.11ac)",
+      "technology": "wifi5800",
+      "model_key": "tr38901_umi",
+      "environment": "los",
+      "freq_mhz": 5500.0,
+      "tx_power_dbm": 23.0,
+      "rx_sensitivity_dbm": -88.0,
+      "antenna_gain_dbi": 16.0,
+      "beamwidth_deg": 30.0,
+      "bandwidth_mhz": 40.0
+    },
+    {
+      "id": "wifi_ap_24_sector",
+      "vendor": "Generic",
+      "model": "Outdoor AP 2.4 GHz Sector",
+      "category": "Wi-Fi",
+      "band_label": "2.4 GHz (802.11n)",
+      "technology": "wifi2400",
+      "model_key": "tr38901_umi",
+      "environment": "nlos",
+      "freq_mhz": 2442.0,
+      "tx_power_dbm": 20.0,
+      "rx_sensitivity_dbm": -90.0,
+      "antenna_gain_dbi": 8.0,
+      "beamwidth_deg": 90.0,
+      "bandwidth_mhz": 20.0
+    },
+    {
+      "id": "wifi6_ap_omni",
+      "vendor": "Generic",
+      "model": "Wi-Fi 6 Outdoor Omni",
+      "category": "Wi-Fi",
+      "band_label": "5.8 GHz (802.11ax)",
+      "technology": "wifi5800",
+      "model_key": "tr38901_umi",
+      "environment": "nlos",
+      "freq_mhz": 5800.0,
+      "tx_power_dbm": 24.0,
+      "rx_sensitivity_dbm": -85.0,
+      "antenna_gain_dbi": 6.0,
+      "beamwidth_deg": 360.0,
+      "bandwidth_mhz": 80.0
+    },
+    {
+      "id": "siklu-eh8010",
+      "vendor": "Siklu",
+      "model": "EtherHaul-8010 E-band (71-86 GHz)",
+      "category": "mmWave backhaul (E/V-band)",
+      "equipment_class": "mmwave_ptp",
+      "band_label": "71–86 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 78500.0,
+      "tx_power_dbm": 10.0,
+      "rx_sensitivity_dbm": -60.0,
+      "antenna_gain_dbi": 43.0,
+      "beamwidth_deg": 1.0,
+      "frequency_bands_mhz": [
+        [
+          71000,
+          86000
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 43.0,
+        "max_tx_power_dbm": 10,
+        "rx_sensitivity_dbm": -60,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 1,
+        "v_beamwidth_deg": 1
+      },
+      "environment_rating": {
+        "ip": "IP67",
+        "atex": false,
+        "temp_c": [
+          -45,
+          55
+        ]
+      },
+      "region_of_origin": "Middle East",
+      "provenance": "Siklu EtherHaul E-band radio (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
+    },
+    {
+      "id": "huawei-rtn380h",
+      "vendor": "Huawei",
+      "model": "RTN 380H E-band (80 GHz)",
+      "category": "mmWave backhaul (E/V-band)",
+      "equipment_class": "mmwave_ptp",
+      "band_label": "71–86 GHz",
+      "technology": "ptp18000",
+      "model_key": "fspl",
+      "environment": "urban",
+      "freq_mhz": 78500.0,
+      "tx_power_dbm": 10.0,
+      "rx_sensitivity_dbm": -60.0,
+      "antenna_gain_dbi": 43.0,
+      "beamwidth_deg": 1.0,
+      "frequency_bands_mhz": [
+        [
+          71000,
+          86000
+        ]
+      ],
+      "rf_specs": {
+        "gain_dbi": 43.0,
+        "max_tx_power_dbm": 10,
+        "rx_sensitivity_dbm": -60,
+        "vswr": 1.5,
+        "impedance_ohm": 50
+      },
+      "spatial_characteristics": {
+        "h_beamwidth_deg": 1,
+        "v_beamwidth_deg": 1
+      },
+      "environment_rating": {
+        "ip": "IP65",
+        "atex": false,
+        "temp_c": [
+          -40,
+          55
+        ]
+      },
+      "region_of_origin": "Asia",
+      "provenance": "Huawei RTN 380H E-band (real product); class-reference planning specs.",
+      "spec_confidence": "class_reference"
     }
   ]
 }
