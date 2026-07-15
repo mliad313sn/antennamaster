@@ -1,0 +1,224 @@
+{
+  "app": {
+    "title": "AntennaMaster",
+    "tagline": "Simulateur de couverture radio"
+  },
+  "nav": {
+    "planner": "Planificateur",
+    "dashboard": "Centre de commande",
+    "field": "Vue tactique",
+    "pitch": "Présentation",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "account": "Compte"
+  },
+  "locale": {
+    "label": "Langue",
+    "en": "English",
+    "fr": "Français"
+  },
+  "mode": {
+    "simple": "Simple",
+    "expert": "Expert",
+    "toggleTitle": "Basculer entre le mode Simple guidé et les commandes Expert complètes",
+    "simpleHint": "Mode guidé — choisissez ce que vous voulez connecter, nous réglons la radio pour vous.",
+    "expertHint": "Contrôle total de tous les paramètres de propagation et de bilan de liaison."
+  },
+  "planner": {
+    "search": "Rechercher un lieu ou lat, lon",
+    "searchBtn": "Aller",
+    "noResults": "Aucun résultat pour « {{query}} ».",
+    "searchOffline": "La recherche nécessite Internet (hors ligne). Saisissez « lat, lon » pour y aller directement.",
+    "useLocation": "Ma position",
+    "gpsUnavailable": "GPS indisponible : {{error}}",
+    "noGps": "Cet appareil n'expose pas de GPS / géolocalisation.",
+    "placeTx": "Placer l'émetteur", "moveTx": "Déplacer l'émetteur",
+    "placeRx": "Placer le récepteur", "moveRx": "Déplacer le récepteur",
+    "useGps": "Utiliser ma position GPS",
+    "swap": "Inverser les extrémités",
+    "theme": "Changer le thème de couleur",
+    "startTour": "Lancer la visite",
+    "txLat": "Lat émetteur", "txLon": "Lon émetteur", "rxLat": "Lat récepteur", "rxLon": "Lon récepteur",
+    "txHeight": "Hauteur émetteur (m)", "rxHeight": "Hauteur récepteur (m)",
+    "frequency": "Fréquence (MHz) — analyse du terrain",
+    "localTerrain": "Terrain local (DXF)",
+    "importDxf": "Importez un DXF pour ajouter un relief haute résolution sur le terrain de base.",
+    "importAnother": "Importer un autre DXF…",
+    "saveProject": "Enregistrer comme projet",
+    "saved": "« {{name}} » enregistré — retrouvez-le dans le Centre de commande.",
+    "signInToSave": "Connectez-vous pour enregistrer des projets.",
+    "projectNamePrompt": "Nom du projet :",
+    "validationWarning": "Avertissement de validation du terrain"
+  },
+  "link": {
+    "title": "Analyse de liaison",
+    "distance": "Distance",
+    "lineOfSight": "Ligne de visée",
+    "clear": "Dégagée",
+    "obstructed": "Obstruée",
+    "knifeEdge": "Perte de diffraction",
+    "fresnelClearance": "Dégagement F1",
+    "worstObstruction": "Pire obstacle",
+    "kFactor": "Facteur k",
+    "downloadCsv": "Télécharger le profil (CSV)",
+    "provenanceNote": "= origine des données dans le graphique"
+  },
+  "study": {
+    "title": "Étude radio",
+    "technology": "Technologie",
+    "none": "— aucune (terrain seul) —",
+    "model": "Modèle de propagation",
+    "environment": "Environnement",
+    "preset": "Préréglage",
+    "pathLoss": "Affaiblissement ({{model}})",
+    "diffraction": "Diffraction (Deygout)",
+    "foliage": "Végétation (Weissberger)",
+    "rain": "Pluie (P.838)",
+    "gases": "Gaz atmosphériques",
+    "clutterLoss": "Encombrement (P.2108)",
+    "mimoGain": "Gain MIMO",
+    "sensitivity": "Sensibilité (kTB+NF+SINR)",
+    "rxPower": "Puissance reçue",
+    "margin": "Marge",
+    "served": "(couvert)",
+    "noService": "(hors service)",
+    "radius": "Rayon (km)",
+    "antenna": "Antenne",
+    "omni": "Omnidirectionnelle",
+    "sector": "Sectorielle",
+    "azimuth": "Azimut (°)",
+    "beamwidth": "Ouverture (°)",
+    "pattern": "Diagramme d'antenne (MSI Planet)",
+    "parametric": "— paramétrique (omni / secteur) —",
+    "downtilt": "Inclinaison (°)",
+    "fadeMargin": "Marge d'évanouissement (dB)",
+    "foliageDepth": "Épaisseur de végétation (m)",
+    "rainRate": "Pluie (mm/h)",
+    "clutterPct": "Encombrement %lieux",
+    "surfaceModel": "Modèle de surface",
+    "dsmBuildings": "MNS (bâtiments)",
+    "siteBudget": "Bilan de liaison du site (remplacer le préréglage)",
+    "txPower": "Puissance émission (dBm)",
+    "txGain": "Gain émission (dBi)",
+    "rxGain": "Gain réception (dBi)",
+    "losses": "Pertes (dB)",
+    "rxSensitivity": "Sensibilité réception (dBm)",
+    "simulate": "Simuler la couverture depuis l'émetteur",
+    "simulating": "Simulation…",
+    "placeTxFirst": "Placez d'abord l'émetteur",
+    "addSite": "Ajouter l'émetteur comme site ({{count}}/8)",
+    "bestServer": "Carte meilleur serveur ({{count}} sites)",
+    "servedArea": "Zone couverte",
+    "bestServerShare": "{{pct}} % meilleur serveur",
+    "txGround": "Sol émetteur",
+    "peakRxPower": "Puissance reçue max",
+    "clearCoverage": "Effacer la couche de couverture",
+    "meanSinr": "SINR moyen (co-canal)",
+    "sinrGe6": "Zone ≥ 6 dB SINR",
+    "cellEdge": "Bord de cellule (< 0 dB)",
+    "viewBestServer": "Meilleur serveur",
+    "viewSinr": "SINR / interférence"
+  },
+  "batch": {
+    "title": "Récepteurs en lot",
+    "pickTech": "Sélectionnez une technologie dans le panneau Étude radio pour qualifier une liste de récepteurs face à l'émetteur.",
+    "help": "Une ligne par site : nom,lat,lon (nom facultatif). Qualifie chaque emplacement face à l'émetteur actuel — couverture/marge, visée et Fresnel.",
+    "listLabel": "Liste de récepteurs (nom,lat,lon par ligne)",
+    "valid": "{{valid}} valides",
+    "validSkipped": "{{valid}} valides, {{skipped}} ignorés",
+    "maxWarn": "⚠ 200 max",
+    "qualify_one": "Qualifier {{count}} récepteur",
+    "qualify_other": "Qualifier {{count}} récepteurs",
+    "qualifying": "Qualification…",
+    "servedCount": "Couverts",
+    "colSite": "Site", "colKm": "km", "colMargin": "Marge", "colLos": "Visée",
+    "downloadCsv": "Télécharger le CSV"
+  },
+  "simple": {
+    "heading": "Que voulez-vous connecter ?",
+    "sub": "Choisissez le cas le plus proche. Nous réglons la radio pour vous.",
+    "uses": "Utilise {{tech}}",
+    "apply": "Configurer",
+    "applied": "Prêt — placez vos points sur la carte et lisez le résultat.",
+    "advanced": "Afficher les commandes expert"
+  },
+  "scenario": {
+    "buildings_ptp": {
+      "label": "Relier deux bâtiments",
+      "blurb": "Une liaison fixe entre deux points distants de quelques km — bureaux, sites, caméras."
+    },
+    "backhaul_longhop": {
+      "label": "Faisceau longue distance",
+      "blurb": "Un bond hertzien haute capacité sur 10 à 50 km entre pylônes."
+    },
+    "fleet_wifi": {
+      "label": "Wi-Fi pour une flotte de véhicules",
+      "blurb": "Wi-Fi extérieur sur un dépôt ou un site industriel pour camions et engins."
+    },
+    "site_radios": {
+      "label": "Radios portatives sur un site",
+      "blurb": "Couverture portative bidirectionnelle sur un chantier ou un campus."
+    },
+    "private_lte_site": {
+      "label": "4G/5G privée pour un site",
+      "blurb": "Un réseau cellulaire privé couvrant une usine, un port ou un campus."
+    },
+    "iot_sensors": {
+      "label": "Capteurs IoT sur une large zone",
+      "blurb": "Liaisons longue portée basse consommation pour compteurs et capteurs sur de nombreux km."
+    },
+    "mobile_coverage": {
+      "label": "Couverture téléphonie mobile",
+      "blurb": "Couverture cellulaire pour téléphones sur une ville ou une zone rurale."
+    }
+  },
+  "tour": {
+    "skip": "Passer", "back": "Retour", "next": "Suivant", "last": "Terminer",
+    "welcome": {
+      "title": "Bienvenue sur AntennaMaster",
+      "body": "Planifiez la couverture radio partout dans le monde. Cette visite rapide présente l'essentiel — vous pouvez la quitter à tout moment."
+    },
+    "simpleMode": {
+      "title": "Simple ou Expert",
+      "body": "Nouveau en radio ? Commencez en mode Simple et choisissez ce que vous voulez connecter. Passez en Expert pour tout contrôler."
+    },
+    "place": {
+      "title": "Placez vos points",
+      "body": "Cliquez sur la carte pour placer l'émetteur (TX) puis le récepteur (RX) — ou saisissez les coordonnées. Le profil du terrain apparaît aussitôt."
+    },
+    "technology": {
+      "title": "Choisissez une technologie",
+      "body": "Sélectionnez un préréglage — Wi-Fi, 4G/5G, radio PMR, IoT et plus. Puissance, gain et sensibilité réalistes sont remplis pour vous."
+    },
+    "dxf": {
+      "title": "Ajoutez le terrain local (DXF)",
+      "body": "Vous avez un relevé de site ? Importez un DXF pour ajouter un relief haute résolution sur le terrain global dans son emprise."
+    },
+    "coverage": {
+      "title": "Lancez la couverture",
+      "body": "Simulez une carte de couverture depuis l'émetteur. Bleu plus foncé = signal plus fort ; transparent = hors service."
+    },
+    "heatmap": {
+      "title": "Lisez la carte thermique",
+      "body": "Chaque bande de couleur est une classe de marge de signal. La légende les explique ; exportez la carte en PNG, GeoTIFF ou KMZ."
+    },
+    "glossary": {
+      "title": "Un terme vous bloque ?",
+      "body": "Chaque champ technique a une icône ⓘ — survolez-la ou touchez-la pour une explication simple, sans équations."
+    }
+  },
+  "glossary": {
+    "fresnel": "Zone de Fresnel : la région en forme de ballon de rugby autour du rayon direct qui transporte l'essentiel de l'énergie radio. Gardez environ 60 % de la première zone dégagée du terrain et des obstacles, sinon la liaison se dégrade même en visibilité directe.",
+    "fspl": "Affaiblissement en espace libre : la perte du signal simplement en se propageant dans le vide. Elle augmente de 6 dB chaque fois que la distance (ou la fréquence) double — la base à laquelle tout modèle réel ajoute des pertes.",
+    "kfactor": "Facteur k : à quel point l'atmosphère courbe les ondes radio. La valeur standard (4/3) fait paraître la Terre plus plate pour la radio que pour l'œil ; une valeur faible (pire cas) fait remonter le terrain dans le trajet.",
+    "fade_margin": "Marge d'évanouissement : signal de réserve (en dB) gardé pour la variabilité comme l'ombrage et la météo. Environ 5,5 dB donne ~90 % de fiabilité de zone, 8 dB ~95 %. Une marge nulle signifie que la moitié des emplacements échouent.",
+    "sensitivity": "Sensibilité du récepteur : le signal le plus faible que la radio peut encore décoder. Elle dépend du bruit de fond, de la largeur du canal, du bruit propre du récepteur et de la qualité exigée par le signal.",
+    "downtilt": "Inclinaison (downtilt) : orienter le faisceau légèrement sous l'horizon pour concentrer la couverture près du site et réduire l'interférence plus loin. L'outil principal pour façonner une cellule.",
+    "deygout": "Diffraction : signal perdu quand des collines ou bâtiments bloquent le trajet direct. Le modèle repère les obstacles les plus forts et estime combien ils courbent et affaiblissent le signal.",
+    "batch": "Qualification en lot : vérifier de nombreux emplacements de récepteurs face à un émetteur en une fois. Chacun obtient son propre profil de terrain et un verdict couvert-ou-non, exportable en tableur.",
+    "clutter": "Encombrement : perte de signal supplémentaire due aux bâtiments et au mobilier urbain que le modèle d'altitude ne voit pas. Le pourcentage est la part d'emplacements à couvrir — 50 % est une ville typique, 90 % est prudent.",
+    "helmert": "Ajustement de géoréférencement : comment le dessin est aligné au monde réel à partir des points de référence fournis. Une grande erreur (en mètres) signale souvent un point mal placé ou de mauvaises unités.",
+    "gain": "Gain d'antenne (dBi) : à quel point une antenne concentre son énergie dans une direction plutôt que de rayonner partout. Un gain élevé donne plus de portée mais un faisceau plus étroit.",
+    "txpower": "Puissance d'émission (dBm) : la puissance émise par la radio. Plus de puissance porte plus loin, mais la réglementation la limite et ce n'est qu'une partie du bilan."
+  }
+}

@@ -1,5 +1,8 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
+// Initialize the shared i18next instance so useTranslation() resolves keys
+// (English by default) without every test wrapping in <I18nProvider>.
+import '@/lib/i18n';
 
 // Recharts' ResponsiveContainer and Leaflet both probe layout APIs that
 // jsdom lacks; stub them so components mount.

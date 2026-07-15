@@ -1,0 +1,224 @@
+{
+  "app": {
+    "title": "AntennaMaster",
+    "tagline": "RF Coverage Simulator"
+  },
+  "nav": {
+    "planner": "Planner",
+    "dashboard": "Command Center",
+    "field": "Tactical View",
+    "pitch": "Pitch",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "account": "Account"
+  },
+  "locale": {
+    "label": "Language",
+    "en": "English",
+    "fr": "Français"
+  },
+  "mode": {
+    "simple": "Simple",
+    "expert": "Expert",
+    "toggleTitle": "Switch between guided Simple mode and full Expert controls",
+    "simpleHint": "Guided mode — pick what you want to connect and we handle the radio settings.",
+    "expertHint": "Full control over every propagation and link-budget parameter."
+  },
+  "planner": {
+    "search": "Search place or lat, lon",
+    "searchBtn": "Go",
+    "noResults": "No results for “{{query}}”.",
+    "searchOffline": "Search needs internet (offline). Type “lat, lon” to jump directly.",
+    "useLocation": "Use my location",
+    "gpsUnavailable": "GPS unavailable: {{error}}",
+    "noGps": "This device does not expose GPS/geolocation.",
+    "placeTx": "Place TX", "moveTx": "Move TX",
+    "placeRx": "Place RX", "moveRx": "Move RX",
+    "useGps": "Use my GPS position",
+    "swap": "Swap ends",
+    "theme": "Toggle color theme",
+    "startTour": "Take the tour",
+    "txLat": "TX lat", "txLon": "TX lon", "rxLat": "RX lat", "rxLon": "RX lon",
+    "txHeight": "TX height (m)", "rxHeight": "RX height (m)",
+    "frequency": "Frequency (MHz) — terrain analysis",
+    "localTerrain": "Local DXF terrain",
+    "importDxf": "Import a DXF to patch high-resolution relief over the base terrain.",
+    "importAnother": "Import another DXF…",
+    "saveProject": "Save as project",
+    "saved": "Saved “{{name}}” — manage it in the Command Center.",
+    "signInToSave": "Sign in to save projects.",
+    "projectNamePrompt": "Project name:",
+    "validationWarning": "Terrain validation warning"
+  },
+  "link": {
+    "title": "Link analysis",
+    "distance": "Distance",
+    "lineOfSight": "Line of sight",
+    "clear": "Clear",
+    "obstructed": "Obstructed",
+    "knifeEdge": "Knife-edge loss",
+    "fresnelClearance": "F1 clearance",
+    "worstObstruction": "Worst obstruction",
+    "kFactor": "k-factor",
+    "downloadCsv": "Download profile CSV",
+    "provenanceNote": "= data provenance in the chart"
+  },
+  "study": {
+    "title": "Radio study",
+    "technology": "Technology",
+    "none": "— none (terrain only) —",
+    "model": "Propagation model",
+    "environment": "Environment",
+    "preset": "Preset",
+    "pathLoss": "Path loss ({{model}})",
+    "diffraction": "Diffraction (Deygout)",
+    "foliage": "Foliage (Weissberger)",
+    "rain": "Rain (P.838)",
+    "gases": "Atmospheric gases",
+    "clutterLoss": "Clutter (P.2108)",
+    "mimoGain": "MIMO gain",
+    "sensitivity": "Sensitivity (kTB+NF+SINR)",
+    "rxPower": "RX power",
+    "margin": "Margin",
+    "served": "(served)",
+    "noService": "(no service)",
+    "radius": "Radius (km)",
+    "antenna": "Antenna",
+    "omni": "Omni",
+    "sector": "Sector",
+    "azimuth": "Azimuth (°)",
+    "beamwidth": "Beamwidth (°)",
+    "pattern": "Antenna pattern (MSI Planet)",
+    "parametric": "— parametric (omni / sector) —",
+    "downtilt": "Downtilt (°)",
+    "fadeMargin": "Fade margin (dB)",
+    "foliageDepth": "Foliage depth (m)",
+    "rainRate": "Rain (mm/h)",
+    "clutterPct": "Clutter %loc",
+    "surfaceModel": "Surface model",
+    "dsmBuildings": "DSM (buildings)",
+    "siteBudget": "Site link budget (override preset)",
+    "txPower": "TX power (dBm)",
+    "txGain": "TX gain (dBi)",
+    "rxGain": "RX gain (dBi)",
+    "losses": "Losses (dB)",
+    "rxSensitivity": "RX sensitivity (dBm)",
+    "simulate": "Simulate coverage from TX",
+    "simulating": "Simulating…",
+    "placeTxFirst": "Place TX first",
+    "addSite": "Add current TX as site ({{count}}/8)",
+    "bestServer": "Best-server map ({{count}} sites)",
+    "servedArea": "Served area",
+    "bestServerShare": "{{pct}}% best server",
+    "txGround": "TX ground",
+    "peakRxPower": "Peak RX power",
+    "clearCoverage": "Clear coverage layer",
+    "meanSinr": "Mean SINR (co-channel)",
+    "sinrGe6": "Area ≥ 6 dB SINR",
+    "cellEdge": "Cell-edge (< 0 dB)",
+    "viewBestServer": "Best server",
+    "viewSinr": "SINR / interference"
+  },
+  "batch": {
+    "title": "Batch receivers",
+    "pickTech": "Select a technology in the Radio study panel to qualify a list of receiver locations against the TX.",
+    "help": "One row per site: name,lat,lon (name optional). Qualifies every location against the current TX — served/margin, LOS and Fresnel.",
+    "listLabel": "Receiver list (name,lat,lon per line)",
+    "valid": "{{valid}} valid",
+    "validSkipped": "{{valid}} valid, {{skipped}} skipped",
+    "maxWarn": "⚠ max 200",
+    "qualify_one": "Qualify {{count}} receiver",
+    "qualify_other": "Qualify {{count}} receivers",
+    "qualifying": "Qualifying…",
+    "servedCount": "Served",
+    "colSite": "Site", "colKm": "km", "colMargin": "Margin", "colLos": "LOS",
+    "downloadCsv": "Download CSV"
+  },
+  "simple": {
+    "heading": "What are you trying to connect?",
+    "sub": "Pick the closest match. We'll choose the right radio settings for you.",
+    "uses": "Uses {{tech}}",
+    "apply": "Set this up",
+    "applied": "Ready — place your points on the map and read the result.",
+    "advanced": "Show expert controls"
+  },
+  "scenario": {
+    "buildings_ptp": {
+      "label": "Connect two buildings",
+      "blurb": "A fixed link between two fixed points a few km apart — offices, sites, cameras."
+    },
+    "backhaul_longhop": {
+      "label": "Long-distance backhaul",
+      "blurb": "A high-capacity microwave hop over 10–50 km between masts."
+    },
+    "fleet_wifi": {
+      "label": "Wi-Fi for a vehicle fleet",
+      "blurb": "Outdoor Wi-Fi across a yard or industrial site for trucks and machinery."
+    },
+    "site_radios": {
+      "label": "Handheld radios across a site",
+      "blurb": "Two-way handheld coverage over a work site or campus."
+    },
+    "private_lte_site": {
+      "label": "Private 4G/5G for a site",
+      "blurb": "A private cellular network covering a plant, port or campus."
+    },
+    "iot_sensors": {
+      "label": "IoT sensors over a wide area",
+      "blurb": "Low-power long-range links for meters and sensors across many km."
+    },
+    "mobile_coverage": {
+      "label": "Mobile phone coverage",
+      "blurb": "Cellular coverage for phones across a town or rural area."
+    }
+  },
+  "tour": {
+    "skip": "Skip", "back": "Back", "next": "Next", "last": "Done",
+    "welcome": {
+      "title": "Welcome to AntennaMaster",
+      "body": "Plan radio coverage anywhere on Earth. This quick tour shows the essentials — you can leave any time."
+    },
+    "simpleMode": {
+      "title": "Simple or Expert",
+      "body": "New to RF? Start in Simple mode and pick what you want to connect. Switch to Expert for full control."
+    },
+    "place": {
+      "title": "Place your points",
+      "body": "Click the map to drop the transmitter (TX), then the receiver (RX) — or type exact coordinates. The terrain profile appears instantly."
+    },
+    "technology": {
+      "title": "Choose a technology",
+      "body": "Pick a preset — Wi-Fi, 4G/5G, PMR radio, IoT and more. It fills in realistic power, gain and sensitivity for you."
+    },
+    "dxf": {
+      "title": "Add local terrain (DXF)",
+      "body": "Have a site survey? Upload a DXF to patch high-resolution relief over the global terrain within its footprint."
+    },
+    "coverage": {
+      "title": "Run coverage",
+      "body": "Simulate a coverage map from the transmitter. Darker blue = stronger signal; transparent = no service."
+    },
+    "heatmap": {
+      "title": "Read the heatmap",
+      "body": "Each color band is a signal-margin class. The legend explains them; export the map as PNG, GeoTIFF or KMZ."
+    },
+    "glossary": {
+      "title": "Stuck on a term?",
+      "body": "Every technical field has an ⓘ icon — hover or tap it for a plain-language explanation, no equations."
+    }
+  },
+  "glossary": {
+    "fresnel": "Fresnel zone: the rugby-ball-shaped region around the direct ray that carries most of the radio energy. Keep about 60% of the first zone clear of terrain and obstacles, or the link degrades even with line of sight.",
+    "fspl": "Free-space path loss: how much a signal weakens just by spreading out in empty space. It grows by 6 dB every time the distance (or frequency) doubles — the baseline every real-world model adds losses on top of.",
+    "kfactor": "k-factor: how much the atmosphere bends radio waves. The standard value (4/3) makes the Earth look flatter to radio than to the eye; a low value (worst case) bulges terrain up into the path.",
+    "fade_margin": "Fade margin: spare signal (in dB) held back for variability like shadowing and weather. About 5.5 dB gives roughly 90% area reliability, 8 dB about 95%. Zero margin means half of locations will fail.",
+    "sensitivity": "Receiver sensitivity: the weakest signal the radio can still decode. It comes from the background noise, the channel width, the receiver's own noise and the quality the signal needs.",
+    "downtilt": "Downtilt: aiming the antenna beam slightly below the horizon to focus coverage near the site and reduce interference further away. The main tool for shaping a cell.",
+    "deygout": "Diffraction: signal lost when hills or buildings block the direct path. The model finds the strongest obstacles and estimates how much they bend and weaken the signal.",
+    "batch": "Batch qualification: check many receiver or subscriber locations against one transmitter at once. Each gets its own terrain profile and a served-or-not verdict, exportable as a spreadsheet.",
+    "clutter": "Clutter: extra signal loss from buildings and street furniture that the elevation map cannot see. The percentage is how many locations you want covered — 50% is a typical city, 90% is conservative.",
+    "helmert": "Georeferencing fit: how the drawing is aligned to the real world from the reference points you gave. A large error (in meters) usually means a mis-placed point or the wrong units.",
+    "gain": "Antenna gain (dBi): how much an antenna concentrates its energy in a direction versus radiating everywhere equally. Higher gain means more reach but a narrower beam.",
+    "txpower": "Transmit power (dBm): how much power the radio puts out. More power reaches further, but regulators cap it and it is only one part of the budget."
+  }
+}

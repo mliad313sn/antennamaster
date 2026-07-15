@@ -8,6 +8,7 @@
  * grind that a 50-address survey otherwise required.
  */
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { batchReceivers, batchReceiversCsv } from '@/lib/api';
 import type { BatchResponse, LatLng } from '@/lib/types';
 import Help from '@/components/Help';
@@ -46,6 +47,7 @@ function parseReceivers(text: string): { rows: Parsed[]; errors: number } {
 }
 
 export default function BatchPanel(props: BatchPanelProps) {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [result, setResult] = useState<BatchResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -94,41 +96,37 @@ export default function BatchPanel(props: BatchPanelProps) {
   if (!props.technology) {
     return (
       <div className="panel">
-        <h3>Batch receivers<Help term="batch" /></h3>
-        <p className="hint">Select a technology in the Radio study panel to
-          qualify a list of receiver locations against the TX.</p>
+        <h3>{t('batch.title')}<Help term="batch" /></h3>
+        <p className="hint">{t('batch.pickTech')}</p>
       </div>
     );
   }
 
   return (
     <div className="panel">
-      <h3>Batch receivers<Help term="batch" /></h3>
-      <p className="hint">
-        One row per site: <code>name,lat,lon</code> (name optional). Qualifies
-        every location against the current TX — served/margin, LOS and Fresnel.
-      </p>
+      <h3>{t('batch.title')}<Help term="batch" /></h3>
+      <p className="hint">{t('batch.help')}</p>
       <textarea
-        aria-label="Receiver list (name,lat,lon per line)"
+        aria-label={t('batch.listLabel')}
         rows={5} value={text} placeholder={'Farm A,47.05,15.42\n47.06,15.44'}
         onChange={(e) => setText(e.target.value)}
         style={{ width: '100%', fontFamily: 'monospace', fontSize: 12 }} />
       <div className="stat-line">
-        <span className="k">{rows.length} valid{errors ? `, ${errors} skipped` : ''}</span>
-        <span className="v">{rows.length > 200 ? '⚠ max 200' : ''}</span>
+        <span className="k">{errors ? t('batch.validSkipped', { valid: rows.length, skipped: errors }) : t('batch.valid', { valid: rows.length })}</span>
+        <span className="v">{rows.length > 200 ? t('batch.maxWarn') : ''}</span>
       </div>
       <button className="primary" style={{ width: '100%' }}
         disabled={!props.tx || busy || rows.length === 0 || rows.length > 200}
         onClick={run}>
-        {busy ? 'Qualifying…' : props.tx
-          ? `Qualify ${rows.length} receiver${rows.length === 1 ? '' : 's'}`
-          : 'Place TX first'}
+        {busy ? t('batch.qualifying') : props.tx
+          ? t('batch.qualify', { count: rows.length })
+          : t('study.placeTxFirst')}
       </button>
 
       {result && (
         <>
           <div className="stat-line" style={{ marginTop: 8 }}>
-            <span className="k">Served</span>
+            <span className="k">{t('batch.servedCount')}</span>
             <span className="v">
               {result.summary.served}/{result.summary.total}
               {' '}({(result.summary.served_fraction * 100).toFixed(0)}%)
@@ -137,7 +135,7 @@ export default function BatchPanel(props: BatchPanelProps) {
           <div style={{ maxHeight: 220, overflowY: 'auto', marginTop: 4 }}>
             <table className="batch-table">
               <thead>
-                <tr><th>Site</th><th>km</th><th>Margin</th><th>LOS</th></tr>
+                <tr><th>{t('batch.colSite')}</th><th>{t('batch.colKm')}</th><th>{t('batch.colMargin')}</th><th>{t('batch.colLos')}</th></tr>
               </thead>
               <tbody>
                 {result.receivers.map((r, i) => (
@@ -157,7 +155,7 @@ export default function BatchPanel(props: BatchPanelProps) {
             </table>
           </div>
           <button style={{ width: '100%', marginTop: 6 }} onClick={downloadCsv}>
-            ⤓ Download CSV
+            ⤓ {t('batch.downloadCsv')}
           </button>
         </>
       )}

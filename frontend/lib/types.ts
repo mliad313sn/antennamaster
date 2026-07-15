@@ -278,3 +278,29 @@ export interface OptimizeHeightsResponse {
     min_rx_height_m: number | null;
   }>;
 }
+
+export interface Scenario {
+  id: string;
+  label: string;       // i18n key
+  blurb: string;       // i18n key
+  icon: string;
+  study: 'profile' | 'coverage';
+  technology: string;
+  technology_label: string;
+  defaults: {
+    radius_km?: number; tx_height_m?: number; rx_height_m?: number;
+    sector?: boolean; shadow_margin_db?: number;
+  };
+}
+
+export interface ScenarioResolved {
+  id: string;
+  technology: string;
+  technology_label: string;
+  study: 'profile' | 'coverage';
+  radius_km: number | null;
+  tx_height_m: number;
+  rx_height_m: number;
+  sector: boolean;
+  shadow_margin_db: number;
+}

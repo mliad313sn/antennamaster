@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import 'leaflet/dist/leaflet.css';
 import './globals.css';
 import ServiceWorker from '@/components/ServiceWorker';
+import I18nProvider from '@/components/I18nProvider';
 
 export const metadata: Metadata = {
   title: 'AntennaMaster — RF Coverage Simulator',
@@ -23,8 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
-        {children}
-        <ServiceWorker />
+        <I18nProvider>
+          {children}
+          <ServiceWorker />
+        </I18nProvider>
       </body>
     </html>
   );

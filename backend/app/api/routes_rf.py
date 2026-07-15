@@ -74,6 +74,26 @@ def list_models() -> dict:
     return {"models": [{"key": k, **v} for k, v in MODEL_INFO.items()]}
 
 
+@router.get("/scenarios")
+def list_scenarios() -> dict:
+    """Plain-language deployment scenarios for Simple Mode - each maps an
+    outcome ('connect two buildings') to a technology preset + study
+    defaults.  ``label``/``blurb`` are i18n keys resolved in the frontend."""
+    from ..services.rf.scenarios import list_scenarios as _list
+    return {"scenarios": _list()}
+
+
+@router.get("/scenarios/{scenario_id}")
+def resolve_scenario(scenario_id: str) -> dict:
+    """Full study parameters for one scenario (the preset + heights + radius
+    + antenna the physics engine needs)."""
+    from ..services.rf.scenarios import resolve_scenario as _resolve
+    try:
+        return _resolve(scenario_id)
+    except KeyError:
+        raise HTTPException(404, f"Unknown scenario: {scenario_id}")
+
+
 def _resolve_tech(req: CoverageRequest) -> dict:
     try:
         tech = get_technology(req.technology)

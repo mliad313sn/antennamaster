@@ -15,20 +15,24 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AuthPanel from '@/components/AuthPanel';
 import BatchPanel from '@/components/BatchPanel';
 import DxfWizard from '@/components/DxfWizard';
 import Help from '@/components/Help';
 import IndoorStudio from '@/components/IndoorStudio';
+import LocaleSwitcher from '@/components/LocaleSwitcher';
 import ProfileChart from '@/components/ProfileChart';
+import SimpleMode from '@/components/SimpleMode';
 import StudyPanel from '@/components/StudyPanel';
+import Tour, { tourAlreadySeen } from '@/components/Tour';
 import { fetchDxfState, fetchProfile, fetchSurfaceAvailable, profileCsvUrl } from '@/lib/api';
 import {
   authHeaders, createProject, fetchMe, setToken, type User,
 } from '@/lib/saas';
 import type { FlyTarget } from '@/components/MapView';
 import type {
-  CoverageResponse, GeorefResponse, LatLng, ProfileResponse,
+  CoverageResponse, GeorefResponse, LatLng, ProfileResponse, ScenarioResolved,
 } from '@/lib/types';
 
 const MapView = dynamic(() => import('@/components/MapView'), {
@@ -44,9 +48,13 @@ function num(s: string, fallback: number): number {
 }
 
 export default function Home() {
+  const { t } = useTranslation();
   const [tx, setTx] = useState<LatLng | null>(null);
   const [rx, setRx] = useState<LatLng | null>(null);
   const [placing, setPlacing] = useState<'tx' | 'rx' | null>('tx');
+  // Guided (Simple) vs full (Expert) UI; guided tour run state.
+  const [uiMode, setUiMode] = useState<'simple' | 'expert'>('expert');
+  const [tourRun, setTourRun] = useState(false);
 
   // Numeric fields keep their raw string so clearing mid-edit never snaps
   // to a bogus value; they are parsed (with defaults) at fetch time.
@@ -148,6 +156,25 @@ export default function Home() {
   // Surface-model (DSM) availability: shows the DSM toggle only when the
   // backend has AM_DSM_URL configured.
   useEffect(() => { fetchSurfaceAvailable().then(setSurfaceAvailable); }, []);
+
+  // Restore the UI mode; auto-run the guided tour for first-time visitors.
+  useEffect(() => {
+    const m = localStorage.getItem('am_ui_mode');
+    if (m === 'simple' || m === 'expert') setUiMode(m);
+    if (!tourAlreadySeen()) setTimeout(() => setTourRun(true), 900);
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem('am_ui_mode', uiMode); } catch { /* ignore */ }
+  }, [uiMode]);
+
+  // Simple Mode: apply a plain-language scenario's resolved preset + defaults.
+  function applyScenario(s: ScenarioResolved) {
+    setTechnology(s.technology);
+    setModel(null);
+    setEnvironment(null);
+    setTxHeight(String(s.tx_height_m));
+    setRxHeight(String(s.rx_height_m));
+  }
 
   // Drop a stale coverage raster when the inputs that produced it change
   // (TX position or technology): keeping it painted invites the classic
@@ -328,43 +355,58 @@ export default function Home() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>AntennaMaster</h1>
+        <h1>{t('app.title')}</h1>
         <nav style={{ display: 'flex', gap: 6 }}>
-          <Link href="/" className="nav-link on">Planner</Link>
-          <Link href="/dashboard" className="nav-link">Command Center</Link>
-          <Link href="/field" className="nav-link">Tactical</Link>
-          <Link href="/pitch" className="nav-link">Pitch</Link>
+          <Link href="/" className="nav-link on">{t('nav.planner')}</Link>
+          <Link href="/dashboard" className="nav-link">{t('nav.dashboard')}</Link>
+          <Link href="/field" className="nav-link">{t('nav.field')}</Link>
+          <Link href="/pitch" className="nav-link">{t('nav.pitch')}</Link>
         </nav>
         <div className="header-search">
+          {/* Simple / Expert mode toggle. */}
+          <div className="mode-toggle" role="group" data-tour="mode"
+            aria-label={t('mode.toggleTitle')} title={t('mode.toggleTitle')}>
+            <button className={uiMode === 'simple' ? 'active' : ''}
+              aria-pressed={uiMode === 'simple'}
+              onClick={() => setUiMode('simple')}>{t('mode.simple')}</button>
+            <button className={uiMode === 'expert' ? 'active' : ''}
+              aria-pressed={uiMode === 'expert'}
+              onClick={() => setUiMode('expert')}>{t('mode.expert')}</button>
+          </div>
           <input
-            placeholder="Search place or “lat, lon”…"
+            placeholder={t('planner.search')}
             value={search}
-            aria-label="Search place or coordinates"
+            aria-label={t('planner.search')}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && runSearch()}
           />
-          <button onClick={runSearch}>Go</button>
+          <button onClick={runSearch}>{t('planner.searchBtn')}</button>
           <button
-            aria-label="Toggle color theme"
-            title={`Theme: ${theme}`}
+            aria-label={t('planner.startTour')} title={t('planner.startTour')}
+            onClick={() => setTourRun(true)}>❓</button>
+          <button
+            aria-label={t('planner.theme')}
+            title={`${t('planner.theme')}: ${theme}`}
             onClick={() => setTheme(theme === 'auto' ? 'dark' : theme === 'dark' ? 'light' : 'auto')}
           >
             {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🌗'}
           </button>
-          <button onClick={saveAsProject} title="Save this study as a project">
-            💾 Save
+          <LocaleSwitcher />
+          <button onClick={saveAsProject} title={t('planner.saveProject')}>
+            💾 {t('planner.saveProject')}
           </button>
           {user ? (
             <span className="user-chip">
               {user.name || user.email}
               <span className="tier-badge">{user.tier}</span>
-              <button onClick={() => { setToken(null); setUser(null); }}>Sign out</button>
+              <button onClick={() => { setToken(null); setUser(null); }}>{t('nav.signOut')}</button>
             </span>
           ) : (
-            <button className="primary" onClick={() => setAuthOpen(true)}>Sign in</button>
+            <button className="primary" onClick={() => setAuthOpen(true)}>{t('nav.signIn')}</button>
           )}
         </div>
       </header>
+      <Tour run={tourRun} onFinish={() => setTourRun(false)} />
       {saveMsg && (
         <div style={{ padding: '4px 16px', fontSize: 12, background: 'var(--accent-soft)',
                       color: 'var(--accent-soft-ink)' }}>{saveMsg}</div>
@@ -372,83 +414,89 @@ export default function Home() {
 
       <div className="app-main">
         <aside className="sidebar">
+          {uiMode === 'simple' && (
+            <SimpleMode onApply={applyScenario} onExpert={() => setUiMode('expert')} />
+          )}
           <div className="panel">
-            <h3>Link endpoints</h3>
+            <h3>{t('link.title')}</h3>
             <div className="row">
               <button className={placing === 'tx' ? 'primary' : ''} onClick={() => setPlacing('tx')}>
-                {tx ? '↺ Move TX' : 'Place TX'}
+                {tx ? `↺ ${t('planner.moveTx')}` : t('planner.placeTx')}
               </button>
               <button className={placing === 'rx' ? 'primary' : ''} onClick={() => setPlacing('rx')}>
-                {rx ? '↺ Move RX' : 'Place RX'}
+                {rx ? `↺ ${t('planner.moveRx')}` : t('planner.placeRx')}
               </button>
-              <button onClick={swapEnds} disabled={!tx || !rx} title="Swap TX and RX ends"
-                aria-label="Swap TX and RX">⇄</button>
+              <button onClick={swapEnds} disabled={!tx || !rx} title={t('planner.swap')}
+                aria-label={t('planner.swap')}>⇄</button>
             </div>
             <div className="row">
               <button onClick={useMyLocation} style={{ width: '100%' }}>
-                📍 Use my GPS position
+                📍 {t('planner.useGps')}
               </button>
             </div>
             {/* Exact coordinates: type or paste from a site database / GPS. */}
             <div className="row">
               <div>
-                <label>TX lat</label>
+                <label>{t('planner.txLat')}</label>
                 <input type="number" step="0.00001" value={coordDraft.txLat}
+                  aria-label={t('planner.txLat')}
                   onChange={(e) => editCoord('txLat', e.target.value)} />
               </div>
               <div>
-                <label>TX lon</label>
+                <label>{t('planner.txLon')}</label>
                 <input type="number" step="0.00001" value={coordDraft.txLng}
+                  aria-label={t('planner.txLon')}
                   onChange={(e) => editCoord('txLng', e.target.value)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>RX lat</label>
+                <label>{t('planner.rxLat')}</label>
                 <input type="number" step="0.00001" value={coordDraft.rxLat}
+                  aria-label={t('planner.rxLat')}
                   onChange={(e) => editCoord('rxLat', e.target.value)} />
               </div>
               <div>
-                <label>RX lon</label>
+                <label>{t('planner.rxLon')}</label>
                 <input type="number" step="0.00001" value={coordDraft.rxLng}
+                  aria-label={t('planner.rxLon')}
                   onChange={(e) => editCoord('rxLng', e.target.value)} />
               </div>
             </div>
             {endA && endB && (
               <>
-                <div className="stat-line"><span className="k">TX ground</span><span className="v">{endA.elev.toFixed(1)} m ASL</span></div>
-                <div className="stat-line"><span className="k">RX ground</span><span className="v">{endB.elev.toFixed(1)} m ASL</span></div>
+                <div className="stat-line"><span className="k">{t('study.txGround')}</span><span className="v">{endA.elev.toFixed(1)} m ASL</span></div>
+                <div className="stat-line"><span className="k">RX</span><span className="v">{endB.elev.toFixed(1)} m ASL</span></div>
               </>
             )}
             <div className="row" style={{ marginTop: 8 }}>
               <div>
-                <label>TX height (m)</label>
+                <label>{t('planner.txHeight')}</label>
                 <input type="number" min={0} value={txHeight}
                   onChange={(e) => setTxHeight(e.target.value)} />
               </div>
               <div>
-                <label>RX height (m)</label>
+                <label>{t('planner.rxHeight')}</label>
                 <input type="number" min={0} value={rxHeight}
                   onChange={(e) => setRxHeight(e.target.value)} />
               </div>
             </div>
-            <div>
-              <label>Frequency (MHz) — terrain analysis<Help term="fspl" /></label>
+            <div data-tour="glossary">
+              <label>{t('planner.frequency')}<Help term="fspl" /></label>
               <input type="number" min={1} value={freqMhz}
                 onChange={(e) => setFreqMhz(e.target.value)} />
             </div>
           </div>
 
-          <div className="panel">
-            <h3>Local DXF terrain</h3>
+          <div className="panel" data-tour="dxf">
+            <h3>{t('planner.localTerrain')}</h3>
             {!georef && (
               <>
                 <p className="hint">
-                  No DXF loaded — profiles use global SRTM only. Import a survey
-                  DXF to patch high-resolution relief over the base terrain.
+                  {t('planner.importDxf')}
                 </p>
                 <button className="primary" style={{ width: '100%' }} onClick={() => setWizardOpen(true)}>
-                  Import DXF…
+                  {t('planner.localTerrain')}…
                 </button>
               </>
             )}
@@ -586,7 +634,7 @@ export default function Home() {
         </aside>
 
         <div className="map-and-chart">
-          <div className="map-wrap">
+          <div className="map-wrap" data-tour="map">
             <MapView
               tx={tx} rx={rx} placing={placing} onPlace={handlePlace}
               georef={georef} showOverlay={showOverlay}

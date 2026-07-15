@@ -8,6 +8,7 @@
  * of the current profile.
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   fetchAntennas, fetchModels, fetchTechnologies, simulateCoverage,
   simulateMultiCoverage, uploadAntenna,
@@ -44,6 +45,7 @@ export interface StudyPanelProps {
 }
 
 export default function StudyPanel(props: StudyPanelProps) {
+  const { t } = useTranslation();
   const [techs, setTechs] = useState<Technology[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [radiusKm, setRadiusKm] = useState(8);
@@ -173,8 +175,8 @@ export default function StudyPanel(props: StudyPanelProps) {
 
   return (
     <div className="panel">
-      <h3>Radio study</h3>
-      <label>Technology</label>
+      <h3 data-tour="technology">{t('study.title')}</h3>
+      <label>{t('study.technology')}</label>
       <select
         value={props.technology ?? ''}
         onChange={(e) => {
@@ -183,7 +185,7 @@ export default function StudyPanel(props: StudyPanelProps) {
           props.onEnvironmentChange(null);
         }}
       >
-        <option value="">— none (terrain only) —</option>
+        <option value="">{t('study.none')}</option>
         {groups.map(([gen, list]) => (
           <optgroup key={gen} label={gen}>
             {list.map((t) => (
@@ -197,7 +199,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         <>
           <div className="row" style={{ marginTop: 8 }}>
             <div>
-              <label>Propagation model</label>
+              <label>{t('study.model')}</label>
               <select
                 value={props.model ?? selectedTech.model}
                 onChange={(e) => props.onModelChange(e.target.value)}
@@ -210,7 +212,7 @@ export default function StudyPanel(props: StudyPanelProps) {
           </div>
           {activeModel && activeModel.environments.length > 0 && (
             <div>
-              <label>Environment</label>
+              <label>{t('study.environment')}</label>
               <select
                 value={props.environment ?? selectedTech.environment}
                 onChange={(e) => props.onEnvironmentChange(e.target.value)}
@@ -222,7 +224,7 @@ export default function StudyPanel(props: StudyPanelProps) {
             </div>
           )}
           <div className="stat-line" style={{ marginTop: 6 }}>
-            <span className="k">Preset</span>
+            <span className="k">{t('study.preset')}</span>
             <span className="v">
               {selectedTech.freq_mhz.toLocaleString()} MHz ·
               TX {selectedTech.tx_power_dbm} dBm · sens {selectedTech.rx_sensitivity_dbm} dBm
@@ -232,31 +234,31 @@ export default function StudyPanel(props: StudyPanelProps) {
           {/* ---------------- link budget of the current profile ---------- */}
           {props.study && (
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
-              <div className="stat-line"><span className="k">Path loss ({props.study.technology.model})</span><span className="v">{props.study.path_loss_db.toFixed(1)} dB</span></div>
-              <div className="stat-line"><span className="k">Diffraction (Deygout)<Help term="deygout" /></span><span className="v">{props.study.diffraction_loss_db.toFixed(1)} dB</span></div>
+              <div className="stat-line"><span className="k">{t('study.pathLoss', { model: props.study.technology.model })}</span><span className="v">{props.study.path_loss_db.toFixed(1)} dB</span></div>
+              <div className="stat-line"><span className="k">{t('study.diffraction')}<Help term="deygout" /></span><span className="v">{props.study.diffraction_loss_db.toFixed(1)} dB</span></div>
               {(props.study.foliage_loss_db ?? 0) > 0 && (
-                <div className="stat-line"><span className="k">Foliage (Weissberger)</span><span className="v">{props.study.foliage_loss_db!.toFixed(1)} dB</span></div>
+                <div className="stat-line"><span className="k">{t('study.foliage')}</span><span className="v">{props.study.foliage_loss_db!.toFixed(1)} dB</span></div>
               )}
               {(props.study.rain_loss_db ?? 0) > 0 && (
-                <div className="stat-line"><span className="k">Rain (P.838)</span><span className="v">{props.study.rain_loss_db!.toFixed(1)} dB</span></div>
+                <div className="stat-line"><span className="k">{t('study.rain')}</span><span className="v">{props.study.rain_loss_db!.toFixed(1)} dB</span></div>
               )}
               {(props.study.clutter_loss_db ?? 0) > 0 && (
-                <div className="stat-line"><span className="k">Clutter (P.2108)</span><span className="v">{props.study.clutter_loss_db!.toFixed(1)} dB</span></div>
+                <div className="stat-line"><span className="k">{t('study.clutterLoss')}</span><span className="v">{props.study.clutter_loss_db!.toFixed(1)} dB</span></div>
               )}
               {(props.study.gaseous_loss_db ?? 0) >= 0.1 && (
-                <div className="stat-line"><span className="k">Atmospheric gases</span><span className="v">{props.study.gaseous_loss_db!.toFixed(1)} dB</span></div>
+                <div className="stat-line"><span className="k">{t('study.gases')}</span><span className="v">{props.study.gaseous_loss_db!.toFixed(1)} dB</span></div>
               )}
               {(props.study.mimo_gain_db ?? 0) > 0 && (
-                <div className="stat-line"><span className="k">MIMO gain</span><span className="v">+{props.study.mimo_gain_db!.toFixed(1)} dB</span></div>
+                <div className="stat-line"><span className="k">{t('study.mimoGain')}</span><span className="v">+{props.study.mimo_gain_db!.toFixed(1)} dB</span></div>
               )}
               {props.study.sensitivity_dbm !== undefined && (
-                <div className="stat-line"><span className="k">Sensitivity (kTB+NF+SINR)<Help term="sensitivity" /></span><span className="v">{props.study.sensitivity_dbm.toFixed(1)} dBm</span></div>
+                <div className="stat-line"><span className="k">{t('study.sensitivity')}<Help term="sensitivity" /></span><span className="v">{props.study.sensitivity_dbm.toFixed(1)} dBm</span></div>
               )}
-              <div className="stat-line"><span className="k">RX power</span><span className="v">{props.study.rx_power_dbm.toFixed(1)} dBm</span></div>
+              <div className="stat-line"><span className="k">{t('study.rxPower')}</span><span className="v">{props.study.rx_power_dbm.toFixed(1)} dBm</span></div>
               <div className="stat-line">
-                <span className="k">Margin</span>
+                <span className="k">{t('study.margin')}</span>
                 <span className="v" style={{ color: props.study.served ? 'var(--status-good)' : 'var(--status-critical)' }}>
-                  {props.study.margin_db.toFixed(1)} dB {props.study.served ? '(served)' : '(no service)'}
+                  {props.study.margin_db.toFixed(1)} dB {props.study.served ? t('study.served') : t('study.noService')}
                 </span>
               </div>
               {props.study.warnings.map((w) => (
@@ -269,28 +271,28 @@ export default function StudyPanel(props: StudyPanelProps) {
           <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
             <div className="row">
               <div>
-                <label>Radius (km)</label>
+                <label>{t('study.radius')}</label>
                 <input type="number" min={1} max={150} value={radiusKm}
                   onChange={(e) => setRadiusKm(parseFloat(e.target.value) || 1)} />
               </div>
               <div>
-                <label style={{ marginBottom: 6 }}>Antenna</label>
+                <label style={{ marginBottom: 6 }}>{t('study.antenna')}</label>
                 <select value={sector ? 'sector' : 'omni'}
                   onChange={(e) => setSector(e.target.value === 'sector')}>
-                  <option value="omni">Omni</option>
-                  <option value="sector">Sector</option>
+                  <option value="omni">{t('study.omni')}</option>
+                  <option value="sector">{t('study.sector')}</option>
                 </select>
               </div>
             </div>
             {(sector || antennaId) && (
               <div className="row">
                 <div>
-                  <label>Azimuth (°)</label>
+                  <label>{t('study.azimuth')}</label>
                   <input type="number" min={0} max={359} value={azimuth}
                     onChange={(e) => setAzimuth(parseFloat(e.target.value) || 0)} />
                 </div>
                 <div>
-                  <label>Beamwidth (°)</label>
+                  <label>{t('study.beamwidth')}</label>
                   <input type="number" min={10} max={360} value={beamwidth}
                     onChange={(e) => setBeamwidth(parseFloat(e.target.value) || 65)} />
                 </div>
@@ -299,9 +301,9 @@ export default function StudyPanel(props: StudyPanelProps) {
             {/* Measured antenna pattern (MSI Planet). Overrides the
                 parametric sector when selected. */}
             <div>
-              <label>Antenna pattern (MSI Planet)</label>
+              <label>{t('study.pattern')}</label>
               <select value={antennaId ?? ''} onChange={(e) => setAntennaId(e.target.value || null)}>
-                <option value="">— parametric (omni / sector) —</option>
+                <option value="">{t('study.parametric')}</option>
                 {antennas.map((a) => (
                   <option key={a.antenna_id} value={a.antenna_id}>
                     {a.name} — {a.gain_dbi.toFixed(1)} dBi, {a.h_beamwidth_deg}°/{a.v_beamwidth_deg}°
@@ -314,12 +316,12 @@ export default function StudyPanel(props: StudyPanelProps) {
             </div>
             <div className="row">
               <div>
-                <label>Downtilt (°)<Help term="downtilt" /></label>
+                <label>{t('study.downtilt')}<Help term="downtilt" /></label>
                 <input type="number" min={-10} max={20} value={downtilt}
                   onChange={(e) => setDowntilt(parseFloat(e.target.value) || 0)} />
               </div>
               <div>
-                <label>Fade margin (dB)<Help term="fade_margin" /></label>
+                <label>{t('study.fadeMargin')}<Help term="fade_margin" /></label>
                 <input type="number" min={0} max={30} value={shadowMargin}
                   title="Log-normal shadowing margin: ~5.5 dB ≈ 90% area, ~8 dB ≈ 95%"
                   onChange={(e) => setShadowMargin(parseFloat(e.target.value) || 0)} />
@@ -327,13 +329,13 @@ export default function StudyPanel(props: StudyPanelProps) {
             </div>
             <div className="row">
               <div>
-                <label>Foliage depth (m)</label>
+                <label>{t('study.foliageDepth')}</label>
                 <input type="number" min={0} max={400} value={props.foliageDepth}
                   title="Weissberger vegetation model — dense in-leaf trees at the receiver"
                   onChange={(e) => props.onFoliageChange(parseFloat(e.target.value) || 0)} />
               </div>
               <div>
-                <label>Rain (mm/h)</label>
+                <label>{t('study.rainRate')}</label>
                 <input type="number" min={0} max={150} value={props.rainRate}
                   title="ITU-R P.838 rain attenuation — matters above ~10 GHz (PtP links)"
                   onChange={(e) => props.onRainChange(parseFloat(e.target.value) || 0)} />
@@ -341,62 +343,62 @@ export default function StudyPanel(props: StudyPanelProps) {
             </div>
             <div className="row">
               <div>
-                <label>Clutter %loc<Help term="clutter" /></label>
+                <label>{t('study.clutterPct')}<Help term="clutter" /></label>
                 <input type="number" min={0} max={99.9} value={props.clutterPct}
                   title="ITU-R P.2108 statistical urban clutter — 0 = off, 50 = median, 90 = conservative planning"
                   onChange={(e) => props.onClutterChange(parseFloat(e.target.value) || 0)} />
               </div>
               {props.surfaceAvailable && (
                 <div>
-                  <label>Surface model</label>
+                  <label>{t('study.surfaceModel')}</label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400 }}>
                     <input type="checkbox" checked={props.surfaceOn}
                       onChange={(e) => props.onSurfaceChange(e.target.checked)} />
-                    DSM (buildings)
+                    {t('study.dsmBuildings')}
                   </label>
                 </div>
               )}
             </div>
             <button style={{ width: '100%', marginBottom: 6 }}
               onClick={() => setShowAdvanced((v) => !v)}>
-              {showAdvanced ? '▾' : '▸'} Site link budget (override preset)
+              {showAdvanced ? '▾' : '▸'} {t('study.siteBudget')}
             </button>
             {showAdvanced && (
               <>
                 <div className="row">
                   <div>
-                    <label>TX power (dBm)</label>
+                    <label>{t('study.txPower')}</label>
                     <input type="number" placeholder={String(selectedTech.tx_power_dbm)}
                       value={ovrPower} onChange={(e) => setOvrPower(e.target.value)} />
                   </div>
                   <div>
-                    <label>TX gain (dBi)</label>
+                    <label>{t('study.txGain')}</label>
                     <input type="number" placeholder={String(selectedTech.tx_gain_dbi)}
                       value={ovrTxGain} onChange={(e) => setOvrTxGain(e.target.value)} />
                   </div>
                 </div>
                 <div className="row">
                   <div>
-                    <label>RX gain (dBi)</label>
+                    <label>{t('study.rxGain')}</label>
                     <input type="number" placeholder={String(selectedTech.rx_gain_dbi)}
                       value={ovrRxGain} onChange={(e) => setOvrRxGain(e.target.value)} />
                   </div>
                   <div>
-                    <label>Losses (dB)</label>
+                    <label>{t('study.losses')}</label>
                     <input type="number" placeholder={String(selectedTech.losses_db)}
                       value={ovrLosses} onChange={(e) => setOvrLosses(e.target.value)} />
                   </div>
                 </div>
                 <div>
-                  <label>RX sensitivity (dBm)</label>
+                  <label>{t('study.rxSensitivity')}</label>
                   <input type="number" placeholder={String(selectedTech.rx_sensitivity_dbm)}
                     value={ovrSens} onChange={(e) => setOvrSens(e.target.value)} />
                 </div>
               </>
             )}
-            <button className="primary" style={{ width: '100%' }}
+            <button className="primary" style={{ width: '100%' }} data-tour="coverage"
               disabled={!props.tx || busy} onClick={runCoverage}>
-              {busy ? 'Simulating…' : props.tx ? 'Simulate coverage from TX' : 'Place TX first'}
+              {busy ? t('study.simulating') : props.tx ? t('study.simulate') : t('study.placeTxFirst')}
             </button>
             {/* ------------------- multi-site best-server study ---------- */}
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
@@ -407,7 +409,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                   antenna_azimuth_deg: sector ? azimuth : null,
                   downtilt_deg: downtilt,
                 }])}>
-                + Add current TX as site ({sites.length}/8)
+                {t('study.addSite', { count: sites.length })}
               </button>
               {sites.map((s, i) => (
                 <div key={i} className="stat-line">
@@ -425,7 +427,7 @@ export default function StudyPanel(props: StudyPanelProps) {
               {sites.length >= 2 && (
                 <button className="primary" style={{ width: '100%', marginTop: 4 }}
                   disabled={busy} onClick={runMultiCoverage}>
-                  {busy ? 'Simulating…' : `Best-server map (${sites.length} sites)`}
+                  {busy ? t('study.simulating') : t('study.bestServer', { count: sites.length })}
                 </button>
               )}
             </div>
@@ -434,7 +436,7 @@ export default function StudyPanel(props: StudyPanelProps) {
               <>
                 {props.coverage.stats.served_area_fraction !== null && (
                   <div className="stat-line" style={{ marginTop: 8 }}>
-                    <span className="k">Served area</span>
+                    <span className="k">{t('study.servedArea')}</span>
                     <span className="v">{(props.coverage.stats.served_area_fraction * 100).toFixed(0)}%</span>
                   </div>
                 )}
@@ -442,16 +444,16 @@ export default function StudyPanel(props: StudyPanelProps) {
                   <>
                     <div className="row" style={{ marginTop: 6 }}>
                       <button className={sinrView ? '' : 'primary'}
-                        onClick={() => showMultiView(false)}>Best server</button>
+                        onClick={() => showMultiView(false)}>{t('study.viewBestServer')}</button>
                       <button className={sinrView ? 'primary' : ''}
-                        onClick={() => showMultiView(true)}>SINR / interference</button>
+                        onClick={() => showMultiView(true)}>{t('study.viewSinr')}</button>
                     </div>
                     <div className="stat-line">
-                      <span className="k">Mean SINR (co-channel)</span>
+                      <span className="k">{t('study.meanSinr')}</span>
                       <span className="v">{multiRaw.sinr.mean_db.toFixed(1)} dB</span>
                     </div>
                     <div className="stat-line">
-                      <span className="k">Area ≥ 6 dB SINR</span>
+                      <span className="k">{t('study.sinrGe6')}</span>
                       <span className="v">{(multiRaw.sinr.ge_6db_fraction * 100).toFixed(0)}%</span>
                     </div>
                     <div className="stat-line">
@@ -471,15 +473,15 @@ export default function StudyPanel(props: StudyPanelProps) {
                   </div>
                 ))}
                 <div className="stat-line">
-                  <span className="k">TX ground</span>
+                  <span className="k">{t('study.txGround')}</span>
                   <span className="v">{props.coverage.stats.tx_elevation_m.toFixed(0)} m ASL</span>
                 </div>
                 <div className="stat-line">
-                  <span className="k">Radius</span>
+                  <span className="k">{t('study.radius')}</span>
                   <span className="v">{(props.coverage.stats.radius_m / 1000).toFixed(0)} km</span>
                 </div>
                 <div className="stat-line">
-                  <span className="k">Peak RX power</span>
+                  <span className="k">{t('study.peakRxPower')}</span>
                   <span className="v">{props.coverage.stats.max_rx_power_dbm.toFixed(1)} dBm</span>
                 </div>
                 <div className="row" style={{ marginTop: 6, flexWrap: 'wrap', gap: 6 }}>
@@ -507,7 +509,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 ))}
                 <button style={{ width: '100%', marginTop: 6 }}
                   onClick={() => props.onCoverage(null)}>
-                  Clear coverage layer
+                  {t('study.clearCoverage')}
                 </button>
               </>
             )}

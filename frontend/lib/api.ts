@@ -1,6 +1,6 @@
 /** Thin fetch wrappers for the terrain backend (proxied through /api). */
 import type {
-  BatchResponse, OptimizeHeightsResponse, SiteCandidate,
+  BatchResponse, OptimizeHeightsResponse, Scenario, ScenarioResolved, SiteCandidate,
   AntennaInfo, CoverageResponse, GeorefRequest, GeorefResponse,
   IndoorCoverageResponse, Material, ModelInfo, ProfileResponse, Technology,
   TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
@@ -356,4 +356,15 @@ export async function searchBestSite(params: {
       h_bs_m: params.hBsM,
     }),
   }));
+}
+
+// ------------------------------------------------- Simple Mode scenarios
+export async function fetchScenarios(): Promise<Scenario[]> {
+  const body = await jsonOrThrow<{ scenarios: Scenario[] }>(
+    await fetch('/api/rf/scenarios'));
+  return body.scenarios ?? [];
+}
+
+export async function resolveScenario(id: string): Promise<ScenarioResolved> {
+  return jsonOrThrow(await fetch(`/api/rf/scenarios/${encodeURIComponent(id)}`));
 }

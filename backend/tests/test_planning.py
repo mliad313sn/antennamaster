@@ -164,3 +164,23 @@ def test_site_search_api(client):
         "south": 47.0, "west": 15.0, "north": 46.9, "east": 15.01,
         "technology": "pmr446"})
     assert bad.status_code == 422
+
+
+# -------------------------------------------------- Simple Mode scenarios
+def test_scenarios_map_to_presets(client):
+    r = client.get("/api/rf/scenarios")
+    assert r.status_code == 200
+    scs = r.json()["scenarios"]
+    assert len(scs) >= 6
+    ids = {s["id"] for s in scs}
+    assert {"buildings_ptp", "fleet_wifi", "site_radios"} <= ids
+    for s in scs:
+        # i18n keys, not display text; each resolves to a real preset.
+        assert s["label"].startswith("scenario.")
+        assert s["study"] in ("profile", "coverage")
+        assert s["technology"]
+    # Resolving one returns full physics params.
+    one = client.get("/api/rf/scenarios/fleet_wifi").json()
+    assert one["technology"] == "wifi2400"
+    assert one["study"] == "coverage" and one["radius_km"] == 3.0
+    assert client.get("/api/rf/scenarios/nonexistent").status_code == 404
