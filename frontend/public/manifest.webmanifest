@@ -1,0 +1,19 @@
+{
+  "name": "AntennaMaster RF Simulator",
+  "short_name": "AntennaMaster",
+  "description": "RF coverage simulator: SRTM + DXF terrain fusion, propagation studies, coverage maps, indoor & underground — usable in the field.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0c0f14",
+  "theme_color": "#2a78d6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

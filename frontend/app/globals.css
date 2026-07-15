@@ -188,6 +188,14 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .stat-line .k { color: var(--ink-secondary); }
 .stat-line .v { font-variant-numeric: tabular-nums; font-weight: 600; }
 
+/* Connectivity pill (field tactical view) */
+.conn-pill {
+  font-family: var(--mono, ui-monospace, monospace); font-size: 11px;
+  padding: 3px 10px; border-radius: 20px; letter-spacing: 0.03em; font-weight: 600;
+}
+.conn-pill.on { background: rgba(26,138,74,0.18); color: #3fbd6f; }
+.conn-pill.off { background: rgba(201,138,18,0.20); color: #e0a83a; }
+
 /* Batch receiver table */
 .batch-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .batch-table th, .batch-table td {

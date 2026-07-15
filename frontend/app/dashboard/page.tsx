@@ -151,6 +151,11 @@ export default function Dashboard() {
                     <span className="v">${i.line_usd.toLocaleString()}</span>
                   </div>
                 ))}
+                <a className="download-link" style={{ marginTop: 8 }}
+                  href={`/api/saas/bom.csv?technology=${encodeURIComponent(costTech)}&sites=${costSites}`}
+                  download>
+                  ⤓ Bill of materials (CSV, {costSites} site{costSites === 1 ? '' : 's'})
+                </a>
               </>
             )}
           </section>

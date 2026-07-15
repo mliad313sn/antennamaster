@@ -30,6 +30,20 @@ export default function Field() {
   const [watching, setWatching] = useState(false);
   const watchId = useRef<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [online, setOnline] = useState(true);
+
+  // Live connectivity state — field engineers work off-grid; the app is
+  // cached for offline use and this makes the current state explicit.
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    sync();
+    window.addEventListener('online', sync);
+    window.addEventListener('offline', sync);
+    return () => {
+      window.removeEventListener('online', sync);
+      window.removeEventListener('offline', sync);
+    };
+  }, []);
 
   // Force dark theme for sunlight-readable high contrast on site.
   useEffect(() => {
@@ -94,9 +108,15 @@ export default function Field() {
     <div className="dash-shell">
       <DashNav active="field" />
       <main className="dash-main tactical">
-        <h1>Tactical view</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <h1 style={{ margin: 0 }}>Tactical view</h1>
+          <span className={`conn-pill ${online ? 'on' : 'off'}`}>
+            {online ? '● Online' : '○ Offline — cached'}
+          </span>
+        </div>
         <p className="hint">High-contrast on-site mode. Your GPS position becomes
-          the RX end of the link — pick a preset and validate before you climb.</p>
+          the RX end of the link — pick a preset and validate before you climb.
+          {!online && ' Cached tiles and your last results remain available.'}</p>
 
         <div className="row">
           <button className="primary tactical-btn" onClick={() => locate(false)}>

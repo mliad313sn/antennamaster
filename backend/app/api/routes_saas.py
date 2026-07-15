@@ -29,6 +29,34 @@ def cost_estimate(technology: str = Query("custom"),
     return estimate(technology, sites)
 
 
+@router.get("/bom.csv")
+def bom_csv(technology: str = Query("custom"),
+            sites: int = Query(1, ge=1, le=500)) -> Response:
+    """Hardware bill of materials as CSV - the procurement deliverable
+    enterprise rollouts attach to a purchase order (line items scaled to the
+    fleet, plus CAPEX/OPEX/TCO summary rows)."""
+    est = estimate(technology, sites)
+    n = est["sites"]
+    lines = [f"# AntennaMaster BOM - {technology} x {n} site(s)",
+             "item,qty_per_site,qty_total,unit_usd,line_per_site_usd,line_total_usd"]
+    for it in est["bom_per_site"]:
+        lines.append(
+            f"\"{it['item']}\",{it['qty']},{it['qty'] * n},{it['unit_usd']},"
+            f"{it['line_usd']},{round(it['line_usd'] * n, 2)}")
+    lines += [
+        "",
+        f"CAPEX per site,,,,,{est['capex_per_site_usd']}",
+        f"CAPEX fleet total,,,,,{est['capex_total_usd']}",
+        f"OPEX per site / year,,,,,{est['opex_per_site_year_usd']}",
+        f"OPEX fleet / year,,,,,{est['opex_total_year_usd']}",
+        f"5-year TCO (fleet),,,,,{est['tco_5y_usd']}",
+    ]
+    return Response(
+        content="\n".join(lines) + "\n", media_type="text/csv",
+        headers={"Content-Disposition":
+                 f'attachment; filename="bom-{technology}-{n}sites.csv"'})
+
+
 # ------------------------------------------------------------ PDF reports
 class ReportRequest(BaseModel):
     title: str = Field("RF Coverage Study", max_length=140)

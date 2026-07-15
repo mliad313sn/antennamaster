@@ -178,6 +178,23 @@ def coverage_png(coverage_id: str) -> Response:
                     headers={"Cache-Control": "max-age=3600"})
 
 
+@router.get("/coverage/{coverage_id}.tif")
+def coverage_geotiff(coverage_id: str) -> Response:
+    """Coverage raster as a georeferenced GeoTIFF (EPSG:4326) - the GIS-native
+    format ArcGIS/QGIS/Atoll/Pathloss import directly, unlike a bare PNG."""
+    hit = results_store.load("coverage", coverage_id)
+    if hit is None:
+        raise HTTPException(404, "Coverage result expired or unknown")
+    png, meta = hit
+    from ..services.geotiff import rgba_png_to_geotiff
+    bounds = meta.get("bounds", [[0, 0], [0, 0]])
+    tif = rgba_png_to_geotiff(png, bounds)
+    return Response(
+        content=tif, media_type="image/tiff",
+        headers={"Content-Disposition":
+                 f'attachment; filename="coverage-{coverage_id}.tif"'})
+
+
 @router.get("/coverage/{coverage_id}.kmz")
 def coverage_kmz(coverage_id: str) -> Response:
     """Coverage raster as a KMZ GroundOverlay - opens in Google Earth / GIS,

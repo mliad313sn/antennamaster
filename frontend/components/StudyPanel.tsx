@@ -482,8 +482,13 @@ export default function StudyPanel(props: StudyPanelProps) {
                   <span className="k">Peak RX power</span>
                   <span className="v">{props.coverage.stats.max_rx_power_dbm.toFixed(1)} dBm</span>
                 </div>
-                <div className="row" style={{ marginTop: 6 }}>
+                <div className="row" style={{ marginTop: 6, flexWrap: 'wrap', gap: 6 }}>
                   <a className="download-link" href={props.coverage.png_url} download>⤓ PNG</a>
+                  <a className="download-link"
+                    href={props.coverage.png_url.replace(/\.png$/, '.tif')} download
+                    title="Georeferenced GeoTIFF (EPSG:4326) for QGIS / ArcGIS / Atoll">
+                    ⤓ GeoTIFF
+                  </a>
                   <a className="download-link"
                     href={props.coverage.png_url.replace(/\.png$/, '.kmz')} download>
                     ⤓ KMZ (Google Earth)
