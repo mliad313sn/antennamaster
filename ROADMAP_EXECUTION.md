@@ -9,7 +9,7 @@ Baseline at kickoff: **139 backend tests passing**.
 | Phase | Scope | Status |
 |---|---|---|
 | **1** | Bidirectional "Talk-Back" & LMR repeaters | 🟢 Complete |
-| **2** | Metro/Mine leaky feeder (radiating cable) | ⬜ Not started |
+| **2** | Metro/Mine leaky feeder (radiating cable) | 🟢 Complete |
 | **3** | Automated AP/site placement solver | ⬜ Not started |
 | **4** | Intelligent Copilot & MCP integration | ⬜ Not started |
 | **5** | Compliance (EMF), ITM & drive-test calibration | ⬜ Not started |
@@ -36,7 +36,21 @@ Deliverables:
 
 ---
 
-## Phase 2 — Metro/Mine Leaky Feeder (Radiating Cable)  *(pending)*
+## Phase 2 — Metro/Mine Leaky Feeder (Radiating Cable)
+
+**Goal:** model the radiating-cable systems that actually deliver continuous
+coverage in tunnels, metros and underground mines (not just free-space waveguide).
+
+Deliverables:
+- [x] `services/rf/underground.py` extended: frequency-scaled longitudinal
+      cable loss (dB/m, ~√f skin effect), coupling loss, radial spreading.
+- [x] Auto inline-amplifier spacing to hold a target design margin, with
+      gain-limited restoration and amplifier placement list.
+- [x] "Moving-train" KPI: percent of run above threshold + worst coverage gap.
+- [x] Cable length measured directly from a designated DXF polyline layer
+      (`floorplan.layer_polyline_length`).
+- [x] API: `GET /api/indoor/leaky-cables`, `POST /api/indoor/leaky-feeder`.
+- [x] Tests: `tests/test_leaky_feeder.py` (9 tests).
 ## Phase 3 — Automated AP/Site Placement Solver  *(pending)*
 ## Phase 4 — Intelligent Copilot & MCP Integration  *(pending)*
 ## Phase 5 — Compliance, ITM & Calibration  *(pending)*

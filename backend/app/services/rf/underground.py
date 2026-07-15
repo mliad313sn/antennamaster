@@ -144,3 +144,162 @@ def tte_link(freq_hz: float, depth_m: float, sigma_s_per_m: float,
         "margin_db": round(float(rx - rx_sensitivity_dbm), 1),
         "served": bool(rx >= rx_sensitivity_dbm),
     }
+
+
+# =========================================================================== #
+#  Phase 2 — Radiating coaxial cable ("leaky feeder") for metro & mines
+# =========================================================================== #
+# The dominant real-world solution for continuous radio coverage in tunnels,
+# metros and underground mines is NOT free-space waveguide propagation but a
+# RADIATING (leaky) coaxial cable run the length of the gallery, periodically
+# re-amplified.  Two loss mechanisms set the link:
+#
+#   * Longitudinal (cable) loss   - dB per 100 m, rising with frequency
+#     (conductor skin effect ~ sqrt(f)).  Accumulates along the run.
+#   * Coupling loss               - cable -> handset at a reference radial
+#     distance (typ. 2 m), the "leak" that makes it an antenna.  Roughly
+#     flat with distance along the cable, rising slowly with frequency.
+#
+# RX(x, r) = P_in(segment) - long_loss*x - coupling_loss(f) - radial(r)
+# with radial(r) = 20*log10(r / r_ref) beyond the reference distance.
+
+# Manufacturer-style presets: (loss dB/100 m @ ref freq, coupling dB @2 m,
+# reference freq MHz).  Loss scales ~sqrt(f); coupling rises ~5 dB/decade.
+LEAKY_CABLE_PRESETS = {
+    "rc12_12": {"label": '1-1/4" radiating cable', "loss_db_100m": 2.2,
+                "coupling_db": 65.0, "ref_freq_mhz": 450.0},
+    "rc78": {"label": '7/8" radiating cable', "loss_db_100m": 3.5,
+             "coupling_db": 68.0, "ref_freq_mhz": 450.0},
+    "rc12": {"label": '1/2" radiating cable', "loss_db_100m": 5.5,
+             "coupling_db": 70.0, "ref_freq_mhz": 450.0},
+}
+
+
+def leaky_cable_loss_db_per_m(freq_mhz: float, loss_db_100m_ref: float,
+                              ref_freq_mhz: float = 450.0) -> float:
+    """Frequency-scaled longitudinal cable loss (dB/m).  Conductor loss grows
+    ~sqrt(f) (skin effect), so we scale the reference dB/100 m accordingly."""
+    scale = np.sqrt(max(freq_mhz, 1.0) / max(ref_freq_mhz, 1.0))
+    return float(loss_db_100m_ref * scale / 100.0)
+
+
+def leaky_coupling_loss_db(freq_mhz: float, coupling_db_ref: float,
+                           ref_freq_mhz: float = 450.0) -> float:
+    """Coupling loss at the reference radial distance, scaled ~5 dB/decade
+    with frequency (higher bands couple slightly worse)."""
+    return float(coupling_db_ref + 5.0 * np.log10(max(freq_mhz, 1.0)
+                                                  / max(ref_freq_mhz, 1.0)))
+
+
+def amplifier_spacing_m(head_end_dbm: float, design_threshold_dbm: float,
+                        coupling_loss_db: float, cable_loss_db_per_m: float,
+                        radial_loss_db: float = 0.0) -> float:
+    """Maximum run length between inline amplifiers so the tap level never
+    drops the reference-distance RX below ``design_threshold_dbm``.
+
+    At the far end of a segment the tap level is lowest; requiring
+        head_end - loss*L - coupling - radial >= threshold
+    gives  L = (head_end - threshold - coupling - radial) / loss.
+    """
+    budget = head_end_dbm - design_threshold_dbm - coupling_loss_db - radial_loss_db
+    if cable_loss_db_per_m <= 0:
+        return float("inf")
+    return max(budget / cable_loss_db_per_m, 0.0)
+
+
+def leaky_feeder_profile(freq_mhz: float, cable_length_m: float,
+                         cable: str = "rc78",
+                         loss_db_100m: float | None = None,
+                         coupling_db: float | None = None,
+                         head_end_dbm: float = 20.0,
+                         amp_gain_db: float = 30.0,
+                         amp_output_dbm: float | None = None,
+                         rx_sensitivity_dbm: float = -95.0,
+                         design_margin_db: float = 10.0,
+                         radial_distance_m: float = 2.0,
+                         coupling_reference_m: float = 2.0,
+                         auto_amplifiers: bool = True,
+                         n_samples: int = 300) -> dict:
+    """RX power vs distance along a radiating-cable run, with auto-placed
+    inline amplifiers and the "moving-train" continuous-service KPI.
+
+    ``design_threshold_dbm = rx_sensitivity + design_margin`` is the minimum
+    acceptable RX at ``radial_distance_m`` from the cable.  Amplifiers are
+    inserted (when ``auto_amplifiers``) at the spacing that keeps the tap
+    level above threshold; each restores the level to ``amp_output_dbm``
+    (default: back to the head-end level), gain-limited by ``amp_gain_db``.
+    """
+    preset = LEAKY_CABLE_PRESETS.get(cable, LEAKY_CABLE_PRESETS["rc78"])
+    ref_f = preset["ref_freq_mhz"]
+    loss_ref = loss_db_100m if loss_db_100m is not None else preset["loss_db_100m"]
+    coup_ref = coupling_db if coupling_db is not None else preset["coupling_db"]
+
+    loss_m = leaky_cable_loss_db_per_m(freq_mhz, loss_ref, ref_f)
+    coupling = leaky_coupling_loss_db(freq_mhz, coup_ref, ref_f)
+    radial = 20.0 * np.log10(max(radial_distance_m, coupling_reference_m)
+                             / max(coupling_reference_m, 1e-3))
+    threshold = rx_sensitivity_dbm + design_margin_db
+    if amp_output_dbm is None:
+        amp_output_dbm = head_end_dbm
+
+    spacing = amplifier_spacing_m(head_end_dbm, threshold, coupling, loss_m, radial)
+    # The amplifier can only restore what its gain allows.
+    max_restore_run = amp_gain_db / loss_m if loss_m > 0 else float("inf")
+    amp_spacing = min(spacing, max_restore_run) if auto_amplifiers else float("inf")
+
+    d = np.linspace(0.0, max(cable_length_m, 1.0), n_samples)
+    amp_positions: list[float] = []
+    if auto_amplifiers and np.isfinite(amp_spacing) and amp_spacing > 0:
+        pos = amp_spacing
+        while pos < cable_length_m:
+            amp_positions.append(round(float(pos), 1))
+            pos += amp_spacing
+
+    # Tap level along the cable: head-end level minus accumulated loss, reset
+    # to amp_output at each amplifier.
+    seg_start_level = head_end_dbm
+    seg_start_dist = 0.0
+    ai = 0
+    tap = np.empty_like(d)
+    for i, di in enumerate(d):
+        while ai < len(amp_positions) and di >= amp_positions[ai]:
+            seg_start_level = amp_output_dbm
+            seg_start_dist = amp_positions[ai]
+            ai += 1
+        tap[i] = seg_start_level - loss_m * (di - seg_start_dist)
+
+    rx = tap - coupling - radial
+    served = rx >= threshold
+
+    # Moving-train KPI: fraction of the run continuously above threshold, and
+    # the worst contiguous gap (m) where a moving receiver would drop.
+    served_fraction = float(np.mean(served))
+    step = d[1] - d[0] if len(d) > 1 else 0.0
+    worst_gap = 0.0
+    run = 0.0
+    for s in served:
+        if not s:
+            run += step
+            worst_gap = max(worst_gap, run)
+        else:
+            run = 0.0
+
+    return {
+        "cable": cable,
+        "cable_loss_db_per_m": round(loss_m, 4),
+        "coupling_loss_db": round(coupling, 1),
+        "radial_loss_db": round(float(radial), 1),
+        "design_threshold_dbm": round(threshold, 1),
+        "amplifier_spacing_m": round(float(amp_spacing), 1)
+        if np.isfinite(amp_spacing) else None,
+        "amplifier_positions_m": amp_positions,
+        "amplifier_count": len(amp_positions),
+        "amplifier_gain_required_db": round(min(loss_m * amp_spacing, amp_gain_db), 1)
+        if np.isfinite(amp_spacing) else None,
+        "continuous_service_pct": round(served_fraction * 100.0, 1),
+        "worst_gap_m": round(worst_gap, 1),
+        "moving_train_ok": bool(worst_gap == 0.0),
+        "points": [{"d": round(float(di), 1), "rx_power_dbm": round(float(ri), 1),
+                    "served": bool(si)}
+                   for di, ri, si in zip(d, rx, served)],
+    }

@@ -210,4 +210,6 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/indoor/{dxf_id}/preview.png` | floor-plan linework preview (bounds in `X-Plan-Bounds` header) |
 | `POST /api/indoor/coverage` | COST-231 multi-wall heatmap over a DXF floor plan |
 | `GET /api/indoor/tunnel` | tunnel/mine waveguide link profile (Emslie model) |
+| `GET /api/indoor/leaky-cables` | radiating-cable presets (loss dB/100 m, coupling loss) |
+| `POST /api/indoor/leaky-feeder` | **radiating-cable (leaky feeder) design**: RX vs distance, auto inline-amplifier spacing, moving-train continuous-service KPI; cable length direct or measured from a DXF polyline layer |
 | `GET /api/indoor/tte` | through-the-earth VLF link budget |

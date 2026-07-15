@@ -139,3 +139,19 @@ def render_preview(walls: WallSet, px: int = 900,
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue(), [x0, y0, x1, y1]
+
+
+def layer_polyline_length(doc, layers, unit_scale: float = 1.0) -> float:
+    """Total 2D length (meters) of all linework on the given DXF layer(s).
+
+    Used by the leaky-feeder tool to measure a designated cable-run polyline
+    directly from the site drawing (``unit_scale`` = meters per drawing unit).
+    """
+    wanted = {layers} if isinstance(layers, str) else set(layers)
+    total = 0.0
+    for entity in doc.modelspace():
+        if entity.dxf.layer not in wanted:
+            continue
+        for x0, y0, x1, y1 in _entity_segments(entity):
+            total += float(np.hypot(x1 - x0, y1 - y0))
+    return total * float(unit_scale)

@@ -212,3 +212,78 @@ def _session_or_404(dxf_id: str, user: dict | None = None):
         from ..services.dxf import parser
         session.layers = parser.list_layers(session.document())
     return session
+
+
+# ===================================================================== #
+#  Phase 2 — Radiating cable (leaky feeder) for metro / underground mine
+# ===================================================================== #
+from ..services.rf.underground import (LEAKY_CABLE_PRESETS,  # noqa: E402
+                                       leaky_feeder_profile)
+
+
+@router.get("/leaky-cables")
+def leaky_cables() -> dict:
+    """Radiating-cable presets (loss dB/100 m, coupling loss) for the leaky
+    feeder tool."""
+    return {"cables": [{"key": k, **v} for k, v in LEAKY_CABLE_PRESETS.items()]}
+
+
+class LeakyFeederRequest(BaseModel):
+    freq_mhz: float = Field(450.0, gt=0)
+    cable: str = "rc78"
+    cable_length_m: float | None = Field(None, gt=1, le=50_000)
+    # Optional: measure the cable run straight from a DXF polyline layer.
+    dxf_id: str | None = None
+    cable_layer: str | None = None
+    unit_scale: float = Field(1.0, gt=0)
+    # Cable/electrical overrides:
+    loss_db_100m: float | None = Field(None, gt=0, le=50)
+    coupling_db: float | None = Field(None, gt=0, le=120)
+    head_end_dbm: float = Field(20.0, ge=-10, le=50)
+    amp_gain_db: float = Field(30.0, ge=0, le=90)
+    amp_output_dbm: float | None = None
+    rx_sensitivity_dbm: float = Field(-95.0, le=0)
+    design_margin_db: float = Field(10.0, ge=0, le=40)
+    radial_distance_m: float = Field(2.0, gt=0, le=50)
+    coupling_reference_m: float = Field(2.0, gt=0, le=50)
+    auto_amplifiers: bool = True
+
+
+@router.post("/leaky-feeder")
+def leaky_feeder_study(req: LeakyFeederRequest,
+                       user: dict | None = Depends(current_user)) -> dict:
+    """Radiating-cable link design along a tunnel/metro/mine run: RX vs
+    distance, auto-placed inline amplifiers to hold a target margin, and the
+    "moving-train" continuous-service KPI (percent of the run above threshold
+    plus the worst coverage gap).  The cable length may be given directly or
+    measured from a designated DXF polyline layer."""
+    if req.cable not in LEAKY_CABLE_PRESETS:
+        raise HTTPException(422, f"Unknown radiating cable: {req.cable!r}")
+
+    length_m = req.cable_length_m
+    measured_from_dxf = False
+    if length_m is None:
+        if not (req.dxf_id and req.cable_layer):
+            raise HTTPException(422, "Provide cable_length_m, or dxf_id + "
+                                     "cable_layer to measure the run from a drawing.")
+        session = _session_or_404(req.dxf_id, user)
+        from ..services.indoor.floorplan import layer_polyline_length
+        length_m = layer_polyline_length(session.document(), req.cable_layer,
+                                         req.unit_scale)
+        measured_from_dxf = True
+        if length_m <= 1.0:
+            raise HTTPException(422, f"Layer {req.cable_layer!r} has no "
+                                     "measurable linework to use as a cable run.")
+
+    result = leaky_feeder_profile(
+        req.freq_mhz, length_m, cable=req.cable,
+        loss_db_100m=req.loss_db_100m, coupling_db=req.coupling_db,
+        head_end_dbm=req.head_end_dbm, amp_gain_db=req.amp_gain_db,
+        amp_output_dbm=req.amp_output_dbm,
+        rx_sensitivity_dbm=req.rx_sensitivity_dbm,
+        design_margin_db=req.design_margin_db,
+        radial_distance_m=req.radial_distance_m,
+        coupling_reference_m=req.coupling_reference_m,
+        auto_amplifiers=req.auto_amplifiers)
+    return {"freq_mhz": req.freq_mhz, "cable_length_m": round(length_m, 1),
+            "cable_length_from_dxf": measured_from_dxf, **result}
