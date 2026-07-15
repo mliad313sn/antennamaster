@@ -180,6 +180,75 @@ def tunnel_study(
     }
 
 
+class BendIn(BaseModel):
+    position_m: float = Field(ge=0)
+    radius_m: float = Field(30.0, gt=1, le=1000)
+    angle_deg: float = Field(90.0, ge=0, le=180)
+    width_m: float = Field(5.0, gt=0.5, le=30)
+
+
+class LeakyFeederRequest(BaseModel):
+    freq_mhz: float = Field(450.0, gt=0)
+    length_m: float = Field(1000.0, gt=10, le=20_000)
+    cable_atten_db_per_100m: float = Field(3.0, gt=0, le=50)
+    coupling_ref_db: float = Field(65.0, ge=20, le=110)
+    coupling_ref_m: float = Field(2.0, gt=0.1, le=20)
+    lateral_m: float = Field(2.0, gt=0.1, le=30)
+    tx_power_dbm: float = Field(20.0, ge=-30, le=60)
+    rx_sensitivity_dbm: float = Field(-95.0, le=0)
+    system_margin_db: float = Field(10.0, ge=0, le=40)
+    amp_gain_db: float = Field(0.0, ge=0, le=40)
+    amp_spacing_m: float | None = Field(None, gt=10, le=5000)
+    bends: list[BendIn] = Field(default_factory=list, max_length=50)
+
+
+@router.post("/leaky-feeder")
+def leaky_feeder_study(req: LeakyFeederRequest) -> dict:
+    """Radiating-cable (leaky feeder) field profile along a tunnel run, with
+    inline-amplifier spacing and bend losses - the real metro/mine solution,
+    not a bare waveguide.  Reports served length, worst gap and amps required."""
+    from ..services.rf.leakyfeeder import leaky_feeder_profile
+    return {"freq_mhz": req.freq_mhz, "length_m": req.length_m,
+            **leaky_feeder_profile(
+                req.freq_mhz, req.length_m, req.cable_atten_db_per_100m,
+                coupling_ref_db=req.coupling_ref_db,
+                coupling_ref_m=req.coupling_ref_m, lateral_m=req.lateral_m,
+                tx_power_dbm=req.tx_power_dbm,
+                rx_sensitivity_dbm=req.rx_sensitivity_dbm,
+                system_margin_db=req.system_margin_db,
+                amp_gain_db=req.amp_gain_db, amp_spacing_m=req.amp_spacing_m,
+                bends=[b.model_dump() for b in req.bends])}
+
+
+@router.get("/tunnel-das")
+def tunnel_das_study(
+    freq_mhz: float = Query(450.0, gt=0),
+    width_m: float = Query(5.0, gt=0.5, le=30),
+    height_m: float = Query(4.0, gt=0.5, le=30),
+    length_m: float = Query(2000.0, gt=10, le=50_000),
+    wall: str = Query("concrete"),
+    tx_power_dbm: float = Query(20.0),
+    tx_gain_dbi: float = Query(6.0),
+    rx_gain_dbi: float = Query(0.0),
+    losses_db: float = Query(0.0),
+    rx_sensitivity_dbm: float = Query(-95.0),
+    overlap_pct: float = Query(15.0, ge=0, le=90),
+) -> dict:
+    """Distributed-antenna (DAS) tunnel design: single-antenna reach from the
+    Emslie waveguide, then how many antennas and at what spacing give
+    continuous coverage over the run."""
+    if wall not in TUNNEL_WALL_PRESETS:
+        raise HTTPException(422, f"Unknown tunnel wall preset: {wall!r}")
+    from ..services.rf.leakyfeeder import distributed_antenna_tunnel
+    return {"wall": wall, "freq_mhz": freq_mhz, "length_m": length_m,
+            **distributed_antenna_tunnel(
+                freq_mhz, width_m, height_m, length_m,
+                eps_r=TUNNEL_WALL_PRESETS[wall]["eps_r"],
+                tx_power_dbm=tx_power_dbm, tx_gain_dbi=tx_gain_dbi,
+                rx_gain_dbi=rx_gain_dbi, losses_db=losses_db,
+                rx_sensitivity_dbm=rx_sensitivity_dbm, overlap_pct=overlap_pct)}
+
+
 @router.get("/tte")
 def tte_study(
     freq_hz: float = Query(5000.0, gt=10, le=1e6),
