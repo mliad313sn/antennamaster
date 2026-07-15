@@ -331,6 +331,12 @@ def itm_study(
     reliability: float = Query(0.5, gt=0, lt=1),
     confidence: float = Query(0.5, gt=0, lt=1),
     samples: int = Query(256, ge=16, le=2048),
+    # ITM environment parameters (NTIA engine): radio climate zone 1-7
+    # (1 equatorial ... 5 continental temperate ... 7 maritime over sea),
+    # surface refractivity N_s in N-units, antenna polarization.
+    climate: int = Query(5, ge=1, le=7),
+    en0: float = Query(314.0, ge=200, le=450),
+    polarization: int = Query(0, ge=0, le=1),
     dxf_id: str | None = None, surface: bool = Query(False),
     k_factor: float = Query(4.0 / 3.0, gt=0.1, le=10),
     # "ntia" (default) = the exact NTIA ITM v1.2.2 algorithm, validated to
@@ -367,11 +373,14 @@ def itm_study(
             res = itm_p2p_loss(prof.distances_m, prof.elevations_m,
                                h_tx_m, h_rx_m, eff_freq,
                                reliability_pct=reliability * 100.0,
-                               confidence_pct=confidence * 100.0)
+                               confidence_pct=confidence * 100.0,
+                               en0=en0, climate=climate,
+                               polarization=polarization)
         except Exception as exc:
             raise HTTPException(422, f"ITM rejected the input: {exc}") from exc
         return {"freq_mhz": eff_freq, "reliability": reliability,
-                "confidence": confidence, **res}
+                "confidence": confidence, "climate": climate, "en0": en0,
+                **res}
     if engine == "heuristic":
         from ..services.rf.itm import itm_point_to_point
         return {"freq_mhz": eff_freq, "engine": "heuristic",

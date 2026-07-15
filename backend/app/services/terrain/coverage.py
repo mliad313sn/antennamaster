@@ -449,3 +449,113 @@ def composite_best_server(sites: list[dict], raster_px: int = 768,
         }
     return (buf.getvalue(), [[south, west], [north, east]], stats,
             served_frac, sinr)
+
+
+def composite_throughput(sites: list[dict], noise_dbm: float,
+                         bandwidth_mhz: float, overhead: float = 0.25,
+                         channels: list[int] | None = None,
+                         aci_db: float = 30.0, raster_px: int = 768,
+                         ) -> tuple[bytes, list[list[float]], list[dict], dict]:
+    """Per-pixel achievable-throughput raster over a site cluster.
+
+    Same raster geometry as :func:`composite_best_server`; each served pixel
+    is colored by its downlink Mbit/s (3GPP CQI ladder on the pixel's SINR).
+    ``channels`` (one per site, from the frequency planner) makes the
+    interference sum channel-aware: co-channel adds fully, adjacent-channel
+    is discounted by ``aci_db``, other channels are ignored — so the raster
+    shows the plan's real capacity, not the reuse-1 worst case.
+
+    Returns (png, [[south, west], [north, east]], legend, stats).
+    """
+    from ..rf.capacity import throughput_map_mbps
+
+    boxes = []
+    for s in sites:
+        lat_r = np.degrees(s["radius_m"] / EARTH_RADIUS_M)
+        lon_r = lat_r / max(np.cos(np.radians(s["lat"])), 0.05)
+        boxes.append((s["lat"] - lat_r, s["lon"] - lon_r,
+                      s["lat"] + lat_r, s["lon"] + lon_r))
+    south = min(b[0] for b in boxes)
+    west = min(b[1] for b in boxes)
+    north = max(b[2] for b in boxes)
+    east = max(b[3] for b in boxes)
+
+    aspect = (north - south) / max(east - west, 1e-9)
+    if aspect <= 1:
+        w, h = raster_px, max(int(raster_px * aspect), 32)
+    else:
+        h, w = raster_px, max(int(raster_px / aspect), 32)
+    lat_g = np.linspace(north, south, h)
+    lon_g = np.linspace(west, east, w)
+    mlon, mlat = np.meshgrid(lon_g, lat_g)
+
+    n = len(sites)
+    rx_fields = np.full((n, h, w), -np.inf)
+    best_rx = np.full((h, w), -np.inf)
+    best_margin = np.full((h, w), -np.inf)
+    best_idx = np.full((h, w), -1, dtype=int)
+
+    for i, s in enumerate(sites):
+        polar = s["polar"]
+        az, dist = polar["az"], polar["dist"]
+        m_e = (mlon - s["lon"]) * np.cos(np.radians(s["lat"])) \
+            * (np.pi / 180.0) * EARTH_RADIUS_M
+        m_n = (mlat - s["lat"]) * (np.pi / 180.0) * EARTH_RADIUS_M
+        pix_d = np.hypot(m_e, m_n)
+        pix_az = (np.degrees(np.arctan2(m_e, m_n)) + 360.0) % 360.0
+        ai = np.round(pix_az / (360.0 / len(az))).astype(int) % len(az)
+        d_step = dist[1] - dist[0] if len(dist) > 1 else dist[0]
+        di = np.clip(np.round((pix_d - dist[0]) / d_step).astype(int),
+                     0, len(dist) - 1)
+        inside = pix_d <= s["radius_m"]
+        rx = np.where(inside, polar["rx_power"][ai, di], -np.inf)
+        rx_fields[i] = rx
+        better = rx > best_rx
+        best_rx = np.where(better, rx, best_rx)
+        best_margin = np.where(better, polar["margin"][ai, di], best_margin)
+        best_idx = np.where(better, i, best_idx)
+
+    served = np.isfinite(best_rx) & (best_margin >= 0.0)
+    lin = np.where(np.isfinite(rx_fields), 10.0 ** (rx_fields / 10.0), 0.0)
+    n_lin = 10.0 ** (noise_dbm / 10.0)
+    aci = 10.0 ** (-aci_db / 10.0)
+
+    best_lin = np.where(np.isfinite(best_rx), 10.0 ** (best_rx / 10.0), 0.0)
+    interf = np.zeros((h, w))
+    for j in range(n):
+        other = lin[j] * (best_idx != j)
+        if channels is None:
+            interf += other
+        else:
+            # Weight interferer j against each pixel's serving channel.
+            ch = np.asarray(channels)
+            diff = np.abs(ch[np.clip(best_idx, 0, n - 1)] - channels[j])
+            interf += other * np.where(diff == 0, 1.0,
+                                       np.where(diff == 1, aci, 0.0))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        sinr_db = 10.0 * np.log10(np.maximum(best_lin, 1e-30)
+                                  / (interf + n_lin))
+    tp = throughput_map_mbps(sinr_db, bandwidth_mhz, overhead)
+
+    peak = 5.5547 * bandwidth_mhz * (1.0 - overhead)   # CQI-15 ceiling
+    steps = [(0.75, (0, 109, 44)), (0.50, (49, 163, 84)),
+             (0.25, (116, 196, 118)), (0.10, (186, 228, 179)),
+             (0.0, (237, 190, 130))]
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+    legend = []
+    for frac, color in steps:
+        mask = served & (tp >= frac * peak) & (tp > 0) & (rgba[:, :, 3] == 0)
+        rgba[mask, 0], rgba[mask, 1], rgba[mask, 2] = color
+        rgba[mask, 3] = 150
+        legend.append({"margin_db": 0,
+                       "color": "#%02x%02x%02x" % color,
+                       "label": f"≥ {frac * peak:.0f} Mbit/s"})
+    buf = io.BytesIO()
+    Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
+
+    sv = tp[served] if served.any() else np.array([0.0])
+    stats = {"mean_mbps": round(float(sv.mean()), 1),
+             "peak_mbps": round(float(sv.max()), 1),
+             "edge_mbps": round(float(np.percentile(sv, 5)), 1),
+             "ceiling_mbps": round(peak, 1)}
+    return buf.getvalue(), [[south, west], [north, east]], legend, stats

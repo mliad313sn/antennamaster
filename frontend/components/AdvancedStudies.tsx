@@ -16,11 +16,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   availabilityStudy, copilotAnalyzeLink, emfCompliance, emfReportPdf,
-  itmStudy, p1812Study, twowayLink,
+  erlangStudy, itmStudy, p1812Study, twowayLink,
 } from '@/lib/api';
 
 type LatLng = { lat: number; lng: number };
-type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'avail' | 'copilot';
+type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'avail' | 'erlang' | 'copilot';
 
 export default function AdvancedStudies(
   { tx, rx, technology, onClose }:
@@ -47,6 +47,7 @@ export default function AdvancedStudies(
             <button className={tab === 'itm' ? 'active' : ''} onClick={() => setTab('itm')}>{t('advanced.tabItm')}</button>
             <button className={tab === 'p1812' ? 'active' : ''} onClick={() => setTab('p1812')}>{t('advanced.tabP1812')}</button>
             <button className={tab === 'avail' ? 'active' : ''} onClick={() => setTab('avail')}>{t('advanced.tabAvail')}</button>
+            <button className={tab === 'erlang' ? 'active' : ''} onClick={() => setTab('erlang')}>{t('advanced.tabErlang')}</button>
             <button className={tab === 'copilot' ? 'active' : ''} onClick={() => setTab('copilot')}>{t('advanced.tabCopilot')}</button>
           </div>
           {tab === 'twoway' && <TwoWayTab tx={tx} rx={rx} />}
@@ -54,6 +55,7 @@ export default function AdvancedStudies(
           {tab === 'itm' && <ItmTab tx={tx} rx={rx} />}
           {tab === 'p1812' && <P1812Tab tx={tx} rx={rx} />}
           {tab === 'avail' && <AvailTab tx={tx} rx={rx} />}
+          {tab === 'erlang' && <ErlangTab />}
           {tab === 'copilot' && <CopilotTab tx={tx} rx={rx} technology={technology} />}
         </div>
       </div>
@@ -198,14 +200,23 @@ function EmfTab() {
 }
 
 // -------------------------------------------------------------------- ITM
+const ITM_CLIMATES = [
+  [1, 'Equatorial'], [2, 'Continental subtropical'], [3, 'Maritime subtropical'],
+  [4, 'Desert'], [5, 'Continental temperate'],
+  [6, 'Maritime temperate (land)'], [7, 'Maritime temperate (sea)'],
+] as const;
+
 function ItmTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const { t } = useTranslation();
   const [freq, setFreq] = useState('900');
   const [rel, setRel] = useState('0.9');
+  const [climate, setClimate] = useState('5');
+  const [en0, setEn0] = useState('314');
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => itmStudy({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     freq_mhz: +freq, reliability: +rel, confidence: 0.5,
+    climate: +climate, en0: +en0,
   }));
   return (
     <div>
@@ -214,6 +225,13 @@ function ItmTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <div className="field-grid">
         <label>{t('advanced.freqMhz')}<input value={freq} onChange={(e) => setFreq(e.target.value)} /></label>
         <label>{t('advanced.reliability')}<input value={rel} onChange={(e) => setRel(e.target.value)} /></label>
+        <label>{t('advanced.climate')}
+          <select value={climate} onChange={(e) => setClimate(e.target.value)}>
+            {ITM_CLIMATES.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+          </select>
+        </label>
+        <label>{t('advanced.en0')}<input value={en0} onChange={(e) => setEn0(e.target.value)}
+          title="Surface refractivity N₀ in N-units (world median 314; 250 dry mountains … 400 humid coasts)" /></label>
       </div>
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
@@ -286,10 +304,14 @@ function AvailTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const { t } = useTranslation();
   const [zone, setZone] = useState('K');
   const [dn1, setDn1] = useState('-300');
+  const [freq, setFreq] = useState('');       // '' = the preset's frequency
+  const [margin, setMargin] = useState('');   // '' = real link-budget margin
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => availabilityStudy({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     technology: 'ptp18000', rain_zone: zone, dn1: +dn1,
+    ...(freq.trim() !== '' ? { freq_mhz: +freq } : {}),
+    ...(margin.trim() !== '' ? { fade_margin_db: +margin } : {}),
   }));
   return (
     <div>
@@ -302,6 +324,11 @@ function AvailTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
           </select>
         </label>
         <label>{t('advanced.dn1')}<input value={dn1} onChange={(e) => setDn1(e.target.value)} /></label>
+        <label>{t('advanced.freqOverride')}<input value={freq} placeholder="18000"
+          onChange={(e) => setFreq(e.target.value)} /></label>
+        <label>{t('advanced.marginOverride')}<input value={margin} placeholder={t('advanced.auto')}
+          title="Empty = the hop's real link-budget margin computed over the terrain"
+          onChange={(e) => setMargin(e.target.value)} /></label>
       </div>
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
@@ -315,6 +342,57 @@ function AvailTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
             <tr><td>{t('advanced.outMultipath')}</td><td>{res.multipath_outage_pct} %</td></tr>
             <tr><td>{t('advanced.outRain')}</td><td>{res.rain_outage_pct} % ({t('advanced.rainZone')} {res.rain_zone}, A₀.₀₁ {res.rain_a001_db} dB)</td></tr>
             <tr><td>{t('advanced.marginUsed')}</td><td>{res.fade_margin_db} dB</td></tr>
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ Erlang
+function ErlangTab() {
+  const { t } = useTranslation();
+  const [traffic, setTraffic] = useState('10');
+  const [channels, setChannels] = useState('12');
+  const [gos, setGos] = useState('0.02');
+  const [kind, setKind] = useState('b');
+  const { busy, err, res, run } = useRun<any>();
+  const go = () => run(() => erlangStudy({
+    traffic_erlangs: +traffic, kind,
+    ...(channels.trim() !== '' ? { channels: +channels } : {}),
+    ...(gos.trim() !== '' ? { gos: +gos } : {}),
+  }));
+  return (
+    <div>
+      <p className="hint">{t('advanced.erlangHint')}</p>
+      <div className="field-grid">
+        <label>{t('advanced.traffic')}<input value={traffic} onChange={(e) => setTraffic(e.target.value)} /></label>
+        <label>{t('advanced.channels')}<input value={channels} placeholder="—"
+          onChange={(e) => setChannels(e.target.value)} /></label>
+        <label>{t('advanced.gosTarget')}<input value={gos} placeholder="—"
+          onChange={(e) => setGos(e.target.value)} /></label>
+        <label>{t('advanced.erlangKind')}
+          <select value={kind} onChange={(e) => setKind(e.target.value)}>
+            <option value="b">Erlang B ({t('advanced.blocked')})</option>
+            <option value="c">Erlang C ({t('advanced.queued')})</option>
+          </select>
+        </label>
+      </div>
+      <button className="primary" style={{ width: '100%' }} disabled={busy} onClick={go}>
+        {busy ? t('advanced.running') : t('advanced.run')}
+      </button>
+      {err && <div className="warning-box">{err}</div>}
+      {res && (
+        <table className="result-table">
+          <tbody>
+            {res.blocking_probability !== undefined && (
+              <tr><td>{kind === 'b' ? t('advanced.blocking') : t('advanced.waitProb')} ({res.channels} {t('advanced.channelsLc')})</td>
+                <td><b>{(res.blocking_probability * 100).toFixed(2)} %</b></td></tr>
+            )}
+            {res.channels_for_gos !== undefined && (
+              <tr><td>{t('advanced.channelsNeeded', { gos: (res.gos * 100).toFixed(1) })}</td>
+                <td><b>{res.channels_for_gos}</b></td></tr>
+            )}
           </tbody>
         </table>
       )}

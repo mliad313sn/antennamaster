@@ -16,8 +16,8 @@ import {
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import {
-  fetchEquipment, fetchMaterials, fetchPlanPreview, fetchTteStudy,
-  fetchTunnelStudy, fetchUndergroundPresets, leakyFeederStudy,
+  dasSolve, fetchEquipment, fetchMaterials, fetchPlanPreview, fetchTteStudy,
+  fetchTunnelStudy, fetchUndergroundPresets, indoorStack, leakyFeederStudy,
   simulateIndoorCoverage, uploadDxf,
 } from '@/lib/api';
 import type {
@@ -25,7 +25,7 @@ import type {
   UndergroundPresets, UploadResponse,
 } from '@/lib/types';
 
-type Tab = 'plan' | 'tunnel' | 'feeder' | 'tte';
+type Tab = 'plan' | 'das' | 'floors' | 'tunnel' | 'feeder' | 'tte';
 
 export default function IndoorStudio({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
@@ -45,11 +45,15 @@ export default function IndoorStudio({ onClose }: { onClose: () => void }) {
         <div className="modal-body">
           <div className="mode-tabs">
             <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>{t('indoor.tabPlan')}</button>
+            <button className={tab === 'das' ? 'active' : ''} onClick={() => setTab('das')}>{t('indoor.tabDas')}</button>
+            <button className={tab === 'floors' ? 'active' : ''} onClick={() => setTab('floors')}>{t('indoor.tabFloors')}</button>
             <button className={tab === 'tunnel' ? 'active' : ''} onClick={() => setTab('tunnel')}>{t('indoor.tabTunnel')}</button>
             <button className={tab === 'feeder' ? 'active' : ''} onClick={() => setTab('feeder')}>{t('indoor.tabFeeder')}</button>
             <button className={tab === 'tte' ? 'active' : ''} onClick={() => setTab('tte')}>{t('indoor.tabTte')}</button>
           </div>
           {tab === 'plan' && <PlanStudy />}
+          {tab === 'das' && <DasStudy />}
+          {tab === 'floors' && <FloorsStudy />}
           {tab === 'tunnel' && <TunnelStudy />}
           {tab === 'feeder' && <FeederStudy />}
           {tab === 'tte' && <TteStudy />}
@@ -576,6 +580,447 @@ function TteStudy() {
             <span className="v" style={{ color: result.served ? 'var(--status-good)' : 'var(--status-critical)' }}>
               {result.margin_db.toFixed(1)} dB {result.served ? t('indoor.linkWorks') : t('indoor.noLink')}
             </span>
+          </div>
+        </div>
+      )}
+      {error && <div className="error-box">{error}</div>}
+    </div>
+  );
+}
+// ------------------------------------------------------------------ DAS tab
+type DasAntenna = { x: number; y: number; gain: number; cableLen: number; tapDb: number };
+
+function DasStudy() {
+  const { t } = useTranslation();
+  const [upload, setUpload] = useState<UploadResponse | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [layerMats, setLayerMats] = useState<Record<string, string>>({});
+  const [preview, setPreview] = useState<{ url: string; bounds: [number, number, number, number] } | null>(null);
+  const [unitScale, setUnitScale] = useState(1.0);
+  const [freqMhz, setFreqMhz] = useState(2442);
+  const [srcPower, setSrcPower] = useState(30);
+  const [topology, setTopology] = useState<'star' | 'cascade'>('star');
+  const [trunkLen, setTrunkLen] = useState(20);
+  const [cableLoss, setCableLoss] = useState(10);   // dB/100m (LMR-400 class @2.4 GHz)
+  const [antennas, setAntennas] = useState<DasAntenna[]>([]);
+  const [result, setResult] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => { fetchMaterials().then(setMaterials).catch(() => {}); }, []);
+
+  function guessMat(name: string): string {
+    const n = name.toLowerCase();
+    if (/(concrete|beton)/.test(n)) return 'concrete';
+    if (/(glass|window|fenetre)/.test(n)) return 'glass';
+    if (/(metal|steel)/.test(n)) return 'metal';
+    if (/(door|porte|wood)/.test(n)) return 'wood';
+    if (/(wall|mur|masonry|brick)/.test(n)) return 'brick';
+    return 'drywall';
+  }
+
+  async function handleFile(file: File) {
+    setBusy(true); setError(null); setResult(null); setPreview(null); setAntennas([]);
+    try {
+      const up = await uploadDxf(file);
+      setUpload(up);
+      const defaults: Record<string, string> = {};
+      for (const l of up.layers) defaults[l.name] = l.entity_count > 0 ? guessMat(l.name) : 'none';
+      setLayerMats(defaults);
+      await refreshPreview(up.dxf_id, defaults);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  async function refreshPreview(dxfId: string, mats: Record<string, string>) {
+    const active = Object.entries(mats).filter(([, m]) => m !== 'none').map(([l]) => l);
+    if (!active.length) { setPreview(null); return; }
+    try { setPreview(await fetchPlanPreview(dxfId, active)); }
+    catch (e) { setError((e as Error).message); }
+  }
+
+  function planClick(e: React.MouseEvent<HTMLImageElement>) {
+    if (!preview || !imgRef.current || antennas.length >= 32) return;
+    const rect = imgRef.current.getBoundingClientRect();
+    const [x0, y0, x1, y1] = preview.bounds;
+    const fx = (e.clientX - rect.left) / rect.width;
+    const fy = (e.clientY - rect.top) / rect.height;
+    setAntennas((prev) => [...prev, {
+      x: x0 + fx * (x1 - x0), y: y1 - fy * (y1 - y0),
+      gain: 2, cableLen: 10, tapDb: 10,
+    }]);
+    setResult(null);
+  }
+
+  // Build the backend component tree from the flat antenna list.
+  function buildTree(): object {
+    const antNode = (a: DasAntenna) =>
+      ({ component: 'antenna', x: a.x, y: a.y, gain_dbi: a.gain });
+    const cable = (len: number, child: object) =>
+      ({ component: 'cable', length_m: len, loss_db_per_100m: cableLoss, children: [child] });
+    if (topology === 'star') {
+      if (antennas.length === 1) return cable(trunkLen + antennas[0].cableLen, antNode(antennas[0]));
+      return cable(trunkLen, {
+        component: 'splitter', ways: antennas.length, excess_db: 0.5,
+        children: antennas.map((a) => cable(a.cableLen, antNode(a))),
+      });
+    }
+    // Cascade: source → trunk → [coupler(tap → antenna) → cable]* → last antenna.
+    let chain: object = antNode(antennas[antennas.length - 1]);
+    for (let i = antennas.length - 2; i >= 0; i--) {
+      chain = {
+        component: 'coupler', coupling_db: antennas[i].tapDb, insertion_db: 0.5,
+        children: [cable(antennas[i + 1].cableLen, chain), antNode(antennas[i])],
+      };
+    }
+    return cable(trunkLen, chain);
+  }
+
+  async function run() {
+    if (!upload || antennas.length === 0) return;
+    setBusy(true); setError(null);
+    try {
+      setResult(await dasSolve({
+        dxf_id: upload.dxf_id, layer_materials: layerMats, unit_scale: unitScale,
+        freq_mhz: freqMhz, source_power_dbm: srcPower, tree: buildTree(),
+      }));
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  return (
+    <div>
+      {!upload && (
+        <>
+          <p className="hint">{t('indoor.dasIntro')}</p>
+          <input type="file" accept=".dxf"
+            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])} />
+          {busy && <p className="hint">{t('indoor.parsing')}</p>}
+        </>
+      )}
+      {upload && (
+        <div style={{ display: 'flex', gap: 14 }}>
+          <div style={{ width: 280, flexShrink: 0 }}>
+            <div className="row">
+              <div>
+                <label>{t('indoor.dasTopology')}</label>
+                <select value={topology} onChange={(e) => { setTopology(e.target.value as 'star' | 'cascade'); setResult(null); }}>
+                  <option value="star">{t('indoor.dasStar')}</option>
+                  <option value="cascade">{t('indoor.dasCascade')}</option>
+                </select>
+              </div>
+              <div>
+                <label>{t('indoor.freqMhz')}</label>
+                <input type="number" value={freqMhz} onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
+              </div>
+            </div>
+            <div className="row">
+              <div>
+                <label>{t('indoor.dasSource')}</label>
+                <input type="number" value={srcPower} onChange={(e) => setSrcPower(parseFloat(e.target.value) || 30)} />
+              </div>
+              <div>
+                <label>{t('indoor.dasTrunk')}</label>
+                <input type="number" min={0} value={trunkLen} onChange={(e) => setTrunkLen(Math.max(0, parseFloat(e.target.value) || 0))} />
+              </div>
+            </div>
+            <div className="row">
+              <div>
+                <label>{t('indoor.dasCableLoss')}</label>
+                <input type="number" min={0} step={0.1} value={cableLoss}
+                  title="Coax attenuation in dB per 100 m at the design frequency (LMR-400 ≈ 10 dB/100 m at 2.4 GHz, 1/2″ superflex ≈ 7)"
+                  onChange={(e) => setCableLoss(Math.max(0, parseFloat(e.target.value) || 0))} />
+              </div>
+              <div>
+                <label>{t('indoor.units')}</label>
+                <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
+                  <option value={1}>{t('indoor.meters')}</option>
+                  <option value={0.3048}>{t('indoor.feet')}</option>
+                  <option value={0.01}>{t('indoor.centimeters')}</option>
+                  <option value={0.001}>{t('indoor.millimeters')}</option>
+                </select>
+              </div>
+            </div>
+            <h3 style={{ margin: '8px 0 4px', fontSize: 13 }}>
+              {t('indoor.dasAntennas', { count: antennas.length })}
+            </h3>
+            <div style={{ maxHeight: 190, overflowY: 'auto' }}>
+              {antennas.map((a, i) => (
+                <div key={i} style={{ borderBottom: '1px solid var(--hairline)', padding: '3px 0', fontSize: 11 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <b>#{i + 1}</b>
+                    <span>({a.x.toFixed(1)}, {a.y.toFixed(1)})</span>
+                    <button style={{ padding: '0 6px' }} aria-label={`Remove antenna ${i + 1}`}
+                      onClick={() => { setAntennas((p) => p.filter((_, j) => j !== i)); setResult(null); }}>−</button>
+                  </div>
+                  <div className="row">
+                    <div>
+                      <label>{t('indoor.dasGain')}</label>
+                      <input type="number" step={0.5} value={a.gain}
+                        onChange={(e) => { const v = parseFloat(e.target.value) || 0; setAntennas((p) => p.map((x, j) => j === i ? { ...x, gain: v } : x)); setResult(null); }} />
+                    </div>
+                    <div>
+                      <label>{t('indoor.dasCable')}</label>
+                      <input type="number" min={0} value={a.cableLen}
+                        onChange={(e) => { const v = Math.max(0, parseFloat(e.target.value) || 0); setAntennas((p) => p.map((x, j) => j === i ? { ...x, cableLen: v } : x)); setResult(null); }} />
+                    </div>
+                    {topology === 'cascade' && i < antennas.length - 1 && (
+                      <div>
+                        <label>{t('indoor.dasTap')}</label>
+                        <input type="number" min={1} value={a.tapDb}
+                          onChange={(e) => { const v = Math.max(1, parseFloat(e.target.value) || 1); setAntennas((p) => p.map((x, j) => j === i ? { ...x, tapDb: v } : x)); setResult(null); }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button className="primary" style={{ width: '100%', marginTop: 6 }}
+              disabled={antennas.length === 0 || busy} onClick={run}>
+              {busy ? t('indoor.simulating')
+                : antennas.length ? t('indoor.dasSolve') : t('indoor.dasClickToPlace')}
+            </button>
+            {result && (
+              <>
+                <div className="stat-line" style={{ marginTop: 8 }}>
+                  <span className="k">{t('indoor.servedArea')}</span>
+                  <span className="v">{(result.stats.served_area_fraction * 100).toFixed(0)}%</span>
+                </div>
+                {result.antennas.map((a: any, i: number) => {
+                  // The solver walks the tree, so its order can differ from
+                  // placement order — label rows by the matching UI antenna.
+                  const idx = antennas.findIndex(
+                    (u) => Math.abs(u.x - a.x) < 1e-6 && Math.abs(u.y - a.y) < 1e-6);
+                  return (
+                    <div key={i} className="stat-line" title={a.path}>
+                      <span className="k">#{idx >= 0 ? idx + 1 : '?'}</span>
+                      <span className="v">{a.input_power_dbm} dBm → EIRP {a.eirp_dbm} dBm</span>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {result ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={result.png_url} alt={t('indoor.heatmapAlt')} ref={imgRef} onClick={planClick}
+                style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }} />
+            ) : preview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview.url} alt={t('indoor.previewAlt')} ref={imgRef} onClick={planClick}
+                style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }} />
+            ) : (
+              <p className="hint">{t('indoor.noLayers')}</p>
+            )}
+            <p className="hint">{t('indoor.dasPlaceHint')}</p>
+          </div>
+        </div>
+      )}
+      {error && <div className="error-box">{error}</div>}
+    </div>
+  );
+}
+
+// --------------------------------------------------------------- floors tab
+type FloorEntry = { level: number; dxfId: string; name: string;
+                    layerMats: Record<string, string> };
+
+function FloorsStudy() {
+  const { t } = useTranslation();
+  const [materials, setMaterials] = useState<Material[]>([]);
+  const [floors, setFloors] = useState<FloorEntry[]>([]);
+  const [viewLevel, setViewLevel] = useState(0);
+  const [preview, setPreview] = useState<{ url: string; bounds: [number, number, number, number] } | null>(null);
+  const [tx, setTx] = useState<{ x: number; y: number } | null>(null);
+  const [txLevel, setTxLevel] = useState(0);
+  const [unitScale, setUnitScale] = useState(1.0);
+  const [freqMhz, setFreqMhz] = useState(2442);
+  const [txPower, setTxPower] = useState(20);
+  const [floorLoss, setFloorLoss] = useState(18.3);
+  const [result, setResult] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => { fetchMaterials().then(setMaterials).catch(() => {}); }, []);
+
+  function guessMat(name: string): string {
+    const n = name.toLowerCase();
+    if (/(concrete|beton)/.test(n)) return 'concrete';
+    if (/(glass|window|fenetre)/.test(n)) return 'glass';
+    if (/(metal|steel)/.test(n)) return 'metal';
+    if (/(door|porte|wood)/.test(n)) return 'wood';
+    if (/(wall|mur|masonry|brick)/.test(n)) return 'brick';
+    return 'drywall';
+  }
+
+  const nextLevel = () =>
+    floors.length ? Math.max(...floors.map((f) => f.level)) + 1 : 0;
+
+  async function addFloorFile(file: File) {
+    setBusy(true); setError(null); setResult(null);
+    try {
+      const up = await uploadDxf(file);
+      const mats: Record<string, string> = {};
+      for (const l of up.layers) mats[l.name] = l.entity_count > 0 ? guessMat(l.name) : 'none';
+      const lvl = nextLevel();
+      setFloors((prev) => [...prev, { level: lvl, dxfId: up.dxf_id, name: file.name, layerMats: mats }]);
+      setViewLevel(lvl);
+      await showPreview(up.dxf_id, mats);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  function duplicateTopFloor() {
+    const top = floors[floors.length - 1];
+    if (!top) return;
+    setFloors((prev) => [...prev, { ...top, level: nextLevel() }]);
+    setResult(null);
+  }
+
+  async function showPreview(dxfId: string, mats: Record<string, string>) {
+    const active = Object.entries(mats).filter(([, m]) => m !== 'none').map(([l]) => l);
+    if (!active.length) { setPreview(null); return; }
+    try { setPreview(await fetchPlanPreview(dxfId, active)); }
+    catch (e) { setError((e as Error).message); }
+  }
+
+  function selectLevel(lvl: number) {
+    setViewLevel(lvl);
+    const f = floors.find((x) => x.level === lvl);
+    if (f) showPreview(f.dxfId, f.layerMats);
+  }
+
+  function planClick(e: React.MouseEvent<HTMLImageElement>) {
+    if (!preview || !imgRef.current) return;
+    const rect = imgRef.current.getBoundingClientRect();
+    const [x0, y0, x1, y1] = preview.bounds;
+    const fx = (e.clientX - rect.left) / rect.width;
+    const fy = (e.clientY - rect.top) / rect.height;
+    setTx({ x: x0 + fx * (x1 - x0), y: y1 - fy * (y1 - y0) });
+    setTxLevel(viewLevel);
+    setResult(null);
+  }
+
+  async function run() {
+    if (!floors.length || !tx) return;
+    setBusy(true); setError(null);
+    try {
+      const resp = await indoorStack({
+        floors: floors.map((f) => ({ level: f.level, dxf_id: f.dxfId, layer_materials: f.layerMats })),
+        tx_level: txLevel, tx_x: tx.x, tx_y: tx.y,
+        unit_scale: unitScale, freq_mhz: freqMhz, tx_power_dbm: txPower,
+        floor_loss_db: floorLoss,
+      });
+      setResult(resp);
+      setViewLevel(txLevel);
+    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  const resultFloor = result?.floors?.find((f: any) => f.level === viewLevel);
+
+  return (
+    <div>
+      <p className="hint">{t('indoor.floorsIntro')}</p>
+      <div className="row" style={{ alignItems: 'flex-end' }}>
+        <div>
+          <label>{t('indoor.floorsAdd')}</label>
+          <input type="file" accept=".dxf"
+            onChange={(e) => { if (e.target.files?.[0]) { addFloorFile(e.target.files[0]); e.target.value = ''; } }} />
+        </div>
+        {floors.length > 0 && (
+          <button onClick={duplicateTopFloor}>{t('indoor.floorsDuplicate')}</button>
+        )}
+      </div>
+      {floors.length > 0 && (
+        <div style={{ display: 'flex', gap: 14, marginTop: 8 }}>
+          <div style={{ width: 270, flexShrink: 0 }}>
+            <div style={{ maxHeight: 130, overflowY: 'auto' }}>
+              {floors.map((f) => (
+                <div key={f.level} className="stat-line">
+                  <span className="k">
+                    {t('indoor.floorsLevel')} {f.level}{f.level === txLevel && tx ? ' 📡' : ''}
+                  </span>
+                  <span className="v">
+                    {f.name.slice(0, 16)}
+                    <button style={{ marginLeft: 6, padding: '0 6px' }} aria-label={`Remove level ${f.level}`}
+                      onClick={() => { setFloors((p) => p.filter((x) => x.level !== f.level)); setResult(null); }}>−</button>
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="row" style={{ marginTop: 6 }}>
+              <div>
+                <label>{t('indoor.freqMhz')}</label>
+                <input type="number" value={freqMhz} onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
+              </div>
+              <div>
+                <label>{t('indoor.txPower')}</label>
+                <input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} />
+              </div>
+            </div>
+            <div className="row">
+              <div>
+                <label>{t('indoor.floorLoss')}</label>
+                <input type="number" min={0} max={40} step={0.1} value={floorLoss}
+                  onChange={(e) => setFloorLoss(parseFloat(e.target.value) || 18.3)} />
+              </div>
+              <div>
+                <label>{t('indoor.units')}</label>
+                <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
+                  <option value={1}>{t('indoor.meters')}</option>
+                  <option value={0.3048}>{t('indoor.feet')}</option>
+                  <option value={0.01}>{t('indoor.centimeters')}</option>
+                  <option value={0.001}>{t('indoor.millimeters')}</option>
+                </select>
+              </div>
+            </div>
+            <button className="primary" style={{ width: '100%', marginTop: 6 }}
+              disabled={!tx || busy} onClick={run}>
+              {busy ? t('indoor.simulating') : tx
+                ? t('indoor.floorsRun', { count: floors.length })
+                : t('indoor.clickToPlace')}
+            </button>
+            {result && (
+              <>
+                <div className="stat-line" style={{ marginTop: 8 }}>
+                  <span className="k">{t('indoor.floorsBuildingMean')}</span>
+                  <span className="v">{(result.building_mean_served_fraction * 100).toFixed(0)}%</span>
+                </div>
+                {result.floors.map((f: any) => (
+                  <div key={f.level} className="stat-line">
+                    <span className="k">{t('indoor.floorsLevel')} {f.level}
+                      {f.level === result.tx_level ? ' 📡' : ` (+${f.floors_crossed})`}</span>
+                    <span className="v">{(f.stats.served_area_fraction * 100).toFixed(0)}%</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+              {floors.map((f) => (
+                <button key={f.level} className={viewLevel === f.level ? 'primary' : ''}
+                  onClick={() => selectLevel(f.level)}>
+                  {t('indoor.floorsLevel')} {f.level}
+                </button>
+              ))}
+            </div>
+            {resultFloor ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={resultFloor.png_url} alt={t('indoor.heatmapAlt')} ref={imgRef} onClick={planClick}
+                style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }} />
+            ) : preview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={preview.url} alt={t('indoor.previewAlt')} ref={imgRef} onClick={planClick}
+                style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }} />
+            ) : (
+              <p className="hint">{t('indoor.noLayers')}</p>
+            )}
+            {tx && (
+              <p className="hint">
+                {t('indoor.floorsTxAt', { level: txLevel, x: tx.x.toFixed(1), y: tx.y.toFixed(1) })}
+              </p>
+            )}
           </div>
         </div>
       )}

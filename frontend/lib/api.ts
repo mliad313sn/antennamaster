@@ -449,6 +449,26 @@ export async function frequencyPlan(body: object): Promise<any> {
   return postJson('/api/rf/frequency-plan', body);
 }
 
+// Erlang B/C trunking dimensioning.
+export async function erlangStudy(params: Record<string, string | number | boolean>): Promise<any> {
+  return getWithParams('/api/rf/erlang', params);
+}
+
+// Per-cell capacity + Mbit/s heatmap from the SINR field (3GPP CQI ladder).
+export async function throughputMap(body: object): Promise<any> {
+  return postJson('/api/rf/throughput-map', body);
+}
+
+// DAS tree solver: splitters/couplers/cables -> per-antenna EIRP.
+export async function dasSolve(body: object): Promise<any> {
+  return postJson('/api/indoor/das', body);
+}
+
+// Stacked multi-floor indoor study (per-floor walls + slab losses).
+export async function indoorStack(body: object): Promise<any> {
+  return postJson('/api/indoor/stack', body);
+}
+
 // Ready-to-file EMF dossier (PDF blob).
 export async function emfReportPdf(body: object): Promise<Blob> {
   const r = await fetch('/api/rf/compliance/report.pdf', {

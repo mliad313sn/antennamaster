@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, frequencyPlan,
-  simulateCoverage, simulateMultiCoverage, uploadAntenna,
+  simulateCoverage, simulateMultiCoverage, throughputMap, uploadAntenna,
 } from '@/lib/api';
 import Help from '@/components/Help';
 import type {
@@ -81,14 +81,28 @@ export default function StudyPanel(props: StudyPanelProps) {
   const [freqPlan, setFreqPlan] = useState<any | null>(null);
   const [planBusy, setPlanBusy] = useState(false);
   const [planChannels, setPlanChannels] = useState(3);
+  const [tpRaw, setTpRaw] = useState<any | null>(null);   // /throughput-map result
+  const [tpBusy, setTpBusy] = useState(false);
+  const [tpView, setTpView] = useState(false);
+  const [usersPerCell, setUsersPerCell] = useState('0');
+  const [mbpsPerUser, setMbpsPerUser] = useState('0');
 
   function showMultiView(sinr: boolean) {
     if (!multiRaw) return;
     setSinrView(sinr);
+    setTpView(false);
     props.onCoverage(sinr && multiRaw.sinr
       ? { ...multiRaw, png_url: multiRaw.sinr.png_url,
           legend: multiRaw.sinr.legend }
       : multiRaw);
+  }
+
+  function showThroughputView() {
+    if (!multiRaw || !tpRaw?.png_url) return;
+    setSinrView(false);
+    setTpView(true);
+    props.onCoverage({ ...multiRaw, png_url: tpRaw.png_url,
+                       bounds: tpRaw.bounds, legend: tpRaw.legend });
   }
 
   const numOr = (s: string) => {
@@ -150,6 +164,35 @@ export default function StudyPanel(props: StudyPanelProps) {
       setSinrView(false);
       props.onCoverage(resp);
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+  }
+
+  async function runThroughputMap() {
+    if (!props.technology || sites.length === 0) return;
+    setTpBusy(true);
+    setError(null);
+    try {
+      const resp = await throughputMap({
+        sites, technology: props.technology, radius_km: radiusKm,
+        users_per_cell: Math.max(0, parseInt(usersPerCell) || 0),
+        mbps_per_user: Math.max(0, parseFloat(mbpsPerUser) || 0),
+        // Apply the frequency plan's channels when one has been computed.
+        channels: freqPlan && freqPlan.assignments?.length === sites.length
+          ? freqPlan.assignments.map((a: any) => a.channel) : undefined,
+        model: props.model ?? undefined,
+        environment: props.environment ?? undefined,
+        surface: props.surfaceOn || undefined,
+        clutter_source: props.worldcoverOn ? 'worldcover' : undefined,
+        h_bs_m: props.txHeight || undefined,
+        tx_power_dbm: numOr(ovrPower), tx_gain_dbi: numOr(ovrTxGain),
+      });
+      setTpRaw(resp);
+      if (multiRaw && resp.png_url) {   // switch the map straight to Mbit/s
+        setSinrView(false);
+        setTpView(true);
+        props.onCoverage({ ...multiRaw, png_url: resp.png_url,
+                           bounds: resp.bounds, legend: resp.legend });
+      }
+    } catch (e) { setError((e as Error).message); } finally { setTpBusy(false); }
   }
 
   async function runFrequencyPlan() {
@@ -497,12 +540,13 @@ export default function StudyPanel(props: StudyPanelProps) {
             {/* ------------------- multi-site best-server study ---------- */}
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <button style={{ width: '100%' }} disabled={!props.tx}
-                onClick={() => props.tx && setSites((prev) => [...prev, {
-                  lat: props.tx!.lat, lon: props.tx!.lng,
-                  name: `Site ${prev.length + 1}`,
-                  antenna_azimuth_deg: sector ? azimuth : null,
-                  downtilt_deg: downtilt,
-                }])}>
+                onClick={() => props.tx && (setFreqPlan(null), setTpRaw(null),
+                  setSites((prev) => [...prev, {
+                    lat: props.tx!.lat, lon: props.tx!.lng,
+                    name: `Site ${prev.length + 1}`,
+                    antenna_azimuth_deg: sector ? azimuth : null,
+                    downtilt_deg: downtilt,
+                  }]))}>
                 {t('study.addSite', { count: sites.length })}
               </button>
               {sites.map((s, i) => (
@@ -512,7 +556,8 @@ export default function StudyPanel(props: StudyPanelProps) {
                     {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
                     <button style={{ marginLeft: 6, padding: '0 6px' }}
                       aria-label={`Remove ${s.name}`}
-                      onClick={() => setSites((prev) => prev.filter((_, j) => j !== i))}>
+                      onClick={() => { setFreqPlan(null); setTpRaw(null);
+                        setSites((prev) => prev.filter((_, j) => j !== i)); }}>
                       −
                     </button>
                   </span>
@@ -565,6 +610,53 @@ export default function StudyPanel(props: StudyPanelProps) {
                       </button>
                     </div>
                   )}
+                  {/* -------------- capacity / throughput map ------------- */}
+                  <div className="row" style={{ marginTop: 4, alignItems: 'flex-end' }}>
+                    <div>
+                      <label>{t('study.usersPerCell')}</label>
+                      <input type="number" min={0} value={usersPerCell}
+                        onChange={(e) => setUsersPerCell(e.target.value)} />
+                    </div>
+                    <div>
+                      <label>{t('study.mbpsPerUser')}</label>
+                      <input type="number" min={0} step={0.1} value={mbpsPerUser}
+                        onChange={(e) => setMbpsPerUser(e.target.value)} />
+                    </div>
+                    <button style={{ flex: 1 }} disabled={tpBusy}
+                      title="Per-cell capacity from the SINR field via the 3GPP CQI ladder + Mbit/s heatmap; applies the frequency plan's channels when one is computed"
+                      onClick={runThroughputMap}>
+                      {tpBusy ? t('study.simulating') : t('study.throughputMap')}
+                    </button>
+                  </div>
+                  {tpRaw && (
+                    <div style={{ marginTop: 4 }}>
+                      {tpRaw.cells?.map((cell: any) => (
+                        <div key={cell.site} className="stat-line">
+                          <span className="k">{cell.site}</span>
+                          <span className="v">
+                            {cell.capacity_mbps} Mbit/s
+                            {cell.saturation && (
+                              <> · {cell.saturation.saturated
+                                ? <b style={{ color: 'var(--status-error, #c0392b)' }}>
+                                    {t('study.saturated')} ({cell.saturation.load_factor}×)
+                                  </b>
+                                : <>{t('study.headroom')} {cell.saturation.max_users} {t('study.users')}</>}
+                              </>
+                            )}
+                          </span>
+                        </div>
+                      ))}
+                      <div className="stat-line">
+                        <span className="k">{t('study.planApplied')}</span>
+                        <span className="v">{tpRaw.plan_applied ? '✓' : t('study.reuse1')}</span>
+                      </div>
+                      {tpRaw.png_url && !tpView && multiRaw && (
+                        <button style={{ width: '100%', marginTop: 2 }} onClick={showThroughputView}>
+                          {t('study.viewMbps')}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -580,10 +672,14 @@ export default function StudyPanel(props: StudyPanelProps) {
                 {multiRaw?.sinr && (
                   <>
                     <div className="row" style={{ marginTop: 6 }}>
-                      <button className={sinrView ? '' : 'primary'}
+                      <button className={!sinrView && !tpView ? 'primary' : ''}
                         onClick={() => showMultiView(false)}>{t('study.viewBestServer')}</button>
                       <button className={sinrView ? 'primary' : ''}
                         onClick={() => showMultiView(true)}>{t('study.viewSinr')}</button>
+                      {tpRaw?.png_url && (
+                        <button className={tpView ? 'primary' : ''}
+                          onClick={showThroughputView}>{t('study.viewMbps')}</button>
+                      )}
                     </div>
                     <div className="stat-line">
                       <span className="k">{t('study.meanSinr')}</span>

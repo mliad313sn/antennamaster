@@ -114,3 +114,44 @@ def test_throughput_map_plan_reduces_interference(client):
     c1 = planned["cells"][0]["capacity_mbps"]
     assert c1 >= c0
     assert planned["plan_applied"] is True
+
+
+def test_throughput_map_renders_mbps_heatmap(client):
+    # render=True (the default) must return a fetchable Mbit/s overlay with a
+    # legend whose thresholds are absolute Mbit/s labels.
+    sites = [{"lat": 47.0, "lon": 15.0}, {"lat": 47.02, "lon": 15.02}]
+    r = client.post("/api/rf/throughput-map", json={
+        "sites": sites, "technology": "lte1800", "radius_km": 4,
+        "n_radials": 48, "n_steps": 32, "grid_n": 96, "raster_px": 256})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["png_url"].startswith("/api/rf/coverage/")
+    assert len(d["bounds"]) == 2 and len(d["bounds"][0]) == 2
+    assert len(d["legend"]) == 5
+    assert all("Mbit/s" in step["label"] for step in d["legend"])
+    assert d["raster_stats"]["peak_mbps"] <= d["raster_stats"]["ceiling_mbps"]
+    png = client.get(d["png_url"])
+    assert png.status_code == 200
+    assert png.content[:4] == b"\x89PNG"
+    # render=False keeps the response light: no raster keys at all.
+    r2 = client.post("/api/rf/throughput-map", json={
+        "sites": sites, "technology": "lte1800", "radius_km": 4,
+        "n_radials": 48, "n_steps": 32, "grid_n": 96, "render": False})
+    assert "png_url" not in r2.json()
+
+
+def test_itm_route_exposes_climate_and_refractivity(client):
+    # The NTIA engine's environment parameters must reach the algorithm:
+    # different climate / N0 => different loss on the same path.
+    base = {"lat1": 47.0, "lon1": 15.0, "lat2": 47.15, "lon2": 15.2,
+            "freq_mhz": 900, "reliability": 0.9, "samples": 128}
+    r0 = client.get("/api/terrain/itm", params=base)
+    assert r0.status_code == 200, r0.text
+    d0 = r0.json()
+    assert d0["climate"] == 5 and d0["en0"] == 314.0
+    d1 = client.get("/api/terrain/itm", params={**base, "climate": 1}).json()
+    d2 = client.get("/api/terrain/itm", params={**base, "en0": 400}).json()
+    assert d1["path_loss_db"] != d0["path_loss_db"]
+    assert d2["path_loss_db"] != d0["path_loss_db"]
+    assert client.get("/api/terrain/itm",
+                      params={**base, "climate": 9}).status_code == 422

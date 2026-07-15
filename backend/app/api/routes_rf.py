@@ -524,6 +524,8 @@ class ThroughputMapRequest(BaseModel):
     # Optional frequency plan (from /frequency-plan) applied before SINR:
     channels: list[int] | None = None
     aci_db: float = Field(30.0, ge=10, le=60)
+    render: bool = True          # also produce the Mbit/s heatmap overlay
+    raster_px: int = Field(768, ge=128, le=2048)
     n_radials: int = Field(72, ge=36, le=360)
     n_steps: int = Field(48, ge=20, le=200)
     grid_n: int = Field(128, ge=48, le=256)
@@ -615,11 +617,25 @@ def throughput_map(req: ThroughputMapRequest,
                                              req.mbps_per_user)
         cells.append(entry)
 
-    return {"cells": cells, "bandwidth_mhz": float(bw),
-            "noise_floor_dbm": round(noise_dbm, 1),
-            "overhead": req.overhead,
-            "plan_applied": req.channels is not None,
-            "technology": {**tech, "key": req.technology}}
+    out = {"cells": cells, "bandwidth_mhz": float(bw),
+           "noise_floor_dbm": round(noise_dbm, 1),
+           "overhead": req.overhead,
+           "plan_applied": req.channels is not None,
+           "technology": {**tech, "key": req.technology}}
+
+    if req.render:
+        from ..services.terrain.coverage import composite_throughput
+        png, bounds, legend, tstats = composite_throughput(
+            computed, noise_dbm, float(bw), overhead=req.overhead,
+            channels=req.channels, aci_db=req.aci_db,
+            raster_px=req.raster_px)
+        import uuid as _uuid
+        result_id = _uuid.uuid4().hex[:12]
+        results_store.save("coverage", result_id, png, {"bounds": bounds})
+        out.update({"png_url": f"/api/rf/coverage/{result_id}.png",
+                    "bounds": bounds, "legend": legend,
+                    "raster_stats": tstats})
+    return out
 
 
 # ----------------------------------------------------------- antennas (MSI)
