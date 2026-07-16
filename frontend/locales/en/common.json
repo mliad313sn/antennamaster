@@ -493,7 +493,10 @@
     "gtDbi": "TX gain to horizon dBi",
     "grDbi": "RX gain to horizon dBi",
     "interfLoss": "Interference loss",
-    "engineP452": "ITU-R P.452-18 (reference code)"
+    "engineP452": "ITU-R P.452-18 (reference code)",
+    "tabP2001": "P.2001",
+    "p2001Hint": "Official ITU-R P.2001 wide-range model (30 MHz – 50 GHz, 3 – 1000+ km): one prediction covering the FULL 0–100 % time range — ducting enhancements and deep fades in a single model. This installation reproduces the official ITU validation examples to < 1e-06 dB (see PRECISION_BENCHMARK).",
+    "engineP2001": "ITU-R P.2001 (reference code)"
   },
   "globe": {
     "view2d": "2D",

@@ -100,3 +100,52 @@ def test_rmse_gates_hold_on_replay():
         # The injected shadowing sigma must be recovered (pipeline is honest:
         # RMSE ~= sigma, not suspiciously near zero).
         assert r["rmse_db"] >= 2.0
+
+
+def test_calibration_loop_closes_end_to_end(fake_store, monkeypatch):
+    """Fit a drive-test correction, apply it to a fresh coverage study, and
+    verify the study actually shifted by the fitted offset — the closed
+    Atoll-style tuning loop, not just a reported fit."""
+    import app.api.routes_terrain as routes_terrain
+    import app.services.terrain.fusion as fusion_mod
+    from app.main import app
+    from app.services.terrain.fusion import TerrainFusionService
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(fusion_mod, "get_tile_store", lambda: fake_store)
+    monkeypatch.setattr(routes_terrain, "_fusion",
+                        TerrainFusionService(store=fake_store))
+    client = TestClient(app)
+
+    # Synthetic drive test: the "field" reads exactly 6 dB hotter than the
+    # model everywhere -> the fit must recover a +6 dB offset.
+    tx = {"lat": 47.0, "lon": 15.0}
+    pts = []
+    for i in range(12):
+        lat, lon = 47.0 + 0.004 * (i + 1), 15.0 + 0.003 * (i + 1)
+        from app.services.rf.planning import evaluate_receiver
+        from app.services.rf.technologies import get_technology
+        tech = get_technology("lte1800")
+        pred = evaluate_receiver(
+            TerrainFusionService(store=fake_store), dict(tech),
+            tx["lat"], tx["lon"], lat, lon)["rx_power_dbm"]
+        pts.append({"lat": lat, "lon": lon, "rssi_dbm": pred + 6.0})
+
+    cal = client.post("/api/rf/calibrate", json={
+        "tx_lat": tx["lat"], "tx_lon": tx["lon"], "technology": "lte1800",
+        "points": pts})
+    assert cal.status_code == 200, cal.text
+    body = cal.json()
+    assert body["calibration"]["offset_db"] == pytest.approx(6.0, abs=0.1)
+    assert body["fit"]["rms_error_offset_db"] < 0.1   # perfect synthetic fit
+
+    # Apply to coverage: peak RX must rise by the fitted correction.
+    base = {"lat": tx["lat"], "lon": tx["lon"], "technology": "lte1800",
+            "radius_km": 3, "n_radials": 36, "n_steps": 24, "raster_px": 128}
+    plain = client.post("/api/rf/coverage", json=base).json()
+    tuned = client.post("/api/rf/coverage", json={
+        **base, "calibration": body["calibration"]}).json()
+    dpeak = (tuned["stats"]["max_rx_power_dbm"]
+             - plain["stats"]["max_rx_power_dbm"])
+    assert dpeak == pytest.approx(6.0, abs=0.2), dpeak
+    assert (tuned["stats"]["served_area_fraction"]
+            >= plain["stats"]["served_area_fraction"])

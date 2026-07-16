@@ -493,7 +493,10 @@
     "gtDbi": "Gain TX vers l'horizon dBi",
     "grDbi": "Gain RX vers l'horizon dBi",
     "interfLoss": "Affaiblissement de brouillage",
-    "engineP452": "UIT-R P.452-18 (code de référence)"
+    "engineP452": "UIT-R P.452-18 (code de référence)",
+    "tabP2001": "P.2001",
+    "p2001Hint": "Modèle large-portée UIT-R P.2001 officiel (30 MHz – 50 GHz, 3 – 1000+ km) : une seule prédiction couvrant TOUTE la plage 0–100 % du temps — conduits troposphériques et évanouissements profonds dans un même modèle. Cette installation reproduit les exemples de validation officiels de l'UIT à < 1e-06 dB (voir PRECISION_BENCHMARK).",
+    "engineP2001": "UIT-R P.2001 (code de référence)"
   },
   "globe": {
     "view2d": "2D",

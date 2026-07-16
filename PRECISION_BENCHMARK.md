@@ -22,6 +22,18 @@ Published point-to-point validation case: Crystal Palace (UK), 77.8 km,
 The ITU-R P.1812 engine is the official ITU-R SG3 reference code
 (Py1812 v6) with the ITU digital maps installed from itu.int.
 
+### Official ITU validation examples (P.452-18 and P.2001)
+
+The interference (P.452-18) and wide-range (P.2001) engines are the
+official reference implementations; this installation replays the
+ITU-R software-validation examples shipped with them
+(`benchmarks/validation/`) on every run:
+
+| Recommendation | Validation cases | Worst deviation | Gate |
+|---|---|---|---|
+| ITU-R P.452-18 | 35 | 4.55e-09 dB | ≤ 1e-06 dB |
+| ITU-R P.2001 | 46 | 5.68e-14 dB | ≤ 1e-06 dB |
+
 ## B. Field accuracy — prediction vs measured drive tests
 
 | Dataset | Env | Model | N | RMSE dB | Bias dB | Std dB | RMSE after cal. | Target |

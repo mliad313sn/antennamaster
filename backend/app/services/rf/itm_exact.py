@@ -162,6 +162,52 @@ def p452_loss(distances_m, elevations_m, lats, lons,
     }
 
 
+def p2001_available() -> bool:
+    try:
+        from Py2001 import P2001  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def p2001_loss(distances_m, elevations_m, lats, lons,
+               h_tx_m: float, h_rx_m: float, freq_mhz: float,
+               time_pct: float = 50.0, gt_dbi: float = 0.0,
+               gr_dbi: float = 0.0, polarization: int = 0) -> dict:
+    """Basic transmission loss per the official ITU-R P.2001 reference code —
+    the general-purpose wide-range model (30 MHz - 50 GHz, most accurate
+    3 km - 1000+ km, full 0-100 % time range: fading AND enhancements in one
+    model, the property that makes it the modern P.1546/P.452 unifier).
+    """
+    from Py2001 import P2001
+
+    d_km = np.asarray(distances_m, dtype=np.float64) / 1000.0
+    h = np.asarray(elevations_m, dtype=np.float64)
+    lats = np.asarray(lats, dtype=np.float64)
+    lons = np.asarray(lons, dtype=np.float64)
+    f_ghz = freq_mhz / 1000.0
+    if not (0.03 <= f_ghz <= 50.0):
+        raise ValueError("P.2001 is defined for 30 MHz - 50 GHz")
+    if not (0.00001 <= time_pct <= 99.99999):
+        raise ValueError("P.2001 time percentage must be in (0, 100) %")
+
+    zone = np.full(h.shape, 4, dtype=int)          # inland (no sea mask yet)
+    lb = P2001.bt_loss(d_km, h, zone, f_ghz, float(time_pct),
+                       float(lons[-1]), float(lats[-1]),
+                       float(lons[0]), float(lats[0]),
+                       float(h_rx_m), float(h_tx_m),
+                       float(gr_dbi), float(gt_dbi), int(polarization))
+    lb = float(np.atleast_1d(lb)[0])
+    fs = 32.45 + 20 * math.log10(freq_mhz) + 20 * math.log10(max(d_km[-1], 1e-3))
+    return {
+        "engine": "itu_p2001_official",
+        "path_loss_db": round(lb, 2),
+        "free_space_db": round(fs, 2),
+        "excess_over_fs_db": round(lb - fs, 2),
+        "time_pct": time_pct,
+    }
+
+
 def p1812_loss(distances_m, elevations_m, lats, lons,
                h_tx_m: float, h_rx_m: float, freq_mhz: float,
                time_pct: float = 50.0, location_pct: float = 50.0,

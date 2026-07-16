@@ -73,6 +73,7 @@ class CoverageEngine:
                       georef: BaseGeoref | None = None,
                       k: float = K_FACTOR_DEFAULT,
                       clutter_heights_fn=None,
+                      calibration: dict | None = None,
                       progress_cb=None) -> dict:
         """Run the physics and return the polar field (no rasterization).
 
@@ -207,6 +208,11 @@ class CoverageEngine:
         rx_power = (tech["tx_power_dbm"] + tech["tx_gain_dbi"] + tech["rx_gain_dbi"]
                     + mimo - tech["losses_db"] + ant_gain - pl - diff_loss
                     - env_loss[None, :])
+        # Drive-test calibration: add the fitted offset(+slope) correction so
+        # the study is site-tuned — the Atoll-style "model tuning applied".
+        if calibration:
+            from ..rf.calibration import correction_db
+            rx_power = rx_power + correction_db(dist, calibration)[None, :]
         # Shadow-fade (location variability) margin: subtract before the
         # served test so "served" means the target location probability,
         # not the 50% median a bare link budget gives.  Sensitivity derives
@@ -235,6 +241,7 @@ class CoverageEngine:
                  k: float = K_FACTOR_DEFAULT,
                  raster_px: int = 512,
                  clutter_heights_fn=None,
+                 calibration: dict | None = None,
                  progress_cb=None) -> CoverageResult:
         polar = self.compute_polar(
             lat, lon, tech, radius_m=radius_m,
@@ -248,7 +255,7 @@ class CoverageEngine:
             foliage_depth_m=foliage_depth_m,
             rain_rate_mm_h=rain_rate_mm_h,
             clutter_pct=clutter_pct,
-            grid=grid, georef=georef, k=k,
+            grid=grid, georef=georef, k=k, calibration=calibration,
             clutter_heights_fn=clutter_heights_fn,
             progress_cb=progress_cb)
 

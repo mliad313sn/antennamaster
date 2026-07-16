@@ -16,11 +16,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   availabilityStudy, copilotAnalyzeLink, emfCompliance, emfReportPdf,
-  erlangStudy, itmStudy, p1812Study, p452Study, twowayLink,
+  erlangStudy, itmStudy, p1812Study, p2001Study, p452Study, twowayLink,
 } from '@/lib/api';
 
 type LatLng = { lat: number; lng: number };
-type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'p452' | 'avail' | 'erlang' | 'copilot';
+type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'p452' | 'p2001' | 'avail' | 'erlang' | 'copilot';
 
 export default function AdvancedStudies(
   { tx, rx, technology, onClose }:
@@ -47,6 +47,7 @@ export default function AdvancedStudies(
             <button className={tab === 'itm' ? 'active' : ''} onClick={() => setTab('itm')}>{t('advanced.tabItm')}</button>
             <button className={tab === 'p1812' ? 'active' : ''} onClick={() => setTab('p1812')}>{t('advanced.tabP1812')}</button>
             <button className={tab === 'p452' ? 'active' : ''} onClick={() => setTab('p452')}>{t('advanced.tabP452')}</button>
+            <button className={tab === 'p2001' ? 'active' : ''} onClick={() => setTab('p2001')}>{t('advanced.tabP2001')}</button>
             <button className={tab === 'avail' ? 'active' : ''} onClick={() => setTab('avail')}>{t('advanced.tabAvail')}</button>
             <button className={tab === 'erlang' ? 'active' : ''} onClick={() => setTab('erlang')}>{t('advanced.tabErlang')}</button>
             <button className={tab === 'copilot' ? 'active' : ''} onClick={() => setTab('copilot')}>{t('advanced.tabCopilot')}</button>
@@ -56,6 +57,7 @@ export default function AdvancedStudies(
           {tab === 'itm' && <ItmTab tx={tx} rx={rx} />}
           {tab === 'p1812' && <P1812Tab tx={tx} rx={rx} />}
           {tab === 'p452' && <P452Tab tx={tx} rx={rx} />}
+          {tab === 'p2001' && <P2001Tab tx={tx} rx={rx} />}
           {tab === 'avail' && <AvailTab tx={tx} rx={rx} />}
           {tab === 'erlang' && <ErlangTab />}
           {tab === 'copilot' && <CopilotTab tx={tx} rx={rx} technology={technology} />}
@@ -347,6 +349,44 @@ function P452Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
             <tr><td>{t('advanced.excessFs')}</td><td>{res.excess_over_fs_db} dB</td></tr>
             <tr><td>{t('advanced.timePct')}</td><td>{res.time_pct} %</td></tr>
             <tr><td>{t('advanced.worldcover')}</td><td>{res.clutter_applied ? '✓' : '—'}</td></tr>
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ P.2001
+function P2001Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
+  const { t } = useTranslation();
+  const [freq, setFreq] = useState('600');
+  const [timePct, setTimePct] = useState('50');
+  const { busy, err, res, run } = useRun<any>();
+  const go = () => tx && rx && run(() => p2001Study({
+    lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
+    freq_mhz: +freq, time_pct: +timePct,
+  }));
+  return (
+    <div>
+      <p className="hint">{t('advanced.p2001Hint')}</p>
+      <NeedMarkers tx={tx} rx={rx} />
+      <div className="field-grid">
+        <label>{t('advanced.freqMhz')}<input value={freq} onChange={(e) => setFreq(e.target.value)} /></label>
+        <label>{t('advanced.timePct')}<input value={timePct}
+          title="Full 0-100 % range in one model: 0.01 % = rare enhancements (ducting), 99.99 % = deep-fade planning"
+          onChange={(e) => setTimePct(e.target.value)} /></label>
+      </div>
+      <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
+        {busy ? t('advanced.running') : t('advanced.run')}
+      </button>
+      {err && <div className="warning-box">{err}</div>}
+      {res && (
+        <table className="result-table">
+          <tbody>
+            <tr><td>{t('advanced.pathLoss')}</td><td><b>{res.path_loss_db} dB</b> · {t('advanced.engineP2001')}</td></tr>
+            <tr><td>{t('advanced.freeSpace')}</td><td>{res.free_space_db} dB</td></tr>
+            <tr><td>{t('advanced.excessFs')}</td><td>{res.excess_over_fs_db} dB</td></tr>
+            <tr><td>{t('advanced.timePct')}</td><td>{res.time_pct} %</td></tr>
           </tbody>
         </table>
       )}

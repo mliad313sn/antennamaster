@@ -19,6 +19,15 @@ from .routes_terrain import resolve_fusion
 router = APIRouter(prefix="/api/rf", tags=["rf"])
 
 
+class CalibrationIn(BaseModel):
+    """A drive-test fit (from /api/rf/calibrate) applied to a study —
+    the closed calibration loop: fit once, run site-tuned studies after."""
+    mode: str = Field("offset", pattern="^(offset|offset_slope)$")
+    offset_db: float = Field(0.0, ge=-40, le=40)
+    slope_intercept_db: float = Field(0.0, ge=-40, le=40)
+    slope_per_decade_db: float = Field(0.0, ge=-30, le=30)
+
+
 class CoverageRequest(BaseModel):
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
@@ -59,6 +68,8 @@ class CoverageRequest(BaseModel):
     # Simulate on the surface model (DSM) instead of bare terrain;
     # requires AM_DSM_URL to be configured on the server.
     surface: bool = False
+    # Drive-test calibration correction (from /api/rf/calibrate's fit):
+    calibration: CalibrationIn | None = None
     # Simulation resolution:
     n_radials: int = Field(180, ge=36, le=720)
     n_steps: int = Field(100, ge=20, le=400)
@@ -194,6 +205,7 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
             k=req.k_factor,
             grid=grid, georef=georef,
             raster_px=req.raster_px,
+            calibration=req.calibration.model_dump() if req.calibration else None,
             clutter_heights_fn=clutter_fn,
             progress_cb=progress_cb,
         )
@@ -384,10 +396,20 @@ def calibrate(req: CalibrateRequest,
     from ..services.rf.calibration import calibrate_drive_test
     try:
         with jobs.sim_slot():
-            return calibrate_drive_test(
+            result = calibrate_drive_test(
                 resolve_fusion(req.surface), tech, req.tx_lat, req.tx_lon,
                 [p.model_dump() for p in req.points], k=req.k_factor,
                 grid=grid, georef=georef)
+            fit = result["fit"]
+            # Ready-to-apply correction: POST this object back as the
+            # "calibration" field of /coverage to run site-tuned studies.
+            result["calibration"] = {
+                "mode": fit["recommended"],
+                "offset_db": fit["offset_db"],
+                "slope_intercept_db": fit["slope_intercept_db"],
+                "slope_per_decade_db": fit["slope_per_decade_db"],
+            }
+            return result
     except jobs.SimBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
     except ValueError as exc:

@@ -63,9 +63,13 @@ symmetric — at $0 instead of a dongle-licensed contract.
 ### Vs. Forsk Atoll — the calibration loop without the geodata invoice
 Atoll's measurement module (drive-test import → statistical comparison →
 automatic model tuning) defined the calibration workflow. AntennaMaster ships
-the same loop — CSV/GPX ingestion, offset/slope fitting, prediction-vs-measured
-statistics — and then goes one step Atoll does not: the fit's RMSE becomes a
-**CI gate** (8 dB urban / 6 dB rural) so accuracy regressions block the build.
+the same **closed** loop — CSV/GPX ingestion, offset/slope fitting, and the
+fitted correction applied directly to subsequent coverage studies (the
+`/calibrate` response returns an apply-ready object the coverage engine
+consumes; the round trip is CI-tested: a +6 dB field bias is recovered by the
+fit and shifts the tuned study by exactly +6 dB) — and then goes one step
+Atoll does not: the fit's RMSE becomes a **CI gate** (8 dB urban / 6 dB
+rural) so accuracy regressions block the build.
 Atoll's clutter story assumes purchased geodata; AntennaMaster pulls ESA
 WorldCover 10 m per pixel for free, and takes drone LiDAR directly. What Atoll
 retains (see Concessions) is national-scale Monte Carlo and AFP/ACP maturity —
@@ -151,13 +155,16 @@ current:
 3. **BIM/IFC ingestion (Ranplan, iBwave).** Revit/ArchiCAD/IFC import and
    automatic 2D→3D building reconstruction have no AntennaMaster equivalent;
    we ingest DXF floor plans and LiDAR point clouds.
-4. **Interference coordination models (HTZ).** *Partially closed since this
-   benchmark was first written:* AntennaMaster now runs the **official ITU-R
-   P.452-18 reference code** (clear-air interference, 0.1–50 GHz, worst-case
-   ducting percentages, WorldCover clutter input) with physics-invariant CI
-   tests. P.2001, P.1546, groundwave/HF below 30 MHz and regulator-grade
-   coordination *workflows* (licensing databases, batch coordination) remain
-   HTZ's ground.
+4. **Interference coordination models (HTZ).** *Substantially closed since
+   this benchmark was first written:* AntennaMaster now runs the **official
+   ITU-R P.452-18 reference code** (clear-air interference, 0.1–50 GHz,
+   worst-case ducting percentages, WorldCover clutter input) AND the
+   **official ITU-R P.2001 wide-range model** (30 MHz–50 GHz, 3–1000+ km,
+   full 0–100 % time range) — and, unlike any incumbent, **replays the
+   official ITU validation examples in CI**: P.452-18 within 4.6e-09 dB over
+   35 cases, P.2001 within 5.7e-14 dB over 46 cases (gate ≤ 1e-06). P.1546,
+   groundwave/HF below 30 MHz and regulator-grade coordination *workflows*
+   (licensing databases, batch coordination) remain HTZ's ground.
 5. **Model breadth (HTZ).** 50+ models vs AntennaMaster's ~10 engines.
    AntennaMaster's position is depth-of-proof over breadth-of-menu, but a
    consultant needing P.533 HF circuits today needs HTZ.

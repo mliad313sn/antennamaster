@@ -59,6 +59,67 @@ def itm_exactness() -> list[dict]:
     return rows
 
 
+# ------------------------------------------- A2. ITU reference validation
+VALIDATION = ROOT / "benchmarks" / "validation"
+
+
+def p452_validation() -> dict | None:
+    """Replay the official ITU-R P.452-18 validation example through the
+    installed reference engine; return the worst deviation."""
+    try:
+        from Py452 import P452
+    except Exception:
+        return None
+    import csv
+    prof_rows = list(csv.reader(
+        (VALIDATION / "p452_profile.csv").open()))[1:]
+    d = np.array([float(r[0]) for r in prof_rows])
+    h = np.array([float(r[1]) for r in prof_rows])
+    cover = np.array([float(r[2]) for r in prof_rows])
+    zone = np.array([int(r[4]) for r in prof_rows])
+    g = h + cover
+    worst, n = 0.0, 0
+    with (VALIDATION / "p452_results.csv").open() as f:
+        for row in csv.DictReader(f):
+            lb = P452.bt_loss(
+                float(row["f (GHz)"]), float(row["p (%)"]), d, h, g, zone,
+                float(row["htg (m)"]), float(row["hrg (m)"]),
+                float(row["phit_e (deg)"]), float(row["phit_n (deg)"]),
+                float(row["phir_e (deg)"]), float(row["phir_n (deg)"]),
+                float(row["Gt (dBi)"]), float(row["Gr (dBi)"]),
+                int(row["pol (1-h/2-v)"]),
+                float(row["dct (km)"]), float(row["dcr (km)"]),
+                float(row["press (hPa)"]), float(row["temp (deg C)"]))
+            worst = max(worst, abs(float(np.atleast_1d(lb)[0])
+                                   - float(row["Lb"])))
+            n += 1
+    return {"recommendation": "ITU-R P.452-18",
+            "cases": n, "worst_deviation_db": worst}
+
+
+def p2001_validation() -> dict | None:
+    """Replay the official ITU-R P.2001 validation example subset through the
+    installed reference engine; return the worst deviation."""
+    try:
+        from Py2001 import P2001
+    except Exception:
+        return None
+    import pandas as pd
+    prof = pd.read_csv(VALIDATION / "p2001_profile.csv", skiprows=9,
+                       names=["d", "h", "z"])
+    res = pd.read_csv(VALIDATION / "p2001_results.csv")
+    worst = 0.0
+    for _, row in res.iterrows():
+        lb = P2001.bt_loss(prof.d.to_numpy(), prof.h.to_numpy(),
+                           prof.z.to_numpy(), row.GHz, row.Tpc,
+                           row.Phire, row.Phirn, row.Phite, row.Phitn,
+                           row.Hrg, row.Htg, row.Grx, row.Gtx,
+                           int(row.FlagVp))
+        worst = max(worst, abs(float(np.atleast_1d(lb)[0]) - float(row.Lb)))
+    return {"recommendation": "ITU-R P.2001",
+            "cases": len(res), "worst_deviation_db": worst}
+
+
 # ----------------------------------------------------- B. field accuracy
 def replay_dataset(ds: dict) -> dict:
     from app.services.rf.calibration import calibrate_model
@@ -147,6 +208,24 @@ def build_report() -> str:
         "",
         "The ITU-R P.1812 engine is the official ITU-R SG3 reference code",
         "(Py1812 v6) with the ITU digital maps installed from itu.int.",
+        "",
+        "### Official ITU validation examples (P.452-18 and P.2001)",
+        "",
+        "The interference (P.452-18) and wide-range (P.2001) engines are the",
+        "official reference implementations; this installation replays the",
+        "ITU-R software-validation examples shipped with them",
+        "(`benchmarks/validation/`) on every run:",
+        "",
+        "| Recommendation | Validation cases | Worst deviation | Gate |",
+        "|---|---|---|---|",
+    ]
+    for v in (p452_validation(), p2001_validation()):
+        if v is None:
+            lines.append("| (engine not installed) | — | — | — |")
+        else:
+            lines.append(f"| {v['recommendation']} | {v['cases']} | "
+                         f"{v['worst_deviation_db']:.2e} dB | ≤ 1e-06 dB |")
+    lines += [
         "",
         "## B. Field accuracy — prediction vs measured drive tests",
         "",

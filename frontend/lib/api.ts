@@ -444,6 +444,11 @@ export async function p452Study(params: Record<string, string | number | boolean
   return getWithParams('/api/terrain/p452', params);
 }
 
+// Official ITU-R P.2001 wide-range model (30 MHz - 50 GHz, 0-100 % time).
+export async function p2001Study(params: Record<string, string | number | boolean>): Promise<any> {
+  return getWithParams('/api/terrain/p2001', params);
+}
+
 // ITU-R P.530 annual availability of a PtP hop.
 export async function availabilityStudy(params: Record<string, string | number | boolean>): Promise<any> {
   return getWithParams('/api/terrain/availability', params);

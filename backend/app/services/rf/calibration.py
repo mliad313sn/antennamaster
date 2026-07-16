@@ -82,6 +82,18 @@ def apply_correction(predicted_dbm: float, distance_m: float,
     return predicted_dbm + fit["offset_db"]
 
 
+def correction_db(distances_m, fit: dict, mode: str | None = None):
+    """Vectorized fitted correction (dB to ADD to predictions) — the hook the
+    coverage engine uses to run site-tuned studies after a drive-test fit."""
+    d = np.asarray(distances_m, dtype=np.float64)
+    mode = mode or fit.get("recommended", "offset")
+    if mode == "offset_slope":
+        logd = np.log10(np.maximum(d, 1.0) / REF_DISTANCE_M)
+        return (float(fit.get("slope_intercept_db", 0.0))
+                + float(fit.get("slope_per_decade_db", 0.0)) * logd)
+    return np.full(d.shape, float(fit.get("offset_db", 0.0)))
+
+
 def calibrate_drive_test(fusion, tech: dict, tx_lat: float, tx_lon: float,
                          points: list[dict], k: float = 4.0 / 3.0,
                          grid=None, georef=None) -> dict:

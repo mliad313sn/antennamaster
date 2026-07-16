@@ -289,9 +289,13 @@ The exact engines are proven where a public reference exists: the **NTIA ITM**
 0.0 dB on all six quantiles (CI-gated ≤ 0.1 dB), and **ITU-R P.1812** runs the
 official SG3 reference code with the ITU digital maps; both are exposed in the
 UI with their environment parameters (climate zone, N₀, time/location
-percentages), and **ITU-R P.452-18** (official reference code, clear-air
+percentages), **ITU-R P.452-18** (official reference code, clear-air
 interference coordination 0.1–50 GHz with worst-case ducting time
-percentages) is UI-exposed alongside them. P.1546 / P.2001 remain absent.
+percentages) and **ITU-R P.2001** (official wide-range model, 30 MHz–50 GHz,
+full 0–100 % time range) are UI-exposed alongside them — with the official
+ITU validation examples replayed in CI (worst deviation < 1e-06 dB). The
+drive-test calibration loop is closed: a fitted offset/slope correction is
+applied directly to subsequent coverage studies. P.1546 remains absent.
 Per-pixel clutter comes
 from **ESA WorldCover 10 m** (P.1812 representative heights) and uploaded
 building footprints / **drone LiDAR** DSMs; a global 3D building database is
@@ -311,8 +315,9 @@ is offline; its optional prose narrator needs an API key (or a local model).
 Nominatim place search and first-use WorldCover/DEM tile fetches require
 internet.
 
-**On the roadmap, not yet built:** P.2001/P.1546 and regulator-grade
-coordination workflows (P.452-18 point-to-point interference is shipped);
+**On the roadmap, not yet built:** P.1546 and regulator-grade coordination
+workflows (P.452-18 interference and P.2001 wide-range are shipped and
+validation-anchored);
 real drive-test campaigns to close the field-RMSE gates; catalog growth to
 500+ via further vendor scrapers; vision-assisted plan/photo reading; agentic
 optimization driving site-search/auto-placement toward a coverage-vs-CAPEX

@@ -511,6 +511,52 @@ def p452_study(
         raise HTTPException(502, f"P.452 computation failed: {exc}") from exc
 
 
+@router.get("/p2001")
+def p2001_study(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    h_tx_m: float = Query(30.0, gt=0, le=8000),
+    h_rx_m: float = Query(30.0, gt=0, le=8000),
+    freq_mhz: float = Query(600.0, ge=30, le=50000),
+    time_pct: float = Query(50.0, gt=0, lt=100),
+    gt_dbi: float = Query(0.0, ge=-30, le=60),
+    gr_dbi: float = Query(0.0, ge=-30, le=60),
+    polarization: int = Query(0, ge=0, le=1),
+    samples: int = Query(256, ge=32, le=2048),
+    dxf_id: str | None = None, surface: bool = Query(False),
+    user: dict | None = Depends(current_user),
+) -> dict:
+    """ITU-R P.2001 general-purpose wide-range loss (official reference code,
+    30 MHz - 50 GHz, 3 - 1000+ km) over the fused profile.  The single model
+    covering the FULL 0-100 % time range — enhancements (ducting) and fading
+    in one prediction, the modern unifier of the P.1546/P.452 families."""
+    from ..services.rf.itm_exact import p2001_available, p2001_loss
+    if not p2001_available():
+        raise HTTPException(503, "P.2001 reference code / ITU digital maps "
+                                 "not installed — run tools/fetch_itu_maps.py")
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+    try:
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=samples,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+    try:
+        return {"freq_mhz": freq_mhz,
+                **p2001_loss(prof.distances_m, prof.elevations_m,
+                             prof.lats, prof.lons, h_tx_m, h_rx_m, freq_mhz,
+                             time_pct=time_pct, gt_dbi=gt_dbi, gr_dbi=gr_dbi,
+                             polarization=polarization)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"P.2001 computation failed: {exc}") from exc
+
+
 @router.get("/availability")
 def link_availability_study(
     lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),

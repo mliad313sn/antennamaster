@@ -41,6 +41,7 @@ def main() -> int:
     if (pkg_dir / "P1812.npz").exists():
         print(f"maps already installed: {pkg_dir / 'P1812.npz'}")
         _setup_p452(maps_dir)
+        _setup_p2001()
         return 0
 
     print(f"downloading ITU digital maps from {ITU_ZIP} …")
@@ -54,6 +55,7 @@ def main() -> int:
                    cwd=pkg_dir, check=True)
     print(f"built {pkg_dir / 'P1812.npz'} — P.1812 reference engine ready")
     _setup_p452(maps_dir)
+    _setup_p2001()
     return 0
 
 
@@ -82,6 +84,35 @@ def _setup_p452(p1812_maps: Path) -> None:
     subprocess.run([sys.executable, "initiate_digital_maps.py"],
                    cwd=pkg_dir, check=True)
     print(f"built {pkg_dir / 'P452.npz'} — P.452-18 reference engine ready")
+
+
+P2001_ZIP = ("https://www.itu.int/dms_pubrec/itu-r/rec/p/"
+             "R-REC-P.2001-6-202509-I!!ZIP-E.zip")
+
+
+def _setup_p2001() -> None:
+    """P.2001 has its own integral-map package on itu.int; if the official
+    Py2001 package is installed, download and build its .npz."""
+    import importlib.util
+    spec = importlib.util.find_spec("Py2001")
+    if spec is None:
+        print("Py2001 not installed (optional): "
+              "pip install git+https://github.com/eeveetza/Py2001")
+        return
+    pkg_dir = Path(spec.origin).parent
+    if (pkg_dir / "P2001.npz").exists():
+        print(f"P.2001 maps already installed: {pkg_dir / 'P2001.npz'}")
+        return
+    maps_dir = pkg_dir / "maps"
+    maps_dir.mkdir(exist_ok=True)
+    print(f"downloading ITU P.2001 digital maps from {P2001_ZIP} …")
+    with urllib.request.urlopen(P2001_ZIP, timeout=300) as r:
+        data = r.read()
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        z.extractall(maps_dir)
+    subprocess.run([sys.executable, "initiate_digital_maps.py"],
+                   cwd=pkg_dir, check=True)
+    print(f"built {pkg_dir / 'P2001.npz'} — P.2001 reference engine ready")
 
 
 if __name__ == "__main__":
