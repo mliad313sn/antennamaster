@@ -552,5 +552,8 @@
     "marginal": "Marginal",
     "none": "No coverage",
     "peak": "Peak"
+  },
+  "a11y": {
+    "skipToMain": "Skip to main content"
   }
 }

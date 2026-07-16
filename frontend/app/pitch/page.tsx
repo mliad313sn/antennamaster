@@ -154,7 +154,7 @@ export default function Pitch() {
   return (
     <div className="dash-shell">
       <DashNav active="pitch" />
-      <main className="dash-main">
+      <main id="main" className="dash-main">
         <h1>Pitch interface</h1>
         <p className="hint">Compare two deployment options side by side, with live
           simulation progress, budget and payback — then export the branded PDF.

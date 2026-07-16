@@ -2,6 +2,7 @@
 
 /** Login / registration modal with role selection and plan matrix. */
 import { useEffect, useState } from 'react';
+import { useDialog } from '@/lib/useDialog';
 import {
   fetchTiers, login, register, setTier, type TierInfo, type User,
 } from '@/lib/saas';
@@ -22,11 +23,7 @@ export default function AuthPanel({ onClose, onUser }: {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => { fetchTiers().then(setTiers).catch(() => {}); }, []);
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onClose]);
+  const dialogRef = useDialog(onClose);
 
   async function submit() {
     setBusy(true); setError(null);
@@ -44,10 +41,12 @@ export default function AuthPanel({ onClose, onUser }: {
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 620 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ width: 620 }} onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby="auth-title"
+        ref={dialogRef} tabIndex={-1}>
         <div className="modal-head">
-          <h2>{mode === 'login' ? 'Sign in' : 'Create your workspace'}</h2>
-          <button onClick={onClose} aria-label="Close">✕</button>
+          <h2 id="auth-title">{mode === 'login' ? 'Sign in' : 'Create your workspace'}</h2>
+          <button onClick={onClose} aria-label={mode === 'login' ? 'Close sign-in dialog' : 'Close registration dialog'}>✕</button>
         </div>
         <div className="modal-body">
           <div className="mode-tabs">

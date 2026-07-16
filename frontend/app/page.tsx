@@ -420,7 +420,7 @@ export default function Home() {
                       color: 'var(--accent-soft-ink)' }}>{saveMsg}</div>
       )}
 
-      <div className="app-main">
+      <main id="main" className="app-main">
         <aside className="sidebar">
           {uiMode === 'simple' && (
             <SimpleMode onApply={applyScenario} onExpert={() => setUiMode('expert')} />
@@ -709,7 +709,7 @@ export default function Home() {
             </div>
           )}
         </div>
-      </div>
+      </main>
 
       {wizardOpen && (
         <DxfWizard

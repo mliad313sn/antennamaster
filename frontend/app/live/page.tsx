@@ -14,7 +14,9 @@ export default function LivePage() {
         <Link href="/">← AntennaMaster</Link>
         <span>Live Operations</span>
       </div>
-      <LiveOps />
+      <main id="main" style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <LiveOps />
+      </main>
     </div>
   );
 }

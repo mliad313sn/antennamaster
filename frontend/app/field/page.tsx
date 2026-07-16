@@ -107,7 +107,7 @@ export default function Field() {
   return (
     <div className="dash-shell field-shell">
       <DashNav active="field" />
-      <main className="dash-main tactical">
+      <main id="main" className="dash-main tactical">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <h1 style={{ margin: 0 }}>Tactical view</h1>
           <span className={`conn-pill ${online ? 'on' : 'off'}`}>

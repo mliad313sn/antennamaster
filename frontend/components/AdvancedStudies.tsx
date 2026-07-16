@@ -12,8 +12,9 @@
  *
  * Link-based tabs use the TX/RX markers already placed on the map.
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDialog } from '@/lib/useDialog';
 import {
   availabilityStudy, copilotAnalyzeLink, emfCompliance, emfReportPdf,
   erlangStudy, itmStudy, p1812Study, p2001Study, p452Study, twowayLink,
@@ -28,29 +29,27 @@ export default function AdvancedStudies(
 ) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('twoway');
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onClose]);
+  const dialogRef = useDialog(onClose);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 820 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ width: 820 }} onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby="advanced-title"
+        ref={dialogRef} tabIndex={-1}>
         <div className="modal-head">
-          <h2>{t('advanced.title')}</h2>
+          <h2 id="advanced-title">{t('advanced.title')}</h2>
           <button onClick={onClose} aria-label={t('advanced.close')}>✕</button>
         </div>
         <div className="modal-body">
           <div className="mode-tabs">
-            <button className={tab === 'twoway' ? 'active' : ''} onClick={() => setTab('twoway')}>{t('advanced.tabTwoway')}</button>
-            <button className={tab === 'emf' ? 'active' : ''} onClick={() => setTab('emf')}>{t('advanced.tabEmf')}</button>
-            <button className={tab === 'itm' ? 'active' : ''} onClick={() => setTab('itm')}>{t('advanced.tabItm')}</button>
-            <button className={tab === 'p1812' ? 'active' : ''} onClick={() => setTab('p1812')}>{t('advanced.tabP1812')}</button>
-            <button className={tab === 'p452' ? 'active' : ''} onClick={() => setTab('p452')}>{t('advanced.tabP452')}</button>
-            <button className={tab === 'p2001' ? 'active' : ''} onClick={() => setTab('p2001')}>{t('advanced.tabP2001')}</button>
-            <button className={tab === 'avail' ? 'active' : ''} onClick={() => setTab('avail')}>{t('advanced.tabAvail')}</button>
-            <button className={tab === 'erlang' ? 'active' : ''} onClick={() => setTab('erlang')}>{t('advanced.tabErlang')}</button>
-            <button className={tab === 'copilot' ? 'active' : ''} onClick={() => setTab('copilot')}>{t('advanced.tabCopilot')}</button>
+            <button className={tab === 'twoway' ? 'active' : ''} aria-pressed={tab === 'twoway'} onClick={() => setTab('twoway')}>{t('advanced.tabTwoway')}</button>
+            <button className={tab === 'emf' ? 'active' : ''} aria-pressed={tab === 'emf'} onClick={() => setTab('emf')}>{t('advanced.tabEmf')}</button>
+            <button className={tab === 'itm' ? 'active' : ''} aria-pressed={tab === 'itm'} onClick={() => setTab('itm')}>{t('advanced.tabItm')}</button>
+            <button className={tab === 'p1812' ? 'active' : ''} aria-pressed={tab === 'p1812'} onClick={() => setTab('p1812')}>{t('advanced.tabP1812')}</button>
+            <button className={tab === 'p452' ? 'active' : ''} aria-pressed={tab === 'p452'} onClick={() => setTab('p452')}>{t('advanced.tabP452')}</button>
+            <button className={tab === 'p2001' ? 'active' : ''} aria-pressed={tab === 'p2001'} onClick={() => setTab('p2001')}>{t('advanced.tabP2001')}</button>
+            <button className={tab === 'avail' ? 'active' : ''} aria-pressed={tab === 'avail'} onClick={() => setTab('avail')}>{t('advanced.tabAvail')}</button>
+            <button className={tab === 'erlang' ? 'active' : ''} aria-pressed={tab === 'erlang'} onClick={() => setTab('erlang')}>{t('advanced.tabErlang')}</button>
+            <button className={tab === 'copilot' ? 'active' : ''} aria-pressed={tab === 'copilot'} onClick={() => setTab('copilot')}>{t('advanced.tabCopilot')}</button>
           </div>
           {tab === 'twoway' && <TwoWayTab tx={tx} rx={rx} />}
           {tab === 'emf' && <EmfTab />}

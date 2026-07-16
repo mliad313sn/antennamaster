@@ -9,7 +9,7 @@
   --input-bg: #ffffff;
   --ink-primary: #0b0b0b;
   --ink-secondary: #52514e;
-  --ink-muted: #898781;
+  --ink-muted: #6f6d67;   /* >=4.5:1 on both light surfaces */
   --hairline: #e1e0d9;
   --baseline: #c3c2b7;
   --border: rgba(11, 11, 11, 0.10);
@@ -22,6 +22,13 @@
   --dxf-soft: #fdeae2;
   --dxf-soft-ink: #b8481c;
 
+  --focus-ring: #2a78d6;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  --radius-s: 6px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+  --shadow-1: 0 1px 4px rgba(11, 11, 11, 0.08);
+  --shadow-2: 0 8px 28px rgba(11, 11, 11, 0.16);
   --status-warning: #b45309;
   --status-warning-bg: #fef3c7;
   --status-warning-border: #f2d9a0;
@@ -55,6 +62,9 @@
     --dxf: #d95926;
     --dxf-soft: #3a1e12;
     --dxf-soft-ink: #f09a72;
+    --focus-ring: #5598e7;
+    --shadow-1: 0 1px 4px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.55);
     --status-warning: #fab219;
     --status-warning-bg: #2b2210;
     --status-warning-border: #574413;
@@ -68,6 +78,9 @@
 }
 :root[data-theme='dark'] {
   color-scheme: dark;
+  --focus-ring: #5598e7;
+  --shadow-1: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 28px rgba(0, 0, 0, 0.55);
   --surface-1: #1a1a19;
   --surface-2: #262624;
   --page: #0d0d0d;
@@ -97,6 +110,23 @@
 
 * { box-sizing: border-box; }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Skip link: first tab stop, visible only when focused. */
+.skip-link {
+  position: absolute; left: 8px; top: -48px; z-index: 5000;
+  background: var(--accent); color: #fff; font-weight: 650; font-size: 13px;
+  padding: 8px 14px; border-radius: 0 0 8px 8px; text-decoration: none;
+  transition: top 120ms ease-out;
+}
+.skip-link:focus-visible { top: 0; outline: 2px solid var(--focus-ring); }
+
 html, body {
   margin: 0;
   padding: 0;
@@ -117,7 +147,18 @@ button {
   padding: 6px 12px;
 }
 button:hover:not(:disabled) { background: var(--surface-2); }
+button:active:not(:disabled) { transform: translateY(0.5px); }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* One keyboard-focus language everywhere: a 2px ring in the accent hue.
+   :focus-visible only — mouse clicks stay quiet, keyboards always see it. */
+button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, a:focus-visible, [role='button']:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.file-btn:focus-within { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 button.primary {
   background: var(--accent);
   border-color: var(--accent);
@@ -129,14 +170,17 @@ input, select {
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--baseline);
-  border-radius: 6px;
+  border-radius: var(--radius-s);
   background: var(--input-bg);
   color: var(--ink-primary);
   width: 100%;
+  min-width: 0;                      /* let flex rows shrink cleanly */
 }
+input[type='number'] { font-variant-numeric: tabular-nums; }
+::selection { background: var(--accent-soft); color: var(--accent-soft-ink); }
 label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bottom: 2px; }
 
-.app-shell { display: flex; flex-direction: column; height: 100vh; }
+.app-shell { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 .app-header {
   display: flex; align-items: center; gap: 16px;
   padding: 10px 16px; background: var(--surface-1);
@@ -156,7 +200,7 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 
 .app-main { display: flex; flex: 1; min-height: 0; }
 .sidebar {
-  width: 320px; flex-shrink: 0; overflow-y: auto;
+  width: 320px; flex-shrink: 0; overflow-y: auto; overscroll-behavior: contain;
   background: var(--surface-1); border-right: 1px solid var(--hairline);
   padding: 14px; display: flex; flex-direction: column; gap: 14px;
 }
@@ -179,33 +223,33 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .globe3d-canvas .cesium-widget-credits { display: none !important; }
 .globe3d-bar {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 12px; background: var(--surface-1); color: var(--ink);
+  padding: 6px 12px; background: var(--surface-1); color: var(--ink-primary);
   font-weight: 600; font-size: 13px;
 }
 .globe3d-bar button {
-  padding: 4px 12px; border: 1px solid var(--border, #345);
-  background: transparent; color: var(--ink); border-radius: 6px; cursor: pointer;
+  padding: 4px 12px; border: 1px solid var(--border);
+  background: transparent; color: var(--ink-primary); border-radius: 6px; cursor: pointer;
 }
 .globe3d-error {
   position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-  z-index: 10; background: var(--surface-1); color: var(--ink);
+  z-index: 10; background: var(--surface-1); color: var(--ink-primary);
   padding: 16px 20px; border-radius: 10px; max-width: 420px; text-align: center;
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
 }
 .globe3d-error p { color: var(--ink-muted); font-size: 13px; margin-top: 6px; }
 
 /* Live Operations dashboard */
-.live-page { display: flex; flex-direction: column; height: 100vh; }
+.live-page { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
 .live-topbar {
   display: flex; gap: 16px; align-items: center; padding: 10px 16px;
-  background: var(--surface-1); border-bottom: 1px solid var(--border, #223);
+  background: var(--surface-1); border-bottom: 1px solid var(--hairline);
   font-weight: 600;
 }
 .live-topbar a { color: var(--accent, #2a78d6); text-decoration: none; }
 .liveops { display: flex; flex: 1; min-height: 0; }
 .liveops-side {
   width: 340px; flex-shrink: 0; overflow-y: auto; padding: 14px;
-  background: var(--surface-1); border-right: 1px solid var(--border, #223);
+  background: var(--surface-1); border-right: 1px solid var(--hairline);
 }
 .liveops-map { flex: 1; min-width: 0; }
 .liveops .legend-row { display: flex; gap: 14px; margin: 12px 0; font-size: 12px; flex-wrap: wrap; }
@@ -277,16 +321,17 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 }
 .stat-line { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
 .stat-line .k { color: var(--ink-secondary); }
-.stat-line .v { font-variant-numeric: tabular-nums; font-weight: 600; }
+.stat-line .v { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; }
 
 /* Simple/Expert mode toggle + locale switcher (header segmented controls) */
 .mode-toggle, .locale-switch {
   display: inline-flex; border: 1px solid var(--hairline); border-radius: 8px;
-  overflow: hidden; background: var(--surface-1);
+  overflow: hidden; background: var(--surface-1); flex-shrink: 0;
 }
 .mode-toggle button, .locale-switch button {
   border: none; background: transparent; color: var(--ink-secondary);
-  font-size: 12px; font-weight: 600; padding: 5px 11px; cursor: pointer;
+  font-size: 12px; font-weight: 600; padding: 5px 12px; cursor: pointer;
+  white-space: nowrap;
 }
 .mode-toggle button.active, .locale-switch button.active {
   background: var(--accent); color: #fff;
@@ -329,11 +374,11 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase; color: var(--ink-secondary);
 }
-.gis-export-hint { font-size: 10.5px; color: var(--ink-muted); }
+.gis-export-hint { font-size: 11px; color: var(--ink-muted); }
 
 /* Connectivity pill (field tactical view) */
 .conn-pill {
-  font-family: var(--mono, ui-monospace, monospace); font-size: 11px;
+  font-family: var(--mono); font-size: 11px;
   padding: 3px 10px; border-radius: 20px; letter-spacing: 0.03em; font-weight: 600;
 }
 .conn-pill.on { background: rgba(26,138,74,0.18); color: #3fbd6f; }
@@ -347,8 +392,8 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   font-variant-numeric: tabular-nums;
 }
 .batch-table th { color: var(--ink-secondary); font-weight: 600; position: sticky; top: 0;
-  background: var(--surface); }
-.batch-table tbody tr:hover { background: var(--surface-hover, rgba(127,127,127,0.08)); }
+  background: var(--surface-1); }
+.batch-table tbody tr:hover { background: var(--surface-2); }
 
 /* Modal (DXF wizard) */
 .modal-backdrop {
@@ -356,16 +401,18 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   display: flex; align-items: center; justify-content: center; z-index: 2000;
 }
 .modal {
-  background: var(--surface-1); border-radius: 12px; width: 560px;
+  background: var(--surface-1); border-radius: var(--radius-l); width: 560px;
   max-width: calc(100vw - 32px); max-height: calc(100vh - 64px);
-  display: flex; flex-direction: column; box-shadow: 0 18px 50px rgba(0,0,0,0.25);
+  max-height: calc(100dvh - 64px);
+  display: flex; flex-direction: column; box-shadow: var(--shadow-2);
+  outline: none;                      /* container is focused on open */
 }
 .modal-head {
   padding: 14px 18px; border-bottom: 1px solid var(--hairline);
   display: flex; justify-content: space-between; align-items: center;
 }
 .modal-head h2 { margin: 0; font-size: 15px; }
-.modal-body { padding: 16px 18px; overflow-y: auto; }
+.modal-body { padding: 16px 18px; overflow-y: auto; overscroll-behavior: contain; }
 .modal-foot {
   padding: 12px 18px; border-top: 1px solid var(--hairline);
   display: flex; justify-content: space-between; gap: 8px;
@@ -388,13 +435,48 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .layer-row .meta { color: var(--ink-muted); font-size: 11px; }
 .layer-row .name { font-weight: 600; flex: 1; }
 
-.mode-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-.mode-tabs button { flex: 1; font-size: 12px; padding: 8px 6px; }
+.mode-tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.mode-tabs button { flex: 1 1 auto; min-width: 84px; font-size: 12px; padding: 8px 6px; }
 .mode-tabs button.active {
   border-color: var(--accent); color: var(--accent); font-weight: 650;
   background: var(--accent-soft);
 }
 .hint { color: var(--ink-muted); font-size: 11px; line-height: 1.4; margin: 6px 0 10px; }
+
+/* Parameter grids in the study modals: two columns of labelled fields,
+   collapsing to one on phones. (Referenced by every Advanced-studies tab.) */
+.field-grid {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px; margin-bottom: 10px;
+}
+.field-grid label { margin-bottom: 0; }
+.field-grid input, .field-grid select { margin-top: 2px; }
+@media (max-width: 640px) {
+  .field-grid { grid-template-columns: 1fr; }
+}
+
+/* Result tables in the study modals: key/value rows, values right-aligned
+   in tabular figures. (Referenced by every Advanced-studies tab.) */
+.result-table {
+  width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 12px;
+}
+.result-table td {
+  padding: 6px 8px; border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+}
+.result-table td:first-child { color: var(--ink-secondary); }
+.result-table td:last-child {
+  text-align: right; font-variant-numeric: tabular-nums; font-weight: 600;
+}
+.result-table tr:last-child td { border-bottom: none; }
+
+/* Copilot findings list. */
+.findings { list-style: none; padding: 0; margin: 10px 0 0; }
+.findings li {
+  padding: 7px 10px; border: 1px solid var(--hairline);
+  border-radius: var(--radius-m); margin-bottom: 6px; font-size: 12.5px;
+  line-height: 1.45;
+}
 .error-box {
   background: var(--status-critical-bg); color: var(--status-critical); border: 1px solid var(--status-critical-border);
   border-radius: 8px; padding: 10px; font-size: 12px; margin-top: 10px;
@@ -413,12 +495,14 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   .map-and-chart { min-height: 55vh; }
   .map-wrap { min-height: 320px; }
   .chart-wrap { height: 240px; }
+  .app-header { flex-wrap: wrap; row-gap: 6px; }
+  .header-search { flex-wrap: wrap; row-gap: 6px; }
   .header-search input { width: 130px; }
   .app-header .sub { display: none; }
 }
 
 /* Leaflet needs an explicit height on its container */
-.leaflet-container { width: 100%; height: 100%; }
+.leaflet-container { width: 100%; height: 100%; background: var(--page); }
 .map-hint {
   position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
   z-index: 1000; background: var(--surface-1); border: 1px solid var(--hairline);
@@ -427,7 +511,7 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 }
 
 /* ------------------------------- SaaS dashboards ------------------------ */
-.dash-shell { min-height: 100vh; background: var(--page); }
+.dash-shell { min-height: 100vh; min-height: 100dvh; background: var(--page); }
 .dash-main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
 .dash-main h1 { font-size: 20px; margin: 4px 0 2px; }
 .dash-grid {

@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css';
 import './globals.css';
 import ServiceWorker from '@/components/ServiceWorker';
 import I18nProvider from '@/components/I18nProvider';
+import SkipLink from '@/components/SkipLink';
 
 export const metadata: Metadata = {
   title: 'AntennaMaster — RF Coverage Simulator',
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <I18nProvider>
+          <SkipLink />
           {children}
           <ServiceWorker />
         </I18nProvider>

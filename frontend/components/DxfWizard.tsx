@@ -10,6 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDialog } from '@/lib/useDialog';
 import { georeference, uploadDxf } from '@/lib/api';
 import type {
   ControlPointPair, GeorefMode, GeorefResponse, LayerInfo, UploadResponse,
@@ -50,11 +51,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onClose]);
+  const dialogRef = useDialog(onClose);
 
   // ------------------------------------------------------------- handlers
   const [hint, setHint] = useState<string | null>(null);
@@ -149,9 +146,11 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
   // --------------------------------------------------------------- render
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby="dxf-title"
+        ref={dialogRef} tabIndex={-1}>
         <div className="modal-head">
-          <h2>{t('dxf.importTitle')}</h2>
+          <h2 id="dxf-title">{t('dxf.importTitle')}</h2>
           <button onClick={onClose} aria-label={t('dxf.close')}>✕</button>
         </div>
         <div className="modal-body">

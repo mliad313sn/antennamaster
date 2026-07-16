@@ -61,7 +61,7 @@ export default function Dashboard() {
   return (
     <div className="dash-shell">
       <DashNav active="dashboard" />
-      <main className="dash-main">
+      <main id="main" className="dash-main">
         <h1>Command Center</h1>
         <p className="hint">{user.org_name || user.email} · {user.tier} plan · {projects.length} project(s)</p>
 

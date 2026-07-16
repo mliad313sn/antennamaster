@@ -219,3 +219,23 @@ describe('Internationalization', () => {
     expect(screen.getByText(/What are you trying to connect/)).toBeInTheDocument();
   });
 });
+
+describe('Dialog accessibility contract', () => {
+  it('IndoorStudio is a labelled modal dialog that traps initial focus', async () => {
+    const { default: IndoorStudio } = await import('@/components/IndoorStudio');
+    render(<IndoorStudio onClose={() => {}} />);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName(/Indoor/i);
+    expect(document.activeElement).toBe(dialog);   // focus moved on open
+  });
+
+  it('AdvancedStudies closes on Escape and returns a dialog role', async () => {
+    const { default: AdvancedStudies } = await import('@/components/AdvancedStudies');
+    const onClose = vi.fn();
+    render(<AdvancedStudies tx={null} rx={null} technology={null} onClose={onClose} />);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+});

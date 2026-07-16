@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDialog } from '@/lib/useDialog';
 import {
   Area, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
@@ -30,26 +31,24 @@ type Tab = 'plan' | 'das' | 'floors' | 'tunnel' | 'feeder' | 'tte';
 export default function IndoorStudio({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('plan');
-  useEffect(() => {
-    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [onClose]);
+  const dialogRef = useDialog(onClose);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" style={{ width: 860 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ width: 860 }} onClick={(e) => e.stopPropagation()}
+        role="dialog" aria-modal="true" aria-labelledby="indoor-title"
+        ref={dialogRef} tabIndex={-1}>
         <div className="modal-head">
-          <h2>{t('indoor.title')}</h2>
+          <h2 id="indoor-title">{t('indoor.title')}</h2>
           <button onClick={onClose} aria-label={t('indoor.close')}>✕</button>
         </div>
         <div className="modal-body">
           <div className="mode-tabs">
-            <button className={tab === 'plan' ? 'active' : ''} onClick={() => setTab('plan')}>{t('indoor.tabPlan')}</button>
-            <button className={tab === 'das' ? 'active' : ''} onClick={() => setTab('das')}>{t('indoor.tabDas')}</button>
-            <button className={tab === 'floors' ? 'active' : ''} onClick={() => setTab('floors')}>{t('indoor.tabFloors')}</button>
-            <button className={tab === 'tunnel' ? 'active' : ''} onClick={() => setTab('tunnel')}>{t('indoor.tabTunnel')}</button>
-            <button className={tab === 'feeder' ? 'active' : ''} onClick={() => setTab('feeder')}>{t('indoor.tabFeeder')}</button>
-            <button className={tab === 'tte' ? 'active' : ''} onClick={() => setTab('tte')}>{t('indoor.tabTte')}</button>
+            <button className={tab === 'plan' ? 'active' : ''} aria-pressed={tab === 'plan'} onClick={() => setTab('plan')}>{t('indoor.tabPlan')}</button>
+            <button className={tab === 'das' ? 'active' : ''} aria-pressed={tab === 'das'} onClick={() => setTab('das')}>{t('indoor.tabDas')}</button>
+            <button className={tab === 'floors' ? 'active' : ''} aria-pressed={tab === 'floors'} onClick={() => setTab('floors')}>{t('indoor.tabFloors')}</button>
+            <button className={tab === 'tunnel' ? 'active' : ''} aria-pressed={tab === 'tunnel'} onClick={() => setTab('tunnel')}>{t('indoor.tabTunnel')}</button>
+            <button className={tab === 'feeder' ? 'active' : ''} aria-pressed={tab === 'feeder'} onClick={() => setTab('feeder')}>{t('indoor.tabFeeder')}</button>
+            <button className={tab === 'tte' ? 'active' : ''} aria-pressed={tab === 'tte'} onClick={() => setTab('tte')}>{t('indoor.tabTte')}</button>
           </div>
           {tab === 'plan' && <PlanStudy />}
           {tab === 'das' && <DasStudy />}
