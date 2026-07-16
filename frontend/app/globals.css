@@ -135,16 +135,22 @@ html, body {
   color: var(--ink-primary);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.011em; }
+code, kbd, pre { font-family: var(--mono); font-size: 0.92em; }
 
 button {
   font: inherit;
   cursor: pointer;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-s);
   background: var(--surface-1);
   color: var(--ink-primary);
   padding: 6px 12px;
+  transition: background 120ms ease-out, border-color 120ms ease-out,
+              box-shadow 120ms ease-out;
 }
 button:hover:not(:disabled) { background: var(--surface-2); }
 button:active:not(:disabled) { transform: translateY(0.5px); }
@@ -164,9 +170,12 @@ button.primary {
   border-color: var(--accent);
   color: #fff;
 }
-button.primary:hover:not(:disabled) { background: var(--accent-strong); }
+button.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  box-shadow: var(--shadow-1);
+}
 
-input, select {
+input, select, textarea {
   font: inherit;
   padding: 6px 8px;
   border: 1px solid var(--baseline);
@@ -175,6 +184,13 @@ input, select {
   color: var(--ink-primary);
   width: 100%;
   min-width: 0;                      /* let flex rows shrink cleanly */
+  transition: border-color 120ms ease-out;
+}
+input:hover:not(:disabled), select:hover:not(:disabled),
+textarea:hover:not(:disabled) { border-color: var(--ink-muted); }
+textarea { resize: vertical; line-height: 1.5; }
+input[type='checkbox'], input[type='radio'], input[type='range'] {
+  accent-color: var(--accent); width: auto;
 }
 input[type='number'] { font-variant-numeric: tabular-nums; }
 ::selection { background: var(--accent-soft); color: var(--accent-soft-ink); }
@@ -302,7 +318,10 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   border-top: 1px solid var(--hairline); padding: 8px 12px 4px;
 }
 
-.panel { border: 1px solid var(--hairline); border-radius: 8px; padding: 12px; }
+.panel {
+  border: 1px solid var(--hairline); border-radius: var(--radius-m);
+  padding: 12px; background: var(--surface-1); box-shadow: var(--shadow-1);
+}
 .panel h3 { margin: 0 0 8px; font-size: 13px; font-weight: 650; }
 .row { display: flex; gap: 8px; margin-bottom: 8px; }
 .row > div { flex: 1; }
@@ -398,7 +417,17 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 /* Modal (DXF wizard) */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(11, 11, 11, 0.45);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center; z-index: 2000;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .modal-backdrop { animation: backdrop-fade 140ms ease-out; }
+  .modal { animation: modal-rise 160ms cubic-bezier(0.2, 0.9, 0.3, 1); }
+}
+@keyframes backdrop-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-rise {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to { opacity: 1; transform: none; }
 }
 .modal {
   background: var(--surface-1); border-radius: var(--radius-l); width: 560px;
@@ -499,6 +528,18 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   .header-search { flex-wrap: wrap; row-gap: 6px; }
   .header-search input { width: 130px; }
   .app-header .sub { display: none; }
+}
+
+/* Thin, themed scrollbars on the app's own scroll surfaces. */
+.sidebar, .modal-body, .liveops-side {
+  scrollbar-width: thin;
+  scrollbar-color: var(--baseline) transparent;
+}
+.sidebar::-webkit-scrollbar, .modal-body::-webkit-scrollbar,
+.liveops-side::-webkit-scrollbar { width: 8px; }
+.sidebar::-webkit-scrollbar-thumb, .modal-body::-webkit-scrollbar-thumb,
+.liveops-side::-webkit-scrollbar-thumb {
+  background: var(--baseline); border-radius: 4px;
 }
 
 /* Leaflet needs an explicit height on its container */

@@ -16,16 +16,19 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '@/lib/useDialog';
 import {
-  availabilityStudy, copilotAnalyzeLink, emfCompliance, emfReportPdf,
-  erlangStudy, itmStudy, p1812Study, p2001Study, p452Study, twowayLink,
+  availabilityStudy, calibrateDriveTest, copilotAnalyzeLink, emfCompliance,
+  emfReportPdf, erlangStudy, itmStudy, p1812Study, p2001Study, p452Study,
+  twowayLink,
 } from '@/lib/api';
 
 type LatLng = { lat: number; lng: number };
-type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'p452' | 'p2001' | 'avail' | 'erlang' | 'copilot';
+type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'p452' | 'p2001' | 'avail' | 'erlang' | 'calib' | 'copilot';
 
 export default function AdvancedStudies(
-  { tx, rx, technology, onClose }:
-  { tx: LatLng | null; rx: LatLng | null; technology: string | null; onClose: () => void },
+  { tx, rx, technology, onClose, calibration, onCalibration }:
+  { tx: LatLng | null; rx: LatLng | null; technology: string | null;
+    onClose: () => void;
+    calibration?: object | null; onCalibration?: (c: object | null) => void },
 ) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('twoway');
@@ -49,6 +52,7 @@ export default function AdvancedStudies(
             <button className={tab === 'p2001' ? 'active' : ''} aria-pressed={tab === 'p2001'} onClick={() => setTab('p2001')}>{t('advanced.tabP2001')}</button>
             <button className={tab === 'avail' ? 'active' : ''} aria-pressed={tab === 'avail'} onClick={() => setTab('avail')}>{t('advanced.tabAvail')}</button>
             <button className={tab === 'erlang' ? 'active' : ''} aria-pressed={tab === 'erlang'} onClick={() => setTab('erlang')}>{t('advanced.tabErlang')}</button>
+            <button className={tab === 'calib' ? 'active' : ''} aria-pressed={tab === 'calib'} onClick={() => setTab('calib')}>{t('advanced.tabCalib')}</button>
             <button className={tab === 'copilot' ? 'active' : ''} aria-pressed={tab === 'copilot'} onClick={() => setTab('copilot')}>{t('advanced.tabCopilot')}</button>
           </div>
           {tab === 'twoway' && <TwoWayTab tx={tx} rx={rx} />}
@@ -59,6 +63,11 @@ export default function AdvancedStudies(
           {tab === 'p2001' && <P2001Tab tx={tx} rx={rx} />}
           {tab === 'avail' && <AvailTab tx={tx} rx={rx} />}
           {tab === 'erlang' && <ErlangTab />}
+          {tab === 'calib' && (
+            <CalibTab tx={tx} technology={technology}
+              calibration={calibration ?? null}
+              onCalibration={onCalibration ?? (() => {})} />
+          )}
           {tab === 'copilot' && <CopilotTab tx={tx} rx={rx} technology={technology} />}
         </div>
       </div>
@@ -142,11 +151,13 @@ function EmfTab() {
   const [freq, setFreq] = useState('900');
   const [power, setPower] = useState('43');
   const [gain, setGain] = useState('15');
+  const [losses, setLosses] = useState('0');
   const [std, setStd] = useState('icnirp');
   const { busy, err, res, run } = useRun<any>();
   const [pdfBusy, setPdfBusy] = useState(false);
   const go = () => run(() => emfCompliance({
-    freq_mhz: +freq, tx_power_dbm: +power, antenna_gain_dbi: +gain, standard: std,
+    freq_mhz: +freq, tx_power_dbm: +power, antenna_gain_dbi: +gain,
+    losses_db: +losses, standard: std,
   }));
   const [pdfErr, setPdfErr] = useState<string | null>(null);
   const downloadPdf = async () => {
@@ -155,7 +166,8 @@ function EmfTab() {
     try {
       const blob = await emfReportPdf({
         site: { name: 'AntennaMaster site' },
-        antennas: [{ label: 'Antenna 1', freq_mhz: +freq, tx_power_dbm: +power, antenna_gain_dbi: +gain }],
+        antennas: [{ label: 'Antenna 1', freq_mhz: +freq, tx_power_dbm: +power,
+                     antenna_gain_dbi: +gain, losses_db: +losses }],
         standard: std,
       });
       const url = URL.createObjectURL(blob);
@@ -177,6 +189,7 @@ function EmfTab() {
         <label>{t('advanced.freqMhz')}<input value={freq} onChange={(e) => setFreq(e.target.value)} /></label>
         <label>{t('advanced.txPower')}<input value={power} onChange={(e) => setPower(e.target.value)} /></label>
         <label>{t('advanced.antGain')}<input value={gain} onChange={(e) => setGain(e.target.value)} /></label>
+        <label>{t('advanced.feederLoss')}<input value={losses} onChange={(e) => setLosses(e.target.value)} /></label>
         <label>{t('advanced.standard')}
           <select value={std} onChange={(e) => setStd(e.target.value)}>
             <option value="icnirp">ICNIRP</option>
@@ -220,11 +233,13 @@ function ItmTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const [rel, setRel] = useState('0.9');
   const [climate, setClimate] = useState('5');
   const [en0, setEn0] = useState('314');
+  const [htx, setHtx] = useState('30');
+  const [hrx, setHrx] = useState('10');
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => itmStudy({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     freq_mhz: +freq, reliability: +rel, confidence: 0.5,
-    climate: +climate, en0: +en0,
+    climate: +climate, en0: +en0, h_tx_m: +htx, h_rx_m: +hrx,
   }));
   return (
     <div>
@@ -240,6 +255,8 @@ function ItmTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
         </label>
         <label>{t('advanced.en0')}<input value={en0} onChange={(e) => setEn0(e.target.value)}
           title="Surface refractivity N₀ in N-units (world median 314; 250 dry mountains … 400 humid coasts)" /></label>
+        <label>{t('advanced.htxM')}<input value={htx} onChange={(e) => setHtx(e.target.value)} /></label>
+        <label>{t('advanced.hrxM')}<input value={hrx} onChange={(e) => setHrx(e.target.value)} /></label>
       </div>
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
@@ -267,10 +284,13 @@ function P1812Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const [timePct, setTimePct] = useState('50');
   const [locPct, setLocPct] = useState('50');
   const [worldcover, setWorldcover] = useState(false);
+  const [htx, setHtx] = useState('30');
+  const [hrx, setHrx] = useState('10');
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => p1812Study({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     freq_mhz: +freq, time_pct: +timePct, location_pct: +locPct,
+    h_tx_m: +htx, h_rx_m: +hrx,
     ...(worldcover ? { clutter_source: 'worldcover' } : {}),
   }));
   return (
@@ -281,6 +301,8 @@ function P1812Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
         <label>{t('advanced.freqMhz')}<input value={freq} onChange={(e) => setFreq(e.target.value)} /></label>
         <label>{t('advanced.timePct')}<input value={timePct} onChange={(e) => setTimePct(e.target.value)} /></label>
         <label>{t('advanced.locPct')}<input value={locPct} onChange={(e) => setLocPct(e.target.value)} /></label>
+        <label>{t('advanced.htxM')}<input value={htx} onChange={(e) => setHtx(e.target.value)} /></label>
+        <label>{t('advanced.hrxM')}<input value={hrx} onChange={(e) => setHrx(e.target.value)} /></label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <input type="checkbox" checked={worldcover}
             onChange={(e) => setWorldcover(e.target.checked)} />
@@ -312,11 +334,14 @@ function P452Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const [timePct, setTimePct] = useState('0.01');
   const [gt, setGt] = useState('0');
   const [gr, setGr] = useState('0');
+  const [htx, setHtx] = useState('30');
+  const [hrx, setHrx] = useState('30');
   const [worldcover, setWorldcover] = useState(false);
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => p452Study({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     freq_mhz: +freq, time_pct: +timePct, gt_dbi: +gt, gr_dbi: +gr,
+    h_tx_m: +htx, h_rx_m: +hrx,
     ...(worldcover ? { clutter_source: 'worldcover' } : {}),
   }));
   return (
@@ -330,6 +355,8 @@ function P452Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
           onChange={(e) => setTimePct(e.target.value)} /></label>
         <label>{t('advanced.gtDbi')}<input value={gt} onChange={(e) => setGt(e.target.value)} /></label>
         <label>{t('advanced.grDbi')}<input value={gr} onChange={(e) => setGr(e.target.value)} /></label>
+        <label>{t('advanced.htxM')}<input value={htx} onChange={(e) => setHtx(e.target.value)} /></label>
+        <label>{t('advanced.hrxM')}<input value={hrx} onChange={(e) => setHrx(e.target.value)} /></label>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <input type="checkbox" checked={worldcover}
             onChange={(e) => setWorldcover(e.target.checked)} />
@@ -360,10 +387,15 @@ function P2001Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const { t } = useTranslation();
   const [freq, setFreq] = useState('600');
   const [timePct, setTimePct] = useState('50');
+  const [htx, setHtx] = useState('30');
+  const [hrx, setHrx] = useState('30');
+  const [gt, setGt] = useState('0');
+  const [gr, setGr] = useState('0');
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => p2001Study({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     freq_mhz: +freq, time_pct: +timePct,
+    h_tx_m: +htx, h_rx_m: +hrx, gt_dbi: +gt, gr_dbi: +gr,
   }));
   return (
     <div>
@@ -374,6 +406,10 @@ function P2001Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
         <label>{t('advanced.timePct')}<input value={timePct}
           title="Full 0-100 % range in one model: 0.01 % = rare enhancements (ducting), 99.99 % = deep-fade planning"
           onChange={(e) => setTimePct(e.target.value)} /></label>
+        <label>{t('advanced.htxM')}<input value={htx} onChange={(e) => setHtx(e.target.value)} /></label>
+        <label>{t('advanced.hrxM')}<input value={hrx} onChange={(e) => setHrx(e.target.value)} /></label>
+        <label>{t('advanced.gtDbi')}<input value={gt} onChange={(e) => setGt(e.target.value)} /></label>
+        <label>{t('advanced.grDbi')}<input value={gr} onChange={(e) => setGr(e.target.value)} /></label>
       </div>
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
@@ -402,10 +438,13 @@ function AvailTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
   const [dn1, setDn1] = useState('-300');
   const [freq, setFreq] = useState('');       // '' = the preset's frequency
   const [margin, setMargin] = useState('');   // '' = real link-budget margin
+  const [htx, setHtx] = useState('30');
+  const [hrx, setHrx] = useState('30');
   const { busy, err, res, run } = useRun<any>();
   const go = () => tx && rx && run(() => availabilityStudy({
     lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
     technology: 'ptp18000', rain_zone: zone, dn1: +dn1,
+    h_tx_m: +htx, h_rx_m: +hrx,
     ...(freq.trim() !== '' ? { freq_mhz: +freq } : {}),
     ...(margin.trim() !== '' ? { fade_margin_db: +margin } : {}),
   }));
@@ -425,6 +464,8 @@ function AvailTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
         <label>{t('advanced.marginOverride')}<input value={margin} placeholder={t('advanced.auto')}
           title="Empty = the hop's real link-budget margin computed over the terrain"
           onChange={(e) => setMargin(e.target.value)} /></label>
+        <label>{t('advanced.htxM')}<input value={htx} onChange={(e) => setHtx(e.target.value)} /></label>
+        <label>{t('advanced.hrxM')}<input value={hrx} onChange={(e) => setHrx(e.target.value)} /></label>
       </div>
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
@@ -491,6 +532,72 @@ function ErlangTab() {
             )}
           </tbody>
         </table>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- calibration
+function CalibTab({ tx, technology, calibration, onCalibration }: {
+  tx: LatLng | null; technology: string | null;
+  calibration: object | null; onCalibration: (c: object | null) => void;
+}) {
+  const { t } = useTranslation();
+  const [raw, setRaw] = useState('');
+  const { busy, err, res, run } = useRun<any>();
+  // "lat, lon, rssi" per line — commas, semicolons or whitespace.
+  const points = raw.split('\n').map((l) => l.trim()).filter(Boolean)
+    .map((l) => l.split(/[,;\s]+/).map(Number))
+    .filter((c) => c.length >= 3 && c.every(Number.isFinite)
+                   && c[2] <= -10 && c[2] >= -150)
+    .map(([lat, lon, rssi]) => ({ lat, lon, rssi_dbm: rssi }));
+  const go = () => tx && run(() => calibrateDriveTest({
+    tx_lat: tx.lat, tx_lon: tx.lng, technology: technology || 'custom',
+    points,
+  }));
+  return (
+    <div>
+      <p className="hint">{t('advanced.calibHint')}</p>
+      {!tx && <p className="hint">{t('advanced.needTx')}</p>}
+      <label>
+        {t('advanced.calibPoints')}
+        <textarea rows={7} value={raw} placeholder={'47.05, 15.42, -87\n47.06, 15.43, -92'}
+          onChange={(e) => setRaw(e.target.value)}
+          style={{ width: '100%', font: '12px var(--mono)', marginTop: 4 }} />
+      </label>
+      <p className="hint">{t('advanced.calibParsed', { count: points.length })}</p>
+      <button className="primary" style={{ width: '100%' }}
+        disabled={!tx || points.length < 2 || busy} onClick={go}>
+        {busy ? t('advanced.running') : t('advanced.calibFit')}
+      </button>
+      {err && <div className="warning-box">{err}</div>}
+      {res && (
+        <>
+          <table className="result-table">
+            <tbody>
+              <tr><td>{t('advanced.calibRmseBefore')}</td><td>{res.fit.rms_error_before_db} dB</td></tr>
+              <tr><td>{t('advanced.calibOffset')}</td>
+                <td>{res.fit.offset_db > 0 ? '+' : ''}{res.fit.offset_db} dB → {res.fit.rms_error_offset_db} dB RMS</td></tr>
+              <tr><td>{t('advanced.calibSlope')}</td>
+                <td>{res.fit.slope_intercept_db} + {res.fit.slope_per_decade_db}/dec → {res.fit.rms_error_offset_slope_db} dB RMS</td></tr>
+              <tr><td>{t('advanced.calibResidual')}</td><td>{res.fit.residual_std_db} dB</td></tr>
+              <tr><td>{t('advanced.calibRecommended')}</td><td><b>{res.fit.recommended}</b></td></tr>
+            </tbody>
+          </table>
+          <button className="primary" style={{ width: '100%', marginTop: 8 }}
+            onClick={() => onCalibration(res.calibration)}>
+            {t('advanced.calibApply')}
+          </button>
+        </>
+      )}
+      {calibration && (
+        <div className="stat-line" style={{ marginTop: 8 }}>
+          <span className="k">{t('advanced.calibActive')}</span>
+          <span className="v">
+            ✓ <button style={{ marginLeft: 8, padding: '1px 8px' }}
+              onClick={() => onCalibration(null)}>{t('advanced.calibClear')}</button>
+          </span>
+        </div>
       )}
     </div>
   );

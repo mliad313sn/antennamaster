@@ -147,7 +147,9 @@
     "monteCarlo": "Monte Carlo traffic (100 snapshots)",
     "mcSatisfied": "Satisfied users",
     "mcEdgeRate": "5th-percentile user rate",
-    "mcOk": "ok"
+    "mcOk": "ok",
+    "calibApplied": "Drive-test calibration",
+    "calibRemove": "Remove"
   },
   "batch": {
     "title": "Batch receivers",
@@ -496,7 +498,24 @@
     "engineP452": "ITU-R P.452-18 (reference code)",
     "tabP2001": "P.2001",
     "p2001Hint": "Official ITU-R P.2001 wide-range model (30 MHz – 50 GHz, 3 – 1000+ km): one prediction covering the FULL 0–100 % time range — ducting enhancements and deep fades in a single model. This installation reproduces the official ITU validation examples to < 1e-06 dB (see PRECISION_BENCHMARK).",
-    "engineP2001": "ITU-R P.2001 (reference code)"
+    "engineP2001": "ITU-R P.2001 (reference code)",
+    "htxM": "TX height (m)",
+    "hrxM": "RX height (m)",
+    "feederLoss": "Feeder loss (dB)",
+    "tabCalib": "Calibration",
+    "calibHint": "Fit a site correction from real measured RSSI: paste drive/walk-test points below (one per line: lat, lon, RSSI dBm), fit against the prediction from the TX marker, then apply the recommended correction to your coverage studies — predictions become site-tuned.",
+    "needTx": "Place the TX marker on the map first.",
+    "calibPoints": "Measured points (lat, lon, RSSI dBm)",
+    "calibParsed": "{{count}} valid points parsed",
+    "calibFit": "Fit correction",
+    "calibRmseBefore": "RMS error before",
+    "calibOffset": "Offset fit",
+    "calibSlope": "Offset+slope fit",
+    "calibResidual": "Residual σ (shadow fade)",
+    "calibRecommended": "Recommended",
+    "calibApply": "Apply to coverage studies",
+    "calibActive": "Calibration active",
+    "calibClear": "Clear"
   },
   "globe": {
     "view2d": "2D",

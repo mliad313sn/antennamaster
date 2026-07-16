@@ -41,6 +41,8 @@ export interface StudyPanelProps {
   onSurfaceChange: (v: boolean) => void;
   worldcoverOn: boolean;
   onWorldcoverChange: (v: boolean) => void;
+  calibration?: object | null;
+  onCalibrationChange?: (c: object | null) => void;
   surfaceAvailable: boolean;
   study: StudyResult | null;
   coverage: CoverageResponse | null;
@@ -279,6 +281,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         clutterPct: props.clutterPct || undefined,
         surface: props.surfaceOn || undefined,
         clutterSource: props.worldcoverOn ? 'worldcover' : undefined,
+        calibration: props.calibration ?? undefined,
         hBsM: props.txHeight || undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),

@@ -80,6 +80,8 @@ export default function Home() {
   const [clutterPct, setClutterPct] = useState(0);
   const [surfaceOn, setSurfaceOn] = useState(false);
   const [worldcoverOn, setWorldcoverOn] = useState(false);
+  // Drive-test calibration correction, applied to single-site coverage runs.
+  const [calibration, setCalibration] = useState<object | null>(null);
   const [surfaceAvailable, setSurfaceAvailable] = useState(false);
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
 
@@ -217,6 +219,7 @@ export default function Home() {
         if (typeof s.clutterPct === 'number') setClutterPct(s.clutterPct);
         if (typeof s.surfaceOn === 'boolean') setSurfaceOn(s.surfaceOn);
         if (typeof s.worldcoverOn === 'boolean') setWorldcoverOn(s.worldcoverOn);
+        if (s.calibration && typeof s.calibration === 'object') setCalibration(s.calibration);
         if (s.customTileUrl) setCustomTileUrl(s.customTileUrl);
         // Rebind a georeferenced DXF (server rebuilds its grid on demand).
         if (s.dxfId) {
@@ -234,12 +237,13 @@ export default function Home() {
         tx, rx, txHeight, rxHeight, freqMhz,
         technology, model, environment, customTileUrl,
         foliageDepth, rainRate, clutterPct, surfaceOn, worldcoverOn,
+        calibration,
         dxfId: georef?.dxf_id ?? null,
       }));
     } catch { /* storage full/unavailable */ }
   }, [restored, tx, rx, txHeight, rxHeight, freqMhz, technology, model,
       environment, customTileUrl, foliageDepth, rainRate, clutterPct,
-      surfaceOn, worldcoverOn, georef]);
+      surfaceOn, worldcoverOn, calibration, georef]);
 
   // --------------------------------------------------------- placement
   const handlePlace = useCallback((p: LatLng) => {
@@ -551,6 +555,7 @@ export default function Home() {
             clutterPct={clutterPct} onClutterChange={setClutterPct}
             surfaceOn={surfaceOn} onSurfaceChange={setSurfaceOn}
             worldcoverOn={worldcoverOn} onWorldcoverChange={setWorldcoverOn}
+            calibration={calibration} onCalibrationChange={setCalibration}
             surfaceAvailable={surfaceAvailable}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={setCoverage}
@@ -721,6 +726,7 @@ export default function Home() {
       {advancedOpen && (
         <AdvancedStudies
           tx={tx} rx={rx} technology={technology}
+          calibration={calibration} onCalibration={setCalibration}
           onClose={() => setAdvancedOpen(false)}
         />
       )}

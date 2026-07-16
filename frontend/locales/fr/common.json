@@ -147,7 +147,9 @@
     "monteCarlo": "Trafic Monte Carlo (100 tirages)",
     "mcSatisfied": "Usagers satisfaits",
     "mcEdgeRate": "Débit usager 5e centile",
-    "mcOk": "ok"
+    "mcOk": "ok",
+    "calibApplied": "Calibration drive-test",
+    "calibRemove": "Retirer"
   },
   "batch": {
     "title": "Récepteurs en lot",
@@ -496,7 +498,24 @@
     "engineP452": "UIT-R P.452-18 (code de référence)",
     "tabP2001": "P.2001",
     "p2001Hint": "Modèle large-portée UIT-R P.2001 officiel (30 MHz – 50 GHz, 3 – 1000+ km) : une seule prédiction couvrant TOUTE la plage 0–100 % du temps — conduits troposphériques et évanouissements profonds dans un même modèle. Cette installation reproduit les exemples de validation officiels de l'UIT à < 1e-06 dB (voir PRECISION_BENCHMARK).",
-    "engineP2001": "UIT-R P.2001 (code de référence)"
+    "engineP2001": "UIT-R P.2001 (code de référence)",
+    "htxM": "Hauteur TX (m)",
+    "hrxM": "Hauteur RX (m)",
+    "feederLoss": "Pertes feeder (dB)",
+    "tabCalib": "Calibration",
+    "calibHint": "Ajustez une correction de site à partir de RSSI réellement mesurés : collez les points de drive/walk-test ci-dessous (un par ligne : lat, lon, RSSI dBm), ajustez contre la prédiction depuis le marqueur TX, puis appliquez la correction recommandée à vos études de couverture — les prédictions deviennent calées sur le site.",
+    "needTx": "Placez d'abord le marqueur TX sur la carte.",
+    "calibPoints": "Points mesurés (lat, lon, RSSI dBm)",
+    "calibParsed": "{{count}} points valides analysés",
+    "calibFit": "Ajuster la correction",
+    "calibRmseBefore": "Erreur RMS avant",
+    "calibOffset": "Ajustement décalage",
+    "calibSlope": "Décalage+pente",
+    "calibResidual": "σ résiduel (évanouissement)",
+    "calibRecommended": "Recommandé",
+    "calibApply": "Appliquer aux études de couverture",
+    "calibActive": "Calibration active",
+    "calibClear": "Effacer"
   },
   "globe": {
     "view2d": "2D",

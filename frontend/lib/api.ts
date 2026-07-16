@@ -85,6 +85,8 @@ export async function simulateCoverage(params: {
   foliageDepthM?: number; rainRateMmH?: number;
   clutterPct?: number; surface?: boolean; clutterSource?: string;
   hBsM?: number;
+  // Drive-test calibration correction (apply-ready object from /calibrate):
+  calibration?: object | null;
   // Real site link-budget overrides (the preset is only a starting point):
   txPowerDbm?: number; txGainDbi?: number; rxGainDbi?: number;
   lossesDb?: number; rxSensitivityDbm?: number;
@@ -110,6 +112,7 @@ export async function simulateCoverage(params: {
       surface: params.surface || undefined,
       clutter_source: params.clutterSource || undefined,
       h_bs_m: params.hBsM,
+      calibration: params.calibration ?? undefined,
       tx_power_dbm: params.txPowerDbm,
       tx_gain_dbi: params.txGainDbi,
       rx_gain_dbi: params.rxGainDbi,
@@ -467,6 +470,11 @@ export async function erlangStudy(params: Record<string, string | number | boole
 // Per-cell capacity + Mbit/s heatmap from the SINR field (3GPP CQI ladder).
 export async function throughputMap(body: object): Promise<any> {
   return postJson('/api/rf/throughput-map', body);
+}
+
+// Drive-test calibration: fit offset/slope from measured RSSI points.
+export async function calibrateDriveTest(body: object): Promise<any> {
+  return postJson('/api/rf/calibrate', body);
 }
 
 // Monte Carlo traffic snapshots over a site cluster.
