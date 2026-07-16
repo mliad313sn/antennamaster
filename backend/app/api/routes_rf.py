@@ -406,7 +406,7 @@ class SiteIn(BaseModel):
 
 
 class FrequencyPlanRequest(BaseModel):
-    sites: list[SiteIn] = Field(min_length=2, max_length=8)
+    sites: list[SiteIn] = Field(min_length=2, max_length=24)
     technology: str = "custom"
     radius_km: float = Field(10.0, gt=0.1, le=150.0)
     n_channels: int = Field(3, ge=2, le=12)
@@ -512,7 +512,7 @@ def erlang(traffic_erlangs: float, channels: int | None = None,
 
 
 class ThroughputMapRequest(BaseModel):
-    sites: list[SiteIn] = Field(min_length=1, max_length=8)
+    sites: list[SiteIn] = Field(min_length=1, max_length=24)
     technology: str = "custom"
     radius_km: float = Field(10.0, gt=0.1, le=150.0)
     bandwidth_mhz: float | None = Field(None, gt=0, le=400)
@@ -636,6 +636,74 @@ def throughput_map(req: ThroughputMapRequest,
                     "bounds": bounds, "legend": legend,
                     "raster_stats": tstats})
     return out
+
+
+class MonteCarloRequest(ThroughputMapRequest):
+    # Traffic snapshots: total users dropped over the served area per draw.
+    users: int = Field(200, ge=1, le=5000)
+    demand_mbps: float = Field(2.0, gt=0, le=1000)
+    draws: int = Field(100, ge=1, le=500)
+    seed: int = Field(1, ge=0, le=2**31 - 1)
+
+
+@router.post("/montecarlo")
+def montecarlo_traffic(req: MonteCarloRequest,
+                       user: dict | None = Depends(current_user)) -> dict:
+    """Monte Carlo traffic snapshots over the cluster: random user drops,
+    best-server attachment, equal-airtime scheduling — satisfied-user
+    fraction with confidence bounds instead of a single saturation number."""
+    require_feature(user, "multi_site")
+    check_preset_allowed(user, req.technology)
+    try:
+        tech = get_technology(req.technology)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    for f in ("freq_mhz", "model", "environment", "tx_power_dbm",
+              "tx_gain_dbi", "h_bs_m", "h_ut_m"):
+        v = getattr(req, f)
+        if v is not None:
+            tech[f] = v
+    if tech["model"] not in MODEL_INFO:
+        raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+    if req.channels is not None and len(req.channels) != len(req.sites):
+        raise HTTPException(422, "channels must have one entry per site")
+
+    clutter_fn = _clutter_fn(req.clutter_source)
+    engine = CoverageEngine(resolve_fusion(req.surface))
+    radius_m = req.radius_km * 1000.0
+    computed = []
+    try:
+        with jobs.sim_slot():
+            for s in req.sites:
+                polar = engine.compute_polar(
+                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    n_radials=req.n_radials, n_steps=req.n_steps,
+                    antenna_azimuth_deg=s.antenna_azimuth_deg,
+                    downtilt_deg=s.downtilt_deg, k=req.k_factor,
+                    clutter_heights_fn=clutter_fn)
+                computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
+                                 "radius_m": radius_m, "polar": polar})
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
+
+    bw = req.bandwidth_mhz or tech.get("bandwidth_mhz") or 10.0
+    nf = req.noise_figure_db if req.noise_figure_db is not None \
+        else tech.get("noise_figure_db", 7.0)
+    noise_dbm = -174.0 + 10.0 * float(np.log10(float(bw) * 1e6)) + float(nf)
+
+    from ..services.rf.montecarlo import simulate_traffic
+    try:
+        result = simulate_traffic(
+            computed, req.users, req.demand_mbps, noise_dbm, float(bw),
+            draws=req.draws, overhead=req.overhead, channels=req.channels,
+            aci_db=req.aci_db, grid_n=req.grid_n, seed=req.seed)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {**result, "bandwidth_mhz": float(bw),
+            "noise_floor_dbm": round(noise_dbm, 1),
+            "technology": {**tech, "key": req.technology}}
 
 
 # ----------------------------------------------------------- antennas (MSI)
@@ -839,7 +907,7 @@ def best_site_search(req: SiteSearchRequest,
 
 # --------------------------------------------------------- multi-site study
 class MultiCoverageRequest(BaseModel):
-    sites: list[SiteIn] = Field(min_length=1, max_length=8)
+    sites: list[SiteIn] = Field(min_length=1, max_length=24)
     technology: str = "custom"
     radius_km: float = Field(10.0, gt=0.1, le=150.0)
     dxf_id: str | None = None

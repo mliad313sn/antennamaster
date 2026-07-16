@@ -16,11 +16,11 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   availabilityStudy, copilotAnalyzeLink, emfCompliance, emfReportPdf,
-  erlangStudy, itmStudy, p1812Study, twowayLink,
+  erlangStudy, itmStudy, p1812Study, p452Study, twowayLink,
 } from '@/lib/api';
 
 type LatLng = { lat: number; lng: number };
-type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'avail' | 'erlang' | 'copilot';
+type Tab = 'twoway' | 'emf' | 'itm' | 'p1812' | 'p452' | 'avail' | 'erlang' | 'copilot';
 
 export default function AdvancedStudies(
   { tx, rx, technology, onClose }:
@@ -46,6 +46,7 @@ export default function AdvancedStudies(
             <button className={tab === 'emf' ? 'active' : ''} onClick={() => setTab('emf')}>{t('advanced.tabEmf')}</button>
             <button className={tab === 'itm' ? 'active' : ''} onClick={() => setTab('itm')}>{t('advanced.tabItm')}</button>
             <button className={tab === 'p1812' ? 'active' : ''} onClick={() => setTab('p1812')}>{t('advanced.tabP1812')}</button>
+            <button className={tab === 'p452' ? 'active' : ''} onClick={() => setTab('p452')}>{t('advanced.tabP452')}</button>
             <button className={tab === 'avail' ? 'active' : ''} onClick={() => setTab('avail')}>{t('advanced.tabAvail')}</button>
             <button className={tab === 'erlang' ? 'active' : ''} onClick={() => setTab('erlang')}>{t('advanced.tabErlang')}</button>
             <button className={tab === 'copilot' ? 'active' : ''} onClick={() => setTab('copilot')}>{t('advanced.tabCopilot')}</button>
@@ -54,6 +55,7 @@ export default function AdvancedStudies(
           {tab === 'emf' && <EmfTab />}
           {tab === 'itm' && <ItmTab tx={tx} rx={rx} />}
           {tab === 'p1812' && <P1812Tab tx={tx} rx={rx} />}
+          {tab === 'p452' && <P452Tab tx={tx} rx={rx} />}
           {tab === 'avail' && <AvailTab tx={tx} rx={rx} />}
           {tab === 'erlang' && <ErlangTab />}
           {tab === 'copilot' && <CopilotTab tx={tx} rx={rx} technology={technology} />}
@@ -294,6 +296,56 @@ function P1812Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
             <tr><td>{t('advanced.pathLoss')}</td><td><b>{res.path_loss_db} dB</b> · {t('advanced.engineItu')}</td></tr>
             <tr><td>{t('advanced.freeSpace')}</td><td>{res.free_space_db} dB</td></tr>
             <tr><td>{t('advanced.excessFs')}</td><td>{res.excess_over_fs_db} dB</td></tr>
+            <tr><td>{t('advanced.worldcover')}</td><td>{res.clutter_applied ? '✓' : '—'}</td></tr>
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------- P.452
+function P452Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
+  const { t } = useTranslation();
+  const [freq, setFreq] = useState('6000');
+  const [timePct, setTimePct] = useState('0.01');
+  const [gt, setGt] = useState('0');
+  const [gr, setGr] = useState('0');
+  const [worldcover, setWorldcover] = useState(false);
+  const { busy, err, res, run } = useRun<any>();
+  const go = () => tx && rx && run(() => p452Study({
+    lat1: tx.lat, lon1: tx.lng, lat2: rx.lat, lon2: rx.lng,
+    freq_mhz: +freq, time_pct: +timePct, gt_dbi: +gt, gr_dbi: +gr,
+    ...(worldcover ? { clutter_source: 'worldcover' } : {}),
+  }));
+  return (
+    <div>
+      <p className="hint">{t('advanced.p452Hint')}</p>
+      <NeedMarkers tx={tx} rx={rx} />
+      <div className="field-grid">
+        <label>{t('advanced.freqMhz')}<input value={freq} onChange={(e) => setFreq(e.target.value)} /></label>
+        <label>{t('advanced.timePct')}<input value={timePct}
+          title="Small values (0.01 %) capture the rare ducting enhancements that set the interference worst case"
+          onChange={(e) => setTimePct(e.target.value)} /></label>
+        <label>{t('advanced.gtDbi')}<input value={gt} onChange={(e) => setGt(e.target.value)} /></label>
+        <label>{t('advanced.grDbi')}<input value={gr} onChange={(e) => setGr(e.target.value)} /></label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <input type="checkbox" checked={worldcover}
+            onChange={(e) => setWorldcover(e.target.checked)} />
+          {t('advanced.worldcover')}
+        </label>
+      </div>
+      <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
+        {busy ? t('advanced.running') : t('advanced.run')}
+      </button>
+      {err && <div className="warning-box">{err}</div>}
+      {res && (
+        <table className="result-table">
+          <tbody>
+            <tr><td>{t('advanced.interfLoss')}</td><td><b>{res.path_loss_db} dB</b> · {t('advanced.engineP452')}</td></tr>
+            <tr><td>{t('advanced.freeSpace')}</td><td>{res.free_space_db} dB</td></tr>
+            <tr><td>{t('advanced.excessFs')}</td><td>{res.excess_over_fs_db} dB</td></tr>
+            <tr><td>{t('advanced.timePct')}</td><td>{res.time_pct} %</td></tr>
             <tr><td>{t('advanced.worldcover')}</td><td>{res.clutter_applied ? '✓' : '—'}</td></tr>
           </tbody>
         </table>

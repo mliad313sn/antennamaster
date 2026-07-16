@@ -155,3 +155,48 @@ def test_itm_route_exposes_climate_and_refractivity(client):
     assert d2["path_loss_db"] != d0["path_loss_db"]
     assert client.get("/api/terrain/itm",
                       params={**base, "climate": 9}).status_code == 422
+
+
+# ----------------------------------------------------- Monte Carlo traffic
+def test_montecarlo_traffic_api(client):
+    sites = [{"lat": 47.0, "lon": 15.0}, {"lat": 47.02, "lon": 15.02}]
+    base = {"sites": sites, "technology": "lte1800", "radius_km": 4,
+            "n_radials": 48, "n_steps": 32, "grid_n": 96, "render": False,
+            "users": 150, "demand_mbps": 2.0, "draws": 40, "seed": 7}
+    r = client.post("/api/rf/montecarlo", json=base)
+    assert r.status_code == 200, r.text
+    d = r.json()
+    sf = d["satisfied_fraction"]
+    assert 0.0 <= sf["p5"] <= sf["mean"] <= sf["p95"] <= 1.0
+    assert len(d["cells"]) == 2
+    # Reproducible: same seed -> identical distribution.
+    d2 = client.post("/api/rf/montecarlo", json=base).json()
+    assert d2["satisfied_fraction"] == sf
+    # More offered load can never increase satisfaction (equal airtime).
+    heavy = client.post("/api/rf/montecarlo",
+                        json={**base, "users": 1500}).json()
+    assert heavy["satisfied_fraction"]["mean"] <= sf["mean"]
+
+
+def test_montecarlo_rejects_bad_inputs(client):
+    sites = [{"lat": 47.0, "lon": 15.0}]
+    assert client.post("/api/rf/montecarlo", json={
+        "sites": sites, "technology": "lte1800", "draws": 5000}).status_code == 422
+    assert client.post("/api/rf/montecarlo", json={
+        "sites": sites, "technology": "lte1800",
+        "demand_mbps": 0}).status_code == 422
+
+
+def test_cluster_cap_raised_to_24(client):
+    # 9 sites (over the old 8-cap) must be accepted by the schema.
+    sites = [{"lat": 47.0 + 0.01 * i, "lon": 15.0} for i in range(9)]
+    r = client.post("/api/rf/throughput-map", json={
+        "sites": sites, "technology": "lte1800", "radius_km": 2,
+        "n_radials": 36, "n_steps": 20, "grid_n": 64, "render": False})
+    assert r.status_code == 200, r.text
+    assert len(r.json()["cells"]) == 9
+    # 25 is over the new cap.
+    too_many = [{"lat": 47.0 + 0.01 * i, "lon": 15.0} for i in range(25)]
+    assert client.post("/api/rf/throughput-map", json={
+        "sites": too_many, "technology": "lte1800",
+        "render": False}).status_code == 422

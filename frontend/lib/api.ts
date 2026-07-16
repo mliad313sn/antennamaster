@@ -439,6 +439,11 @@ export async function p1812Study(params: Record<string, string | number | boolea
   return getWithParams('/api/terrain/p1812', params);
 }
 
+// Official ITU-R P.452-18 clear-air interference loss (0.1 - 50 GHz).
+export async function p452Study(params: Record<string, string | number | boolean>): Promise<any> {
+  return getWithParams('/api/terrain/p452', params);
+}
+
 // ITU-R P.530 annual availability of a PtP hop.
 export async function availabilityStudy(params: Record<string, string | number | boolean>): Promise<any> {
   return getWithParams('/api/terrain/availability', params);
@@ -457,6 +462,11 @@ export async function erlangStudy(params: Record<string, string | number | boole
 // Per-cell capacity + Mbit/s heatmap from the SINR field (3GPP CQI ladder).
 export async function throughputMap(body: object): Promise<any> {
   return postJson('/api/rf/throughput-map', body);
+}
+
+// Monte Carlo traffic snapshots over a site cluster.
+export async function monteCarloTraffic(body: object): Promise<any> {
+  return postJson('/api/rf/montecarlo', body);
 }
 
 // DAS tree solver: splitters/couplers/cables -> per-antenna EIRP.

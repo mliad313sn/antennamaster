@@ -289,7 +289,10 @@ The exact engines are proven where a public reference exists: the **NTIA ITM**
 0.0 dB on all six quantiles (CI-gated ≤ 0.1 dB), and **ITU-R P.1812** runs the
 official SG3 reference code with the ITU digital maps; both are exposed in the
 UI with their environment parameters (climate zone, N₀, time/location
-percentages). P.1546 / P.452 / P.2001 remain absent. Per-pixel clutter comes
+percentages), and **ITU-R P.452-18** (official reference code, clear-air
+interference coordination 0.1–50 GHz with worst-case ducting time
+percentages) is UI-exposed alongside them. P.1546 / P.2001 remain absent.
+Per-pixel clutter comes
 from **ESA WorldCover 10 m** (P.1812 representative heights) and uploaded
 building footprints / **drone LiDAR** DSMs; a global 3D building database is
 still not bundled. Frequency/PCI planning, Erlang B/C, SINR→CQI throughput
@@ -308,7 +311,8 @@ is offline; its optional prose narrator needs an API key (or a local model).
 Nominatim place search and first-use WorldCover/DEM tile fetches require
 internet.
 
-**On the roadmap, not yet built:** P.452/P.2001 interference coordination;
+**On the roadmap, not yet built:** P.2001/P.1546 and regulator-grade
+coordination workflows (P.452-18 point-to-point interference is shipped);
 real drive-test campaigns to close the field-RMSE gates; catalog growth to
 500+ via further vendor scrapers; vision-assisted plan/photo reading; agentic
 optimization driving site-search/auto-placement toward a coverage-vs-CAPEX

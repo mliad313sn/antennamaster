@@ -448,6 +448,69 @@ def p1812_study(
         raise HTTPException(502, f"P.1812 computation failed: {exc}") from exc
 
 
+@router.get("/p452")
+def p452_study(
+    lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),
+    lat2: float = Query(ge=-90, le=90), lon2: float = Query(ge=-180, le=180),
+    h_tx_m: float = Query(30.0, ge=0, le=3000),
+    h_rx_m: float = Query(30.0, ge=0, le=3000),
+    freq_mhz: float = Query(6000.0, ge=100, le=50000),
+    time_pct: float = Query(0.01, ge=0.001, le=50),
+    gt_dbi: float = Query(0.0, ge=-30, le=60),
+    gr_dbi: float = Query(0.0, ge=-30, le=60),
+    polarization: int = Query(1, ge=1, le=2),
+    samples: int = Query(256, ge=32, le=2048),
+    dxf_id: str | None = None, surface: bool = Query(False),
+    clutter_source: str = Query("none"),
+    user: dict | None = Depends(current_user),
+) -> dict:
+    """ITU-R P.452-18 clear-air interference loss (official reference code,
+    0.1-50 GHz) between two stations over the fused profile.  Small
+    ``time_pct`` (e.g. 0.01 %) captures the rare ducting enhancements that
+    set the interference worst case — the coordination number a regulator
+    asks for.  ``clutter_source=worldcover`` feeds the Recommendation's own
+    clutter input from real 10 m land cover."""
+    from ..services.rf.itm_exact import p452_available, p452_loss
+    if not p452_available():
+        raise HTTPException(503, "P.452 reference code / ITU digital maps not "
+                                 "installed — run tools/fetch_itu_maps.py")
+    fusion = resolve_fusion(surface)
+    grid = georef = None
+    if dxf_id:
+        from .routes_dxf import resolve_dxf
+        session = resolve_dxf(dxf_id, user)
+        grid, georef = session.grid, session.georef
+    try:
+        prof = fusion.profile(lat1, lon1, lat2, lon2, n_samples=samples,
+                              grid=grid, georef=georef)
+    except Exception as exc:
+        raise HTTPException(502, f"Elevation data unavailable: {exc}") from exc
+
+    clutter = None
+    if clutter_source == "worldcover":
+        from ..services.clutter.worldcover import (clutter_profile_heights,
+                                                   get_worldcover_store)
+        try:
+            clutter = clutter_profile_heights(get_worldcover_store(),
+                                              prof.lats, prof.lons)
+        except Exception as exc:
+            raise HTTPException(502, f"WorldCover clutter unavailable: {exc}") from exc
+    elif clutter_source not in ("none", ""):
+        raise HTTPException(422, f"Unknown clutter_source: {clutter_source!r}")
+
+    try:
+        return {"freq_mhz": freq_mhz,
+                **p452_loss(prof.distances_m, prof.elevations_m,
+                            prof.lats, prof.lons, h_tx_m, h_rx_m, freq_mhz,
+                            time_pct=time_pct, clutter_heights_m=clutter,
+                            gt_dbi=gt_dbi, gr_dbi=gr_dbi,
+                            polarization=polarization)}
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(502, f"P.452 computation failed: {exc}") from exc
+
+
 @router.get("/availability")
 def link_availability_study(
     lat1: float = Query(ge=-90, le=90), lon1: float = Query(ge=-180, le=180),

@@ -101,6 +101,67 @@ def p1812_available() -> bool:
         return False
 
 
+def p452_available() -> bool:
+    try:
+        from Py452 import P452  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def p452_loss(distances_m, elevations_m, lats, lons,
+              h_tx_m: float, h_rx_m: float, freq_mhz: float,
+              time_pct: float = 50.0, clutter_heights_m=None,
+              gt_dbi: float = 0.0, gr_dbi: float = 0.0,
+              polarization: int = 1, dct_km: float = 500.0,
+              dcr_km: float = 500.0, pressure_hpa: float = 1013.25,
+              temp_c: float = 15.0) -> dict:
+    """Interference basic transmission loss per the official ITU-R P.452-18
+    reference code (clear-air interference coordination between stations on
+    the Earth's surface, 0.1-50 GHz).
+
+    ``time_pct`` is the percentage of time the loss is NOT exceeded — small
+    values (e.g. 0.01 %) model rare ducting enhancements, the worst case for
+    interference. ``clutter_heights_m`` feeds the Recommendation's own
+    clutter input g = h + representative height (WorldCover per-pixel).
+    ``dct_km``/``dcr_km`` are distances to the coast (500 = deep inland).
+    """
+    from Py452 import P452
+
+    d_km = np.asarray(distances_m, dtype=np.float64) / 1000.0
+    h = np.asarray(elevations_m, dtype=np.float64)
+    lats = np.asarray(lats, dtype=np.float64)
+    lons = np.asarray(lons, dtype=np.float64)
+    f_ghz = freq_mhz / 1000.0
+    if not (0.1 <= f_ghz <= 50.0):
+        raise ValueError("P.452 is defined for 0.1 - 50 GHz")
+    if not (0.001 <= time_pct <= 50.0):
+        raise ValueError("P.452 time percentage must be in [0.001, 50] %")
+
+    clutter = (np.asarray(clutter_heights_m, dtype=np.float64)
+               if clutter_heights_m is not None else np.zeros_like(h))
+    g = h + clutter                                  # Rec.'s clutter input
+    zone = np.full(h.shape, 2, dtype=int)            # inland (no sea mask yet)
+
+    lb = P452.bt_loss(f_ghz, float(time_pct), d_km, h, g, zone,
+                      float(h_tx_m), float(h_rx_m),
+                      float(lons[0]), float(lats[0]),
+                      float(lons[-1]), float(lats[-1]),
+                      float(gt_dbi), float(gr_dbi), int(polarization),
+                      float(dct_km), float(dcr_km),
+                      float(pressure_hpa), float(temp_c))
+    lb = float(np.atleast_1d(lb)[0])
+    fs = 32.45 + 20 * math.log10(freq_mhz) + 20 * math.log10(max(d_km[-1], 1e-3))
+    return {
+        "engine": "itu_p452_18_official",
+        "path_loss_db": round(lb, 2),
+        "free_space_db": round(fs, 2),
+        "excess_over_fs_db": round(lb - fs, 2),
+        "time_pct": time_pct,
+        "clutter_applied": bool(clutter_heights_m is not None),
+    }
+
+
 def p1812_loss(distances_m, elevations_m, lats, lons,
                h_tx_m: float, h_rx_m: float, freq_mhz: float,
                time_pct: float = 50.0, location_pct: float = 50.0,

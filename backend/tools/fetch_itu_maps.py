@@ -40,6 +40,7 @@ def main() -> int:
 
     if (pkg_dir / "P1812.npz").exists():
         print(f"maps already installed: {pkg_dir / 'P1812.npz'}")
+        _setup_p452(maps_dir)
         return 0
 
     print(f"downloading ITU digital maps from {ITU_ZIP} …")
@@ -52,7 +53,35 @@ def main() -> int:
     subprocess.run([sys.executable, "initiate_digital_maps.py"],
                    cwd=pkg_dir, check=True)
     print(f"built {pkg_dir / 'P1812.npz'} — P.1812 reference engine ready")
+    _setup_p452(maps_dir)
     return 0
+
+
+def _setup_p452(p1812_maps: Path) -> None:
+    """P.452-18 uses the same DN50/N050 integral maps; if the official Py452
+    package is installed, build its .npz from the files just downloaded."""
+    import importlib.util
+    spec = importlib.util.find_spec("Py452")
+    if spec is None:
+        print("Py452 not installed (optional): "
+              "pip install git+https://github.com/eeveetza/Py452")
+        return
+    pkg_dir = Path(spec.origin).parent
+    if (pkg_dir / "P452.npz").exists():
+        print(f"P.452 maps already installed: {pkg_dir / 'P452.npz'}")
+        return
+    maps_dir = pkg_dir / "maps"
+    maps_dir.mkdir(exist_ok=True)
+    import shutil
+    for name in ("DN50.TXT", "N050.TXT"):
+        src = p1812_maps / name
+        if not src.exists():
+            print(f"! {name} not found in {p1812_maps}; skipping P.452 setup")
+            return
+        shutil.copy(src, maps_dir / name)
+    subprocess.run([sys.executable, "initiate_digital_maps.py"],
+                   cwd=pkg_dir, check=True)
+    print(f"built {pkg_dir / 'P452.npz'} — P.452-18 reference engine ready")
 
 
 if __name__ == "__main__":

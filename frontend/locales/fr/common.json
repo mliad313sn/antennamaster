@@ -143,7 +143,11 @@
     "headroom": "marge",
     "users": "usagers",
     "planApplied": "Plan de fréquences appliqué",
-    "reuse1": "réutilisation-1 (sans plan)"
+    "reuse1": "réutilisation-1 (sans plan)",
+    "monteCarlo": "Trafic Monte Carlo (100 tirages)",
+    "mcSatisfied": "Usagers satisfaits",
+    "mcEdgeRate": "Débit usager 5e centile",
+    "mcOk": "ok"
   },
   "batch": {
     "title": "Récepteurs en lot",
@@ -483,7 +487,13 @@
     "blocking": "Probabilité de blocage",
     "waitProb": "Probabilité d'attente",
     "channelsLc": "canaux",
-    "channelsNeeded": "Canaux pour {{gos}} % de QoS"
+    "channelsNeeded": "Canaux pour {{gos}} % de QoS",
+    "tabP452": "P.452",
+    "p452Hint": "Affaiblissement de brouillage en air clair UIT-R P.452-18 officiel (0,1–50 GHz) entre deux stations — le chiffre de coordination qu'exige un régulateur. Les faibles pourcentages de temps capturent les conduits troposphériques rares (pire cas de brouillage). Activez WorldCover pour alimenter l'entrée fouillis de la Recommandation avec l'occupation du sol réelle à 10 m.",
+    "gtDbi": "Gain TX vers l'horizon dBi",
+    "grDbi": "Gain RX vers l'horizon dBi",
+    "interfLoss": "Affaiblissement de brouillage",
+    "engineP452": "UIT-R P.452-18 (code de référence)"
   },
   "globe": {
     "view2d": "2D",

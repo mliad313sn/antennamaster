@@ -137,8 +137,10 @@ current:
 1. **National-scale macro simulation (Atoll, Planet).** Multi-technology
    Monte Carlo over millions of subscribers, AFP/ACP across thousands of
    sites, operator-grade project databases and multi-user workflows.
-   AntennaMaster's planner is validated to 8-site clusters with grid-level
-   SINR/capacity — the private-network scale, not the national-operator scale.
+   AntennaMaster's planner now handles **24-site clusters with seeded Monte
+   Carlo traffic snapshots** (satisfied-user fraction with confidence
+   bounds) — the private-network scale, still not the national-operator
+   scale.
 2. **Deterministic 3D ray tracing (iBwave FRT, Ranplan, Aster).**
    AntennaMaster's indoor engine is multi-wall (COST-231-class) plus exact
    DAS arithmetic; it does not trace reflections/diffraction paths in 3D
@@ -149,10 +151,13 @@ current:
 3. **BIM/IFC ingestion (Ranplan, iBwave).** Revit/ArchiCAD/IFC import and
    automatic 2D→3D building reconstruction have no AntennaMaster equivalent;
    we ingest DXF floor plans and LiDAR point clouds.
-4. **Interference coordination models (HTZ).** P.452, P.2001, P.1546,
-   groundwave/HF below 30 MHz, and regulator-grade coordination workflows are
-   absent from AntennaMaster; HTZ is the reference there and this is on our
-   roadmap, not in our code.
+4. **Interference coordination models (HTZ).** *Partially closed since this
+   benchmark was first written:* AntennaMaster now runs the **official ITU-R
+   P.452-18 reference code** (clear-air interference, 0.1–50 GHz, worst-case
+   ducting percentages, WorldCover clutter input) with physics-invariant CI
+   tests. P.2001, P.1546, groundwave/HF below 30 MHz and regulator-grade
+   coordination *workflows* (licensing databases, batch coordination) remain
+   HTZ's ground.
 5. **Model breadth (HTZ).** 50+ models vs AntennaMaster's ~10 engines.
    AntennaMaster's position is depth-of-proof over breadth-of-menu, but a
    consultant needing P.533 HF circuits today needs HTZ.

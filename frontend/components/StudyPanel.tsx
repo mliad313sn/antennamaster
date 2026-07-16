@@ -11,7 +11,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, frequencyPlan,
-  simulateCoverage, simulateMultiCoverage, throughputMap, uploadAntenna,
+  monteCarloTraffic, simulateCoverage, simulateMultiCoverage, throughputMap,
+  uploadAntenna,
 } from '@/lib/api';
 import Help from '@/components/Help';
 import type {
@@ -193,6 +194,32 @@ export default function StudyPanel(props: StudyPanelProps) {
                            bounds: resp.bounds, legend: resp.legend });
       }
     } catch (e) { setError((e as Error).message); } finally { setTpBusy(false); }
+  }
+
+  const [mcRaw, setMcRaw] = useState<any | null>(null);
+  const [mcBusy, setMcBusy] = useState(false);
+
+  async function runMonteCarlo() {
+    if (!props.technology || sites.length === 0) return;
+    setMcBusy(true);
+    setError(null);
+    try {
+      const resp = await monteCarloTraffic({
+        sites, technology: props.technology, radius_km: radiusKm,
+        users: Math.max(1, parseInt(usersPerCell) * sites.length || 100),
+        demand_mbps: Math.max(0.1, parseFloat(mbpsPerUser) || 1),
+        draws: 100, render: false,
+        channels: freqPlan && freqPlan.assignments?.length === sites.length
+          ? freqPlan.assignments.map((a: any) => a.channel) : undefined,
+        model: props.model ?? undefined,
+        environment: props.environment ?? undefined,
+        surface: props.surfaceOn || undefined,
+        clutter_source: props.worldcoverOn ? 'worldcover' : undefined,
+        h_bs_m: props.txHeight || undefined,
+        tx_power_dbm: numOr(ovrPower), tx_gain_dbi: numOr(ovrTxGain),
+      });
+      setMcRaw(resp);
+    } catch (e) { setError((e as Error).message); } finally { setMcBusy(false); }
   }
 
   async function runFrequencyPlan() {
@@ -540,7 +567,7 @@ export default function StudyPanel(props: StudyPanelProps) {
             {/* ------------------- multi-site best-server study ---------- */}
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <button style={{ width: '100%' }} disabled={!props.tx}
-                onClick={() => props.tx && (setFreqPlan(null), setTpRaw(null),
+                onClick={() => props.tx && (setFreqPlan(null), setTpRaw(null), setMcRaw(null),
                   setSites((prev) => [...prev, {
                     lat: props.tx!.lat, lon: props.tx!.lng,
                     name: `Site ${prev.length + 1}`,
@@ -556,7 +583,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                     {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
                     <button style={{ marginLeft: 6, padding: '0 6px' }}
                       aria-label={`Remove ${s.name}`}
-                      onClick={() => { setFreqPlan(null); setTpRaw(null);
+                      onClick={() => { setFreqPlan(null); setTpRaw(null); setMcRaw(null);
                         setSites((prev) => prev.filter((_, j) => j !== i)); }}>
                       −
                     </button>
@@ -570,7 +597,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 </button>
               )}
               {/* ---------------- automatic frequency / PCI plan ---------- */}
-              {sites.length >= 2 && sites.length <= 8 && (
+              {sites.length >= 2 && sites.length <= 24 && (
                 <>
                   <div className="row" style={{ marginTop: 4, alignItems: 'flex-end' }}>
                     <div>
@@ -655,6 +682,37 @@ export default function StudyPanel(props: StudyPanelProps) {
                           {t('study.viewMbps')}
                         </button>
                       )}
+                    </div>
+                  )}
+                  {/* ------------- Monte Carlo traffic snapshots ---------- */}
+                  <button style={{ width: '100%', marginTop: 4 }} disabled={mcBusy}
+                    title="100 random user-drop snapshots over the served area (uses the Users/cell × Mbit/s demand above; applies the frequency plan when computed): satisfied-user fraction with confidence bounds"
+                    onClick={runMonteCarlo}>
+                    {mcBusy ? t('study.simulating') : t('study.monteCarlo')}
+                  </button>
+                  {mcRaw && (
+                    <div style={{ marginTop: 4 }}>
+                      <div className="stat-line">
+                        <span className="k">{t('study.mcSatisfied')}</span>
+                        <span className="v">
+                          <b>{(mcRaw.satisfied_fraction.mean * 100).toFixed(1)}%</b>
+                          {' '}(p5 {(mcRaw.satisfied_fraction.p5 * 100).toFixed(1)}% · p95 {(mcRaw.satisfied_fraction.p95 * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                      <div className="stat-line">
+                        <span className="k">{t('study.mcEdgeRate')}</span>
+                        <span className="v">{mcRaw.user_rate_p5_mbps.mean} Mbit/s</span>
+                      </div>
+                      {mcRaw.cells.map((c: any) => (
+                        <div key={c.site} className="stat-line">
+                          <span className="k">{c.site}</span>
+                          <span className="v">
+                            {c.mean_users} {t('study.users')}
+                            {c.mean_satisfied_fraction !== null &&
+                              <> · {(c.mean_satisfied_fraction * 100).toFixed(0)}% {t('study.mcOk')}</>}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </>

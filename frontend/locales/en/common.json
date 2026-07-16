@@ -143,7 +143,11 @@
     "headroom": "headroom",
     "users": "users",
     "planApplied": "Frequency plan applied",
-    "reuse1": "reuse-1 (no plan)"
+    "reuse1": "reuse-1 (no plan)",
+    "monteCarlo": "Monte Carlo traffic (100 snapshots)",
+    "mcSatisfied": "Satisfied users",
+    "mcEdgeRate": "5th-percentile user rate",
+    "mcOk": "ok"
   },
   "batch": {
     "title": "Batch receivers",
@@ -483,7 +487,13 @@
     "blocking": "Blocking probability",
     "waitProb": "Probability of waiting",
     "channelsLc": "channels",
-    "channelsNeeded": "Channels for {{gos}} % GoS"
+    "channelsNeeded": "Channels for {{gos}} % GoS",
+    "tabP452": "P.452",
+    "p452Hint": "Official ITU-R P.452-18 clear-air interference loss (0.1–50 GHz) between two stations — the coordination number a regulator asks for. Small time percentages capture rare ducting enhancements (the interference worst case). Enable WorldCover to feed the Recommendation's clutter input from real 10 m land cover.",
+    "gtDbi": "TX gain to horizon dBi",
+    "grDbi": "RX gain to horizon dBi",
+    "interfLoss": "Interference loss",
+    "engineP452": "ITU-R P.452-18 (reference code)"
   },
   "globe": {
     "view2d": "2D",

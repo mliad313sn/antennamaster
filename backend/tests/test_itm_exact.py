@@ -122,3 +122,62 @@ def test_p1812_api_with_worldcover_clutter(fake_store, monkeypatch):
                  params={**common, "clutter_source": "worldcover"}).json()
     assert clut["clutter_applied"] is True
     assert clut["path_loss_db"] >= bare["path_loss_db"]
+
+
+# ---------------------------------------------------------------- P.452-18
+needs_p452 = pytest.mark.skipif(
+    not pytest.importorskip("app.services.rf.itm_exact").p452_available(),
+    reason="Py452 / ITU digital maps not installed")
+
+
+@needs_p452
+def test_p452_physics_invariants():
+    """Official P.452-18 engine: interference worst case behaves physically.
+
+    Loss not exceeded for a SMALLER time percentage must be lower (rare
+    ducting enhancements), and adding representative clutter must raise the
+    50 %-time loss on an obstructed smooth-earth path."""
+    from app.services.rf.itm_exact import p452_loss
+    n = 200
+    d = np.linspace(0.0, 50_000.0, n)
+    h = np.full(n, 400.0)
+    lats = np.linspace(47.0, 47.45, n)
+    lons = np.full(n, 15.0)
+    l50 = p452_loss(d, h, lats, lons, 30, 30, 6000.0, time_pct=50.0)
+    l1 = p452_loss(d, h, lats, lons, 30, 30, 6000.0, time_pct=1.0)
+    l001 = p452_loss(d, h, lats, lons, 30, 30, 6000.0, time_pct=0.01)
+    assert l001["path_loss_db"] < l1["path_loss_db"] < l50["path_loss_db"]
+    clut = np.r_[np.zeros(5), np.full(n - 10, 15.0), np.zeros(5)]
+    lc = p452_loss(d, h, lats, lons, 30, 30, 6000.0, time_pct=50.0,
+                   clutter_heights_m=clut)
+    assert lc["path_loss_db"] > l50["path_loss_db"]
+    assert lc["clutter_applied"] is True
+    # Frequency validity is enforced.
+    with pytest.raises(ValueError):
+        p452_loss(d, h, lats, lons, 30, 30, 50.0)          # 50 MHz < 100 MHz
+    with pytest.raises(ValueError):
+        p452_loss(d, h, lats, lons, 30, 30, 6000.0, time_pct=60.0)
+
+
+@needs_p452
+def test_p452_api_route(fake_store, monkeypatch):
+    import app.api.routes_terrain as routes_terrain
+    import app.services.terrain.fusion as fusion_mod
+    from app.main import app
+    from app.services.terrain.fusion import TerrainFusionService
+    from fastapi.testclient import TestClient
+    monkeypatch.setattr(fusion_mod, "get_tile_store", lambda: fake_store)
+    monkeypatch.setattr(routes_terrain, "_fusion",
+                        TerrainFusionService(store=fake_store))
+    client = TestClient(app)
+    r = client.get("/api/terrain/p452", params={
+        "lat1": 47.0, "lon1": 15.0, "lat2": 47.3, "lon2": 15.4,
+        "freq_mhz": 6000, "time_pct": 0.01})
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["engine"] == "itu_p452_18_official"
+    assert d["path_loss_db"] > 100
+    # Unknown clutter source is rejected.
+    assert client.get("/api/terrain/p452", params={
+        "lat1": 47.0, "lon1": 15.0, "lat2": 47.3, "lon2": 15.4,
+        "clutter_source": "bogus"}).status_code == 422
