@@ -44,7 +44,7 @@ itu.int. Everything is logged to `install.log`; the run is idempotent — a
 failed step can be retried by re-running setup (repair) from the Start menu.
 The only unavoidable interaction is Windows SmartScreen on first launch.
 
-`launch.*` opens **http://localhost:3000** automatically once both servers are
+`launch.*` opens **http://localhost:3010** automatically once both servers are
 healthy. Stop everything with **Ctrl-C** — both ports are released cleanly.
 
 ---
@@ -104,10 +104,10 @@ Set `AM_ASSUME_YES=1` in the environment for unattended/CI runs.
 ## The launcher (`launch.sh` / `launch.ps1`)
 
 1. Verifies the environment is intact (`.venv`, `node_modules`, `.next` build)
-   and that ports 8000/3000 are free.
-2. Boots the **FastAPI backend** (`:8000`) and **Next.js frontend** (`:3000`)
+   and that ports 8010/3010 are free.
+2. Boots the **FastAPI backend** (`:8010`) and **Next.js frontend** (`:3010`)
    concurrently in the background.
-3. Polls `http://localhost:8000/api/health` until both answer.
+3. Polls `http://localhost:8010/api/health` until both answer.
 4. Opens your default browser to the portal and prints the LAN address so
    colleagues on the same network can reach it.
 5. Traps **Ctrl-C** (SIGINT) / SIGTERM and stops **both** processes — no
@@ -168,6 +168,6 @@ failure.
 | A dependency fails to build (`pyproj`, `scipy`) | The installer resolves the compiler toolchain and retries; if it still fails, install `build-essential` (Linux) / Xcode CLT (macOS) / MSVC Build Tools (Windows) and re-run. |
 | "Port 8000/3000 is already in use" | Another instance is running — stop it, or set `BACKEND_PORT` / `FRONTEND_PORT`. |
 | Windows: "running scripts is disabled on this system" | Launch with `powershell -ExecutionPolicy Bypass -File .\install.ps1`. |
-| The browser didn't open | Open http://localhost:3000 manually — the servers are still running. |
+| The browser didn't open | Open http://localhost:3010 manually — the servers are still running. |
 
 Re-running `install.*` is always safe: completed steps are detected and skipped.

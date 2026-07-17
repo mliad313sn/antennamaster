@@ -1,6 +1,6 @@
 # AntennaMaster — full-stack orchestration.
 #
-#   docker compose up -d --build     start the platform (http://localhost:3000)
+#   docker compose up -d --build     start the platform (http://localhost:3010)
 #   docker compose down              stop it (data volume is preserved)
 #   docker compose down -v           stop and DELETE all data
 #
@@ -32,9 +32,9 @@ services:
     # For a locked-down deployment, comment this out — the frontend proxies
     # everything the browser needs.
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8010:8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).status==200 else 1)"]
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8010/api/health',timeout=3).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -56,12 +56,12 @@ services:
         condition: service_healthy
     networks:
       - amnet
-    # Change to "3000:3000" to serve the whole LAN, or keep 127.0.0.1 to
+    # Change to "3010:3000" to serve the whole LAN, or keep 127.0.0.1 to
     # restrict to the host and front it with a reverse proxy.
     ports:
-      - "3000:3000"
+      - "3010:3000"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3010/"]
       interval: 30s
       timeout: 5s
       retries: 3

@@ -10,7 +10,7 @@ Companion documents:
 - `docs/ROADMAP.md` — five-layer capability model & delivered phases
 - `VISION_ARCHITECTURE.md` — 3D digital twin, live telemetry, drone LiDAR
 - `SaaS_ARCHITECTURE.md` — multi-tenant/SaaS internals
-- `http://localhost:8000/docs` — live interactive OpenAPI reference
+- `http://localhost:8010/docs` — live interactive OpenAPI reference
 
 ---
 
@@ -68,7 +68,7 @@ uvicorn app.main:app --port 8000
 ```
 
 Frontend (Node ≥ 18; proxies `/api/*` to the backend via `BACKEND_URL`,
-default `http://localhost:8000`):
+default `http://localhost:8010`):
 
 ```bash
 cd frontend
@@ -76,8 +76,8 @@ npm install
 npm run build && npm start     # or: npm run dev
 ```
 
-Open **http://localhost:3000**. The REST API is self-documenting at
-**http://localhost:8000/docs**.
+Open **http://localhost:3010**. The REST API is self-documenting at
+**http://localhost:8010/docs**.
 
 ### Health probes
 
@@ -803,7 +803,7 @@ edits needed.
 | `AM_SAAS_MODE` | unset (open) | `1` = enforce accounts, tiers and quotas |
 | `AM_BILLING_SECRET` | unset | shared secret required by the tier-change webhook in SaaS mode |
 
-Frontend: `BACKEND_URL` (default `http://localhost:8000`) — where the
+Frontend: `BACKEND_URL` (default `http://localhost:8010`) — where the
 Next.js server proxies `/api/*`.
 
 Operator band plans: drop a `technologies.json` into `AM_DATA_DIR` to merge

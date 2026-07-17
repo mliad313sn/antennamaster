@@ -7,7 +7,7 @@
 #   ./launch.sh --service     foreground, no browser (systemd / headless)
 #
 #   1. Verify the environment is intact (.venv + node_modules + build).
-#   2. Boot FastAPI (:8000) and Next.js (:3000) concurrently in the background.
+#   2. Boot FastAPI (:8010) and Next.js (:3010) concurrently in the background.
 #   3. Poll /api/health until both are ready.
 #   4. Open the default browser to the portal.
 #   5. Trap Ctrl-C / TERM to stop BOTH cleanly — no orphaned ports.
@@ -15,8 +15,8 @@ set -uo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
 
-BACKEND_PORT="${BACKEND_PORT:-8000}"
-FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+BACKEND_PORT="${BACKEND_PORT:-8010}"
+FRONTEND_PORT="${FRONTEND_PORT:-3010}"
 HOST_BIND="${HOST_BIND:-0.0.0.0}"
 OPEN_BROWSER=1; FOREGROUND=0
 case "${1:-}" in

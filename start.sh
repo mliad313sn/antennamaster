@@ -30,6 +30,6 @@ echo "Starting frontend on :3000 ..."
 FRONT_PID=$!
 
 echo
-echo "AntennaMaster is up:  http://localhost:3000  (API docs: http://localhost:8000/docs)"
+echo "AntennaMaster is up:  http://localhost:3010  (API docs: http://localhost:8010/docs)"
 echo "Stop with: kill $BACK_PID $FRONT_PID"
 wait

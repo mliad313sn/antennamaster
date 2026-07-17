@@ -8,7 +8,7 @@ const nextConfig = {
   // BACKEND_URL is read at runtime: http://backend:8000 in Docker, or a LAN
   // host in bare-metal deployments.
   async rewrites() {
-    const backend = process.env.BACKEND_URL || 'http://localhost:8000';
+    const backend = process.env.BACKEND_URL || 'http://localhost:8010';
     return [{ source: '/api/:path*', destination: `${backend}/api/:path*` }];
   },
 };

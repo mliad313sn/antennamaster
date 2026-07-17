@@ -19,5 +19,5 @@ docker compose up -d
 
 echo
 echo "✓ AntennaMaster is starting."
-echo "  App:  http://localhost:3000"
+echo "  App:  http://localhost:3010"
 echo "  Check:  docker compose ps"

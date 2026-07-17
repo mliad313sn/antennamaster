@@ -11,7 +11,7 @@ Documents complémentaires :
 - `docs/ROADMAP.md` — modèle de capacités en cinq couches et phases livrées
 - `VISION_ARCHITECTURE.md` — jumeau numérique 3D, télémétrie en direct, LiDAR
 - `SaaS_ARCHITECTURE.md` — internes multi-locataires / SaaS
-- `http://localhost:8000/docs` — référence OpenAPI interactive en direct
+- `http://localhost:8010/docs` — référence OpenAPI interactive en direct
 
 ---
 
@@ -70,7 +70,7 @@ uvicorn app.main:app --port 8000
 ```
 
 Frontend (Node ≥ 18 ; proxifie `/api/*` vers le backend via `BACKEND_URL`,
-par défaut `http://localhost:8000`) :
+par défaut `http://localhost:8010`) :
 
 ```bash
 cd frontend
@@ -78,8 +78,8 @@ npm install
 npm run build && npm start     # ou : npm run dev
 ```
 
-Ouvrez **http://localhost:3000**. L'API REST est auto-documentée à l'adresse
-**http://localhost:8000/docs**.
+Ouvrez **http://localhost:3010**. L'API REST est auto-documentée à l'adresse
+**http://localhost:8010/docs**.
 
 ### Sondes de santé
 
@@ -819,7 +819,7 @@ Tout le comportement du backend est réglable via des variables d'environnement
 | `AM_SAAS_MODE` | non défini (ouvert) | `1` = impose comptes, niveaux et quotas |
 | `AM_BILLING_SECRET` | non défini | secret partagé requis par le webhook de changement de niveau en mode SaaS |
 
-Frontend : `BACKEND_URL` (défaut `http://localhost:8000`) — où le serveur Next.js
+Frontend : `BACKEND_URL` (défaut `http://localhost:8010`) — où le serveur Next.js
 proxifie `/api/*`.
 
 Plans de bande d'opérateur : déposez un `technologies.json` dans `AM_DATA_DIR`

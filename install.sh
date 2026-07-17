@@ -209,6 +209,29 @@ if [[ -n "$PYBIN" ]]; then
              "activate the venv and inspect the error: source backend/.venv/bin/activate && pip install -r backend/requirements.txt"
       fi
     fi
+
+    # ---- Official ITU-R reference engines (exactness tier, non-fatal) ----
+    step "3b/4  ITU-R official reference engines (P.1812 / P.452 / P.2001)"
+    itu_ok=1
+    for pkg in Py1812 Py452 Py2001; do
+      if "$VENV_PY" -m pip show "$pkg" >/dev/null 2>&1; then ok "$pkg already installed"; continue; fi
+      if command -v git >/dev/null 2>&1 && "$VENV_PY" -m pip install "git+https://github.com/eeveetza/$pkg" >/dev/null 2>&1; then
+        ok "$pkg installed"
+      elif "$VENV_PY" -m pip install "https://github.com/eeveetza/$pkg/archive/refs/heads/master.zip" >/dev/null 2>&1 \
+        || "$VENV_PY" -m pip install "https://github.com/eeveetza/$pkg/archive/refs/heads/main.zip" >/dev/null 2>&1; then
+        ok "$pkg installed"
+      else
+        warn "$pkg could not be installed (offline?) — exact $pkg studies stay disabled"; itu_ok=0
+      fi
+    done
+    if [[ $itu_ok -eq 1 ]]; then
+      info "fetching the ITU integral digital maps from itu.int ..."
+      if (cd "$ROOT/backend" && "$VENV_PY" -m tools.fetch_itu_maps); then
+        ok "ITU digital maps installed — exact engines ready"
+      else
+        warn "ITU maps could not be fetched — re-run the installer online to enable the exact engines"
+      fi
+    fi
   fi
 fi
 
@@ -237,7 +260,7 @@ step "4/4  Result"
 if [[ "$FAILED" -eq 0 ]]; then
   printf '%s\n\n' "${GRN}${BLD}✓ Install complete.${RST}"
   echo "Start the platform:   ${BLD}./launch.sh${RST}"
-  echo "It opens ${BLU}http://localhost:3000${RST} once both servers are healthy."
+  echo "It opens ${BLU}http://localhost:3010${RST} once both servers are healthy."
   exit 0
 else
   printf '%s\n' "${RED}${BLD}✗ Install finished with issues (see the red lines above).${RST}"

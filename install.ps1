@@ -283,7 +283,7 @@ Step "4/4  Result"
 if (-not $script:Failed) {
   Write-Host "`n[OK] Install complete." -ForegroundColor Green
   Write-Host "Start the platform:   .\launch.ps1"
-  Write-Host "It opens http://localhost:3000 once both servers are healthy."
+  Write-Host "It opens http://localhost:3010 once both servers are healthy."
   exit 0
 } else {
   Write-Host "`n[X] Install finished with issues (see the red lines above)." -ForegroundColor Red

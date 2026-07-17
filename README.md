@@ -168,12 +168,12 @@ uvicorn app.main:app --reload --port 8000
 ```
 
 Frontend (Node ≥ 18) — proxies `/api/*` to the backend
-(`BACKEND_URL`, default `http://localhost:8000`):
+(`BACKEND_URL`, default `http://localhost:8010`):
 
 ```bash
 cd frontend
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # http://localhost:3010
 ```
 
 Tests (offline — fake DEM world + synthetic survey DXF):

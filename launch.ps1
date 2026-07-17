@@ -5,7 +5,7 @@
 
 .DESCRIPTION
   1. Verify the environment is intact (.venv + node_modules + build).
-  2. Boot FastAPI (:8000) and Next.js (:3000) concurrently as background jobs.
+  2. Boot FastAPI (:8010) and Next.js (:3010) concurrently as background jobs.
   3. Poll /api/health until both are ready.
   4. Open the default browser to the portal.
   5. On Ctrl-C, stop BOTH processes cleanly so no port is orphaned.
@@ -22,8 +22,8 @@ $Root = (Get-Location).Path
 # Portable Node runtime (created by install.ps1 on machines without Node).
 $PortableNode = Join-Path $Root 'runtime\node'
 if (Test-Path $PortableNode) { $env:Path = "$PortableNode;$env:Path" }
-$BackendPort  = if ($env:BACKEND_PORT)  { $env:BACKEND_PORT }  else { 8000 }
-$FrontendPort = if ($env:FRONTEND_PORT) { $env:FRONTEND_PORT } else { 3000 }
+$BackendPort  = if ($env:BACKEND_PORT)  { $env:BACKEND_PORT }  else { 8010 }
+$FrontendPort = if ($env:FRONTEND_PORT) { $env:FRONTEND_PORT } else { 3010 }
 
 function Die($m) { Write-Host "[X] $m" -ForegroundColor Red; exit 1 }
 

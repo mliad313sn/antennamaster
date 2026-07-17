@@ -26,8 +26,8 @@ server to run**.
 ```bash
 docker compose up -d --build
 ```
-- Frontend: **http://localhost:3000**
-- Backend API docs: http://localhost:8000/docs (published to localhost only)
+- Frontend: **http://localhost:3010**
+- Backend API docs: http://localhost:8010/docs (published to localhost only)
 
 The frontend waits for the backend's health check before starting; both
 restart automatically on failure or host reboot (`restart: unless-stopped`).
@@ -197,9 +197,9 @@ New-NetFirewallRule -DisplayName "AntennaMaster" -Direction Inbound `
 
 **Quick smoke test after deploy:**
 ```bash
-curl -s http://localhost:8000/api/health                 # {"status":"ok"}
-curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3000/   # 200
-curl -s http://localhost:3000/api/rf/technologies | head -c 80    # proxied JSON
+curl -s http://localhost:8010/api/health                 # {"status":"ok"}
+curl -s -o /dev/null -w '%{http_code}\n' http://localhost:3010/   # 200
+curl -s http://localhost:3010/api/rf/technologies | head -c 80    # proxied JSON
 ```
 
 | Symptom | Cause & fix |

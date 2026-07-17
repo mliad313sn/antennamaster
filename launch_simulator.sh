@@ -14,8 +14,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ROOT="$(pwd)"
 
-BACKEND_PORT="${BACKEND_PORT:-8000}"
-FRONTEND_PORT="${FRONTEND_PORT:-3000}"
+BACKEND_PORT="${BACKEND_PORT:-8010}"
+FRONTEND_PORT="${FRONTEND_PORT:-3010}"
 HOST_BIND="${HOST_BIND:-0.0.0.0}"       # 0.0.0.0 = reachable on the LAN
 OPEN_BROWSER=1
 FOREGROUND=0
@@ -48,7 +48,7 @@ echo "${BLD}Starting AntennaMaster…${RST}"
 BACK_PID=$!
 
 # Frontend: run the standalone Node server (matches the Docker runtime). The
-# /api proxy target was baked at build time to localhost:8000 for a same-host
+# /api proxy target was baked at build time to localhost:8010 for a same-host
 # install, which is correct here.  Falls back to `next start` if the
 # standalone build is unavailable.
 if [[ -f frontend/.next/standalone/server.js ]]; then
