@@ -27,3 +27,4 @@ backend/.coverage
 *.tar
 antennamaster-offline.tar
 backend/.venv/
+packaging/windows/stage/

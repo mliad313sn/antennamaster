@@ -10,9 +10,25 @@ ARM64 (Apple Silicon).
 
 | OS | Install | Launch |
 |---|---|---|
+| **Windows (one-click)** | run **`dist/AntennaMaster-Setup-1.0.0.exe`** | Start menu → **AntennaMaster** |
 | **macOS / Linux** | `./install.sh` | `./launch.sh` |
-| **Windows** | `powershell -ExecutionPolicy Bypass -File .\install.ps1` | `powershell -ExecutionPolicy Bypass -File .\launch.ps1` |
+| **Windows (from source)** | `powershell -ExecutionPolicy Bypass -File .\install.ps1` | `powershell -ExecutionPolicy Bypass -File .\launch.ps1` |
 | **Any (Docker)** | — | `docker compose up -d --build` |
+
+### The Windows setup .exe
+
+`dist/AntennaMaster-Setup-1.0.0.exe` is a signed-format NSIS installer built
+straight from this repository (`./tools/build_windows_installer.sh`, works on
+Linux/macOS with `nsis` installed — no Windows machine needed to produce it).
+It performs a **per-user install** (no admin prompt) into
+`%LOCALAPPDATA%\AntennaMaster`, creates Start-menu shortcuts
+(**AntennaMaster** to launch, **setup (repair)** to re-run the bootstrap,
+**Uninstall**), registers a proper Add/Remove Programs entry, and on the
+finish page offers to run the environment setup immediately — the same
+self-bootstrapping `install.ps1` documented below (internet needed once for
+the Python/Node dependencies; the app then runs fully offline). The wizard
+ships in English and French. Note: the binary is not Authenticode-signed, so
+SmartScreen may ask for "More info → Run anyway" on first launch.
 
 `launch.*` opens **http://localhost:3000** automatically once both servers are
 healthy. Stop everything with **Ctrl-C** — both ports are released cleanly.
