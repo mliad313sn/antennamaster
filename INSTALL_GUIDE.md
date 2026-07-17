@@ -55,14 +55,16 @@ The installer resolves these for you where it can; this is what it needs:
 
 | Requirement | Minimum | Auto-installed by the installer? |
 |---|---|---|
-| **Python** | 3.10+ | Yes — brew / apt / dnf / pacman / zypper / winget / choco |
-| **Node.js + npm** | 18+ | Yes — native manager or NodeSource (Linux) / winget (Windows) |
+| **Python** | 3.10+ | Yes — brew / apt / dnf / pacman / zypper / winget / choco, **or the python.org per-user silent installer on Windows (no manager, no admin)** |
+| **Node.js + npm** | 18+ | Yes — native manager or NodeSource (Linux) / winget (Windows), **or the nodejs.org portable ZIP runtime (no manager, no admin)** |
 | **Git** | any | Optional; installed if a manager is present |
 | **Docker** | any | Optional — an alternative to the native install, never required |
 | **C toolchain** | — | Only if a prebuilt Python wheel is unavailable (build-essential / Xcode CLT / MSVC Build Tools) |
 
-Nothing is installed without a package manager present; if none is found, the
-installer prints the exact manual command instead.
+On macOS/Linux, nothing is installed without a package manager present — the
+installer prints the exact manual command instead. On Windows the bootstrap is
+fully autonomous: with no package manager it downloads Python and Node
+directly from their official sources (per-user, no admin rights needed).
 
 ---
 
