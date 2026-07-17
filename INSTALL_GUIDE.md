@@ -30,6 +30,20 @@ the Python/Node dependencies; the app then runs fully offline). The wizard
 ships in English and French. Note: the binary is not Authenticode-signed, so
 SmartScreen may ask for "More info → Run anyway" on first launch.
 
+**Fully autonomous bootstrap.** With "Run environment setup now" checked the
+whole chain runs unattended (`install.ps1 -Yes`): if Python or Node.js is
+missing it tries winget/chocolatey first, then falls back to **direct
+downloads from the official sources** — the python.org per-user silent
+installer and the nodejs.org **portable ZIP runtime** (unpacked into
+`runtime\node`) — so the install completes even on machines with **no
+package manager and no admin rights**. It then creates the virtualenv,
+installs the Python and Node dependencies, builds the web app, installs the
+**official ITU-R reference engines** (Py1812 / Py452 / Py2001, via git or the
+GitHub source archives) and fetches the ITU integral digital maps from
+itu.int. Everything is logged to `install.log`; the run is idempotent — a
+failed step can be retried by re-running setup (repair) from the Start menu.
+The only unavoidable interaction is Windows SmartScreen on first launch.
+
 `launch.*` opens **http://localhost:3000** automatically once both servers are
 healthy. Stop everything with **Ctrl-C** — both ports are released cleanly.
 

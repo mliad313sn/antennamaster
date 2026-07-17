@@ -19,6 +19,9 @@ param([switch]$NoBrowser)
 $ErrorActionPreference = 'Stop'
 Set-Location -Path $PSScriptRoot
 $Root = (Get-Location).Path
+# Portable Node runtime (created by install.ps1 on machines without Node).
+$PortableNode = Join-Path $Root 'runtime\node'
+if (Test-Path $PortableNode) { $env:Path = "$PortableNode;$env:Path" }
 $BackendPort  = if ($env:BACKEND_PORT)  { $env:BACKEND_PORT }  else { 8000 }
 $FrontendPort = if ($env:FRONTEND_PORT) { $env:FRONTEND_PORT } else { 3000 }
 

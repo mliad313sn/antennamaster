@@ -57,7 +57,7 @@ Section "Application" SecApp
     "Launch AntennaMaster (backend + web app + browser)"
   CreateShortCut "$SMPROGRAMS\${APPNAME}\${APPNAME} setup (repair).lnk" \
     "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" \
-    '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\install.ps1"' \
+    '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\install.ps1" -Yes' \
     "$INSTDIR\antennamaster.ico" 0 SW_SHOWNORMAL "" \
     "Re-run the dependency bootstrap"
   CreateShortCut "$SMPROGRAMS\${APPNAME}\Uninstall.lnk" \
@@ -81,7 +81,7 @@ SectionEnd
 
 Function RunSetup
   ExecShell "open" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" \
-    '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\install.ps1"'
+    '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\install.ps1" -Yes'
 FunctionEnd
 
 Section "Uninstall"
