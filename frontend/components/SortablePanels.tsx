@@ -94,7 +94,13 @@ export default function SortablePanels({
   const [armed, setArmed] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
-  const restored = useRef(false);
+  // `hydrated` flips true only after the saved layout has loaded into state, so
+  // the persist effect below can never fire on the first commit and clobber a
+  // saved layout with the default (it's state, not a ref, so the persist effect
+  // genuinely doesn't run until the load-effect re-render has applied).
+  const [hydrated, setHydrated] = useState(false);
+  // Screen-reader status for keyboard/button reordering (WCAG 4.1.3).
+  const [announce, setAnnounce] = useState('');
 
   const byId = useMemo(
     () => new Map(items.map((i) => [i.id, i])), [items]);
@@ -106,7 +112,7 @@ export default function SortablePanels({
     catch { /* corrupted / unavailable storage: fall back to default */ }
     setOrder(reconcile(saved.order, liveIds));
     setHidden(new Set(saved.hidden));
-    restored.current = true;
+    setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -117,15 +123,15 @@ export default function SortablePanels({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveKey]);
 
-  // Persist after the initial restore (so we never clobber a saved layout with
-  // the default before it has loaded).
+  // Persist only after the saved layout has hydrated, so the first commit
+  // never overwrites a saved layout with the default.
   useEffect(() => {
-    if (!restored.current) return;
+    if (!hydrated) return;
     try {
       localStorage.setItem(storageKey,
         JSON.stringify({ order, hidden: Array.from(hidden) }));
     } catch { /* storage full/unavailable: layout is still live in memory */ }
-  }, [order, hidden, storageKey]);
+  }, [order, hidden, hydrated, storageKey]);
 
   function move(from: string, to: string) {
     if (from === to) return;
@@ -145,8 +151,14 @@ export default function SortablePanels({
     const present = order.filter((x) => byId.has(x));
     const i = present.indexOf(id);
     const j = i + dir;
-    if (i < 0 || j < 0 || j >= present.length) return;
+    const label = byId.get(id)?.label ?? id;
+    if (i < 0) return;
+    if (j < 0 || j >= present.length) {
+      setAnnounce(`${label} is already ${dir < 0 ? 'first' : 'last'}.`);
+      return;
+    }
     move(id, present[j]);
+    setAnnounce(`Moved ${label} to position ${j + 1} of ${present.length}.`);
   }
 
   function toggleHidden(id: string) {
@@ -195,15 +207,22 @@ export default function SortablePanels({
       </div>
       {arrange && <p className="sortable-hint">{hint}</p>}
 
-      {ordered.map((id) => {
+      <div className="sortable-list" role={arrange ? 'list' : undefined}>
+        {ordered.map((id, idx) => {
         const item = byId.get(id)!;
+        const label = item.label ?? id;
         const isHidden = hidden.has(id);
         const isDragging = dragId === id;
         const isOver = overId === id && dragId !== null && dragId !== id;
+        const isFirst = idx === 0;
+        const isLast = idx === ordered.length - 1;
         return (
           <div
             key={id}
             data-panel-id={id}
+            role={arrange ? 'listitem' : undefined}
+            aria-roledescription={arrange ? 'Sortable panel' : undefined}
+            aria-label={arrange ? `${label} — position ${idx + 1} of ${ordered.length}` : undefined}
             className={
               'sortable-item'
               + (arrange ? ' arranging' : '')
@@ -233,20 +252,42 @@ export default function SortablePanels({
                   type="button"
                   className="panel-vis"
                   aria-pressed={!isHidden}
-                  aria-label={isHidden
-                    ? `${showLabel}${item.label ? ` — ${item.label}` : ''}`
-                    : `${hideLabel}${item.label ? ` — ${item.label}` : ''}`}
+                  aria-label={`${isHidden ? showLabel : hideLabel} — ${label}`}
                   title={isHidden ? showLabel : hideLabel}
                   onClick={() => toggleHidden(id)}
                 >
                   {isHidden ? '🚫' : '👁'}
                 </button>
+                {/* Explicit up/down move buttons: unlike native HTML5 drag,
+                    these work on touch devices and screen readers too. */}
+                <button
+                  type="button"
+                  className="panel-move"
+                  aria-label={`Move ${label} up`}
+                  title="Move up"
+                  disabled={isFirst}
+                  onClick={() => nudge(id, -1)}
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  className="panel-move"
+                  aria-label={`Move ${label} down`}
+                  title="Move down"
+                  disabled={isLast}
+                  onClick={() => nudge(id, 1)}
+                >
+                  ▼
+                </button>
                 <button
                   type="button"
                   className="drag-handle"
-                  aria-label="Reorder panel — use up and down arrows"
-                  title="Drag to reorder (or use ↑ / ↓)"
+                  aria-label={`Drag to reorder ${label}, or use the up and down buttons`}
+                  title="Drag to reorder"
                   onMouseDown={() => setArmed(id)}
+                  onMouseUp={() => setArmed(null)}
+                  onBlur={() => setArmed(null)}
                   onTouchStart={() => setArmed(id)}
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowUp') { e.preventDefault(); nudge(id, -1); }
@@ -265,7 +306,11 @@ export default function SortablePanels({
             </div>
           </div>
         );
-      })}
+        })}
+      </div>
+
+      {/* Polite live region: announces reorder results to screen readers. */}
+      <div aria-live="polite" className="sr-only">{announce}</div>
     </div>
   );
 }

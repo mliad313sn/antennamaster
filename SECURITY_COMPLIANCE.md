@@ -41,13 +41,21 @@ cannot read another's data by guessing an id:
 - **DXF**: a central `resolve_dxf()` guard runs existence (404) → **owner
   check (403)** → tier gate (402) → ready (409) on *every* DXF-consuming
   endpoint (terrain profile/elevation, coverage single/multi/batch/site-search,
-  indoor coverage/preview, height optimizer, KML export).
+  indoor coverage/preview, height optimizer, KML export, and the DXF-native
+  `layers` / `overlay.png` / `state` reads — the reads are owner-scoped without
+  the tier gate so an anonymous self-hosted session can still restore its own).
 - **Antenna patterns**: owner-scoped load — a private pattern cannot be *used*
   by another account (403), not merely hidden from listings.
 - **Async jobs**: `GET /api/saas/jobs/{id}` is owner-scoped and returns **404**
   (not 403) to a stranger, so ids are not an existence oracle.
 - **Projects**: get/update/delete/share/duplicate all check `user_id`; shared
   links strip the owner id and the capability token from the response.
+- **Known limitation — Live Ops telemetry** (`/api/telemetry/*`) is an
+  unauthenticated, single-tenant feature backed by one process-global engine:
+  ingested asset positions are visible to anyone who can reach the endpoint.
+  It is intended for a single-operator/on-prem deployment, **not** shared
+  multi-tenant SaaS; front it with network ACLs or a reverse-proxy auth layer
+  if exposed. (Tenant-scoping it is tracked as future work.)
 
 ### Authentication
 - Passwords: **PBKDF2-HMAC-SHA256, 200k iterations**, per-user salt, constant-

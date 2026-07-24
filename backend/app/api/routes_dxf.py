@@ -104,10 +104,13 @@ def _georef_hints(doc) -> dict:
 
 
 @router.get("/{dxf_id}/layers")
-def get_layers(dxf_id: str) -> dict:
+def get_layers(dxf_id: str,
+               user: dict | None = Depends(current_user)) -> dict:
     """All layers in the DXF, with point counts and Z ranges, so the user can
     choose which layers carry terrain data."""
-    session = _session_or_404(dxf_id)
+    # Owner-scope the read (no tier gate: layer inspection precedes
+    # georeferencing). Anonymous uploads stay open in self-hosted mode.
+    session = resolve_dxf(dxf_id, user, gate=False, require_ready=False)
     if not session.layers:
         session.layers = parser.list_layers(session.document())
     return {"dxf_id": dxf_id, "layers": session.layers}
@@ -178,11 +181,12 @@ def georeference(dxf_id: str, req: GeorefRequest,
 
 @router.get("/{dxf_id}/overlay.png")
 def overlay_png(dxf_id: str,
-                alpha: float = Query(0.62, ge=0.0, le=1.0)) -> Response:
+                alpha: float = Query(0.62, ge=0.0, le=1.0),
+                user: dict | None = Depends(current_user)) -> Response:
     """Semi-transparent hillshade of the georeferenced DXF terrain."""
-    session = _session_or_404(dxf_id)
-    if not session.ensure_ready():
-        raise HTTPException(409, "DXF has not been georeferenced yet")
+    # Owner-scoped read (gate=False keeps overlay reload working for the
+    # anonymous self-hosted frontend); require_ready gives the 409 below.
+    session = resolve_dxf(dxf_id, user, gate=False, require_ready=True)
     if alpha != 0.62:
         # Custom alpha renders are NOT cached - caching them would poison
         # the default-alpha response for every later caller.
@@ -242,12 +246,13 @@ def resolve_dxf(dxf_id: str, user: dict | None, *, gate: bool = True,
 
 
 @router.get("/{dxf_id}/state")
-def dxf_state(dxf_id: str) -> dict:
+def dxf_state(dxf_id: str,
+              user: dict | None = Depends(current_user)) -> dict:
     """Restore a previously georeferenced DXF (e.g. after a page reload):
     returns the same payload shape as POST /georeference."""
-    session = _session_or_404(dxf_id)
-    if not session.ensure_ready():
-        raise HTTPException(409, "DXF has not been georeferenced yet")
+    # Owner-scoped read; gate=False so the anonymous frontend can restore its
+    # own session, require_ready gives the 409 for not-yet-georeferenced DXFs.
+    session = resolve_dxf(dxf_id, user, gate=False, require_ready=True)
     if session.footprint is None:
         session.footprint = footprint_lonlat(session.grid, session.georef)
     if session.overlay_bounds is None or session.overlay_png is None:

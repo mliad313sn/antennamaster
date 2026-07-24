@@ -62,10 +62,15 @@ export default function LiveOps() {
     };
     try {
       es = new EventSource('/api/telemetry/stream');
-      es.addEventListener('state', (e) => setAssets(JSON.parse((e as MessageEvent).data).assets ?? []));
+      es.addEventListener('state', (e) => {
+        try { setAssets(JSON.parse((e as MessageEvent).data).assets ?? []); }
+        catch { /* ignore a malformed frame; the next one recovers */ }
+      });
       es.addEventListener('correlation', (e) => {
-        const ev = JSON.parse((e as MessageEvent).data);
-        setEvents((prev) => [ev, ...prev].slice(0, 40));
+        try {
+          const ev = JSON.parse((e as MessageEvent).data);
+          setEvents((prev) => [ev, ...prev].slice(0, 40));
+        } catch { /* ignore a malformed frame */ }
       });
       es.onerror = () => { es?.close(); es = null; startPolling(); };
     } catch { startPolling(); }

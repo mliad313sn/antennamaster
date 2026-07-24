@@ -35,18 +35,35 @@ describe('SortablePanels', () => {
     expect(screen.getByRole('button', { name: /Arrange panels/ })).toBeInTheDocument();
   });
 
-  it('keyboard-reorders a panel down and persists the new order', () => {
+  it('reorders a panel down via the move button and persists the new order', () => {
     const { container } = render(<SortablePanels items={items()} storageKey={KEY} />);
     fireEvent.click(screen.getByRole('button', { name: /Arrange panels/ }));
 
-    // Move panel "a" down one slot via its handle.
-    const first = container.querySelector('[data-panel-id="a"]')!;
-    const handle = within(first as HTMLElement).getByRole('button', { name: /Reorder panel/ });
-    fireEvent.keyDown(handle, { key: 'ArrowDown' });
+    // Move panel "a" down one slot via its explicit ▼ button (touch/SR-safe).
+    fireEvent.click(screen.getByRole('button', { name: /Move Alpha down/ }));
 
     expect(panelIds(container)).toEqual(['b', 'a', 'c']);
     const saved = JSON.parse(localStorage.getItem(KEY)!);
     expect(saved.order).toEqual(['b', 'a', 'c']);
+    // The move is announced to screen readers.
+    expect(screen.getByText(/Moved Alpha to position 2 of 3/)).toBeInTheDocument();
+  });
+
+  it('keyboard-reorders via ↑/↓ on the drag handle', () => {
+    const { container } = render(<SortablePanels items={items()} storageKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: /Arrange panels/ }));
+    const first = container.querySelector('[data-panel-id="a"]')!;
+    const handle = within(first as HTMLElement).getByRole('button', { name: /Drag to reorder Alpha/ });
+    fireEvent.keyDown(handle, { key: 'ArrowDown' });
+    expect(panelIds(container)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('disables the move buttons at the list boundaries', () => {
+    render(<SortablePanels items={items()} storageKey={KEY} />);
+    fireEvent.click(screen.getByRole('button', { name: /Arrange panels/ }));
+    // First panel can't move up; last can't move down.
+    expect(screen.getByRole('button', { name: /Move Alpha up/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Move Charlie down/ })).toBeDisabled();
   });
 
   it('hides a panel (dropping it from normal view) and restores it', () => {

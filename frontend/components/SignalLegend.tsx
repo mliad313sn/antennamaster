@@ -9,14 +9,15 @@
 import { useTranslation } from 'react-i18next';
 
 // dBm thresholds → grade. Colours mirror the coverage engine's 5 margin
-// classes: a green→yellow→orange→red traffic-light scale so each level shows
-// as a distinct colour (see backend LEGEND_STEPS).
+// classes: ColorBrewer's colour-vision-safe RdYlBu scale (blue = strong →
+// red = marginal) so each level shows as a distinct colour (see backend
+// LEGEND_STEPS).
 const BANDS = [
-  { min: -65, color: '#1a7a2a', key: 'excellent' },
-  { min: -75, color: '#7ac142', key: 'veryGood' },
-  { min: -85, color: '#f1c40f', key: 'good' },
-  { min: -95, color: '#e67e22', key: 'fair' },
-  { min: -110, color: '#c0392b', key: 'marginal' },
+  { min: -65, color: '#2c7bb6', key: 'excellent' },
+  { min: -75, color: '#abd9e9', key: 'veryGood' },
+  { min: -85, color: '#ffffbf', key: 'good' },
+  { min: -95, color: '#fdae61', key: 'fair' },
+  { min: -110, color: '#d7191c', key: 'marginal' },
 ];
 
 export function gradeForDbm(dbm: number): { key: string; color: string } {

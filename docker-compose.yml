@@ -34,7 +34,9 @@ services:
     ports:
       - "127.0.0.1:8010:8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8010/api/health',timeout=3).status==200 else 1)"]
+      # Runs INSIDE the backend container, where uvicorn listens on 8000
+      # (8010 is only the host-published port — not reachable from in here).
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health',timeout=3).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -61,7 +63,9 @@ services:
     ports:
       - "3010:3000"
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3010/"]
+      # Runs INSIDE the frontend container, where Next.js listens on 3000
+      # (3010 is only the host-published port — not reachable from in here).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/"]
       interval: 30s
       timeout: 5s
       retries: 3

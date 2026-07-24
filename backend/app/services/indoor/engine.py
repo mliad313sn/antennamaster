@@ -27,14 +27,14 @@ from .materials import material_loss_db
 
 C_LIGHT = 299_792_458.0
 
-# Margin-classed color ramp (same classes and traffic-light hues as the
-# outdoor coverage engine: green = strong → red = marginal).
+# Margin-classed color ramp — same classes and the same colour-vision-safe
+# RdYlBu hues as the outdoor coverage engine (blue = strong → red = marginal).
 LEGEND_STEPS = [
-    (30.0, (26, 122, 42), "Excellent (≥ 30 dB margin)"),
-    (20.0, (122, 193, 66), "Very good (≥ 20 dB)"),
-    (12.0, (241, 196, 15), "Good (≥ 12 dB)"),
-    (6.0, (230, 126, 34), "Fair (≥ 6 dB)"),
-    (0.0, (192, 57, 43), "Marginal (≥ 0 dB)"),
+    (30.0, (44, 123, 182), "Excellent (≥ 30 dB margin)"),
+    (20.0, (171, 217, 233), "Very good (≥ 20 dB)"),
+    (12.0, (255, 255, 191), "Good (≥ 12 dB)"),
+    (6.0, (253, 174, 97), "Fair (≥ 6 dB)"),
+    (0.0, (215, 25, 28), "Marginal (≥ 0 dB)"),
 ]
 
 

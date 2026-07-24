@@ -181,8 +181,21 @@ def test_dxf_consumer_paths_enforce_ownership(client, site_dxf):
         headers=hdrs_x).status_code == 403
     assert client.get(f"/api/indoor/{dxf_id}/preview.png",
                       headers=hdrs_x).status_code == 403
+    # DXF-native read endpoints are owner-scoped too (regression guard: these
+    # three previously skipped the owner check and leaked the terrain/footprint
+    # to any account that knew the id).
+    assert client.get(f"/api/dxf/{dxf_id}/layers",
+                      headers=hdrs_x).status_code == 403
+    assert client.get(f"/api/dxf/{dxf_id}/overlay.png",
+                      headers=hdrs_x).status_code == 403
+    assert client.get(f"/api/dxf/{dxf_id}/state",
+                      headers=hdrs_x).status_code == 403
     # The owner still reaches them (200, or 422/409 for study reasons - never 403).
     assert client.get("/api/terrain/profile", params=prof,
+                      headers=hdrs_o).status_code == 200
+    assert client.get(f"/api/dxf/{dxf_id}/state",
+                      headers=hdrs_o).status_code == 200
+    assert client.get(f"/api/dxf/{dxf_id}/layers",
                       headers=hdrs_o).status_code == 200
 
 

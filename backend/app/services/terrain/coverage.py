@@ -30,18 +30,21 @@ from .fusion import TerrainFusionService
 _GEOD = Geod(ellps="WGS84")
 C_LIGHT = 299_792_458.0
 
-# Signal-strength ramp: a multi-hue "traffic-light" scale (green = strong,
-# through yellow/orange, to red = marginal) so each coverage level reads as a
-# distinct colour on the map — the convention used by Atoll / Radio Mobile and
-# what a client instantly parses ("green good, red weak").  Thresholds are
-# offsets above the technology's receiver sensitivity.
+# Signal-strength ramp: five distinct hues so each coverage level reads as its
+# own colour on the map (blue = strong → red = marginal).  This is ColorBrewer's
+# RdYlBu diverging palette, which is *colour-vision-deficiency safe*: it varies
+# along the red↔blue axis (the one red-green colourblind users can still see)
+# instead of green↔red, so ~8% of male viewers can still tell the classes apart.
+# Red = weak/no-service stays intuitive, and blue = strong echoes the classic
+# signal-strength convention.  Thresholds are offsets above the technology's
+# receiver sensitivity.
 LEGEND_STEPS = [
     # (margin_db >=, color, label)
-    (30.0, (26, 122, 42), "Excellent (≥ 30 dB margin)"),
-    (20.0, (122, 193, 66), "Very good (≥ 20 dB)"),
-    (12.0, (241, 196, 15), "Good (≥ 12 dB)"),
-    (6.0, (230, 126, 34), "Fair (≥ 6 dB)"),
-    (0.0, (192, 57, 43), "Marginal (≥ 0 dB)"),
+    (30.0, (44, 123, 182), "Excellent (≥ 30 dB margin)"),
+    (20.0, (171, 217, 233), "Very good (≥ 20 dB)"),
+    (12.0, (255, 255, 191), "Good (≥ 12 dB)"),
+    (6.0, (253, 174, 97), "Fair (≥ 6 dB)"),
+    (0.0, (215, 25, 28), "Marginal (≥ 0 dB)"),
 ]
 
 
