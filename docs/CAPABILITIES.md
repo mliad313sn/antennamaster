@@ -99,8 +99,9 @@ band plans mergeable from `DATA_DIR/technologies.json` without code changes.
 - **Single-site area coverage**: polar sweep (36–720 radials × 20–400
   steps, ≤150 km radius), per-step diffraction, omni/sector/MSI antennas,
   downtilt, **shadow-fade margin** (design to 90/95% area), area-weighted
-  served fraction, margin-classed raster (5 classes, single-hue,
-  transparent where unserved). ~2 s for a 10 km 180×100 sweep (cached DEM).
+  served fraction, margin-classed raster (5 classes, green→yellow→orange→red
+  traffic-light scale, transparent where unserved). ~2 s for a 10 km 180×100
+  sweep (cached DEM).
 - **Multi-site best-server**: up to 8 sites, per-site azimuth/downtilt,
   strongest-served-signal composite in CVD-safe site colors, per-site
   best-server shares, union-bbox raster.

@@ -8,13 +8,15 @@
  */
 import { useTranslation } from 'react-i18next';
 
-// dBm thresholds → grade (aligned with the coverage engine's 5 margin classes).
+// dBm thresholds → grade. Colours mirror the coverage engine's 5 margin
+// classes: a green→yellow→orange→red traffic-light scale so each level shows
+// as a distinct colour (see backend LEGEND_STEPS).
 const BANDS = [
-  { min: -65, color: '#0d366b', key: 'excellent' },
-  { min: -75, color: '#184f95', key: 'veryGood' },
-  { min: -85, color: '#256abf', key: 'good' },
-  { min: -95, color: '#5598e7', key: 'fair' },
-  { min: -110, color: '#9ec5f4', key: 'marginal' },
+  { min: -65, color: '#1a7a2a', key: 'excellent' },
+  { min: -75, color: '#7ac142', key: 'veryGood' },
+  { min: -85, color: '#f1c40f', key: 'good' },
+  { min: -95, color: '#e67e22', key: 'fair' },
+  { min: -110, color: '#c0392b', key: 'marginal' },
 ];
 
 export function gradeForDbm(dbm: number): { key: string; color: string } {

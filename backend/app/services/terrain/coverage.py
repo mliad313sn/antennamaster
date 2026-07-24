@@ -30,15 +30,18 @@ from .fusion import TerrainFusionService
 _GEOD = Geod(ellps="WGS84")
 C_LIGHT = 299_792_458.0
 
-# Signal-strength ramp: single blue hue, dark = strong (sequential encoding).
-# Thresholds are offsets above the technology's receiver sensitivity.
+# Signal-strength ramp: a multi-hue "traffic-light" scale (green = strong,
+# through yellow/orange, to red = marginal) so each coverage level reads as a
+# distinct colour on the map — the convention used by Atoll / Radio Mobile and
+# what a client instantly parses ("green good, red weak").  Thresholds are
+# offsets above the technology's receiver sensitivity.
 LEGEND_STEPS = [
     # (margin_db >=, color, label)
-    (30.0, (13, 54, 107), "Excellent (≥ 30 dB margin)"),
-    (20.0, (24, 79, 149), "Very good (≥ 20 dB)"),
-    (12.0, (37, 106, 191), "Good (≥ 12 dB)"),
-    (6.0, (85, 152, 231), "Fair (≥ 6 dB)"),
-    (0.0, (158, 197, 244), "Marginal (≥ 0 dB)"),
+    (30.0, (26, 122, 42), "Excellent (≥ 30 dB margin)"),
+    (20.0, (122, 193, 66), "Very good (≥ 20 dB)"),
+    (12.0, (241, 196, 15), "Good (≥ 12 dB)"),
+    (6.0, (230, 126, 34), "Fair (≥ 6 dB)"),
+    (0.0, (192, 57, 43), "Marginal (≥ 0 dB)"),
 ]
 
 
