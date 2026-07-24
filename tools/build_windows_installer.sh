@@ -26,7 +26,7 @@ rsync -a frontend "$STAGE/" \
   --exclude 'node_modules' --exclude '.next'
 rsync -a docs "$STAGE/" --exclude 'pdf/*.tmp'
 cp install.ps1 launch.ps1 install.sh launch.sh \
-   INSTALL_GUIDE.md README.md PRECISION_BENCHMARK.md "$STAGE/"
+   INSTALL_GUIDE.md README.md PRECISION_BENCHMARK.md CHANGELOG.md "$STAGE/"
 
 echo "payload: $(du -sh "$STAGE" | cut -f1)"
 
