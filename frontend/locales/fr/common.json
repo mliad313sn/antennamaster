@@ -221,6 +221,10 @@
       "title": "Simple ou Expert",
       "body": "Nouveau en radio ? Commencez en mode Simple et choisissez ce que vous voulez connecter. Passez en Expert pour tout contrôler."
     },
+    "arrange": {
+      "title": "Personnalisez votre espace",
+      "body": "Cliquez sur « Organiser les panneaux » pour glisser les outils de la barre latérale dans l’ordre voulu avec la poignée ⠿ (ou les touches ↑/↓), et masquez ceux que vous n’utilisez pas. Votre disposition est enregistrée sur cet appareil."
+    },
     "place": {
       "title": "Placez vos points",
       "body": "Cliquez sur la carte pour placer l'émetteur (TX) puis le récepteur (RX) — ou saisissez les coordonnées. Le profil du terrain apparaît aussitôt."
@@ -574,5 +578,13 @@
   },
   "a11y": {
     "skipToMain": "Aller au contenu principal"
+  },
+  "arrange": {
+    "toggle": "Organiser les panneaux",
+    "done": "Terminé",
+    "reset": "Réinitialiser",
+    "hide": "Masquer le panneau",
+    "show": "Afficher le panneau",
+    "hint": "Glissez la poignée ⠿ pour réordonner (ou sélectionnez-la et appuyez sur ↑ / ↓) ; cliquez sur l’œil pour masquer un panneau."
   }
 }

@@ -224,6 +224,11 @@ debounced recomputes; Escape/aria on modals.
   reading the heatmap; fully translated.
 - **Glossary tooltips** (Radix Tooltip, keyboard-accessible) on every
   technical parameter — plain-language, equation-free, translated.
+- **Customizable sidebar (drag-and-drop)** — an "Arrange panels" mode turns
+  every sidebar tool into a draggable card: reorder by dragging the ⠿ handle
+  (or ↑/↓ keys, WCAG 2.1.1-safe) and hide the panels you don't use. The layout
+  (order + hidden set) persists to localStorage per browser; dependency-free
+  native HTML5 DnD, so it works offline. Discoverable via a dedicated tour step.
 
 **Exports / GIS interoperability:** profile CSV, batch-receiver CSV,
 line-of-sight **KML/KMZ** (TX/RX placemarks + LoS path + terrain, for Google

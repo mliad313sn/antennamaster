@@ -26,6 +26,7 @@ import LidarPanel from '@/components/LidarPanel';
 import LocaleSwitcher from '@/components/LocaleSwitcher';
 import ProfileChart from '@/components/ProfileChart';
 import SimpleMode from '@/components/SimpleMode';
+import SortablePanels, { type SortablePanelItem } from '@/components/SortablePanels';
 import StudyPanel from '@/components/StudyPanel';
 import Tour, { tourAlreadySeen } from '@/components/Tour';
 import { fetchDxfState, fetchProfile, fetchSurfaceAvailable, profileCsvUrl, profileKmlUrl } from '@/lib/api';
@@ -429,6 +430,24 @@ export default function Home() {
           {uiMode === 'simple' && (
             <SimpleMode onApply={applyScenario} onExpert={() => setUiMode('expert')} />
           )}
+          {validation?.warning && (
+            <div className="warning-box">
+              <b>⚠ Terrain validation warning</b><br />
+              {validation.warning}
+            </div>
+          )}
+          {validation?.error && (
+            <div className="warning-box"><b>⚠</b> {validation.error}</div>
+          )}
+          <SortablePanels
+            arrangeLabel={t('arrange.toggle')}
+            doneLabel={t('arrange.done')}
+            resetLabel={t('arrange.reset')}
+            hint={t('arrange.hint')}
+            hideLabel={t('arrange.hide')}
+            showLabel={t('arrange.show')}
+            items={([
+          { id: 'link', label: t('link.title'), node: (
           <div className="panel">
             <h3>{t('link.title')}</h3>
             <div className="row">
@@ -499,7 +518,8 @@ export default function Home() {
                 onChange={(e) => setFreqMhz(e.target.value)} />
             </div>
           </div>
-
+          ) },
+          { id: 'terrain', label: t('planner.localTerrain'), node: (
           <div className="panel" data-tour="dxf">
             <h3>{t('planner.localTerrain')}</h3>
             {!georef && (
@@ -544,7 +564,8 @@ export default function Home() {
               </>
             )}
           </div>
-
+          ) },
+          { id: 'study', label: t('study.title'), node: (
           <StudyPanel
             tx={tx} dxfId={georef?.dxf_id ?? null} txHeight={num(txHeight, 20)}
             technology={technology} onTechnologyChange={setTechnology}
@@ -560,7 +581,8 @@ export default function Home() {
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={setCoverage}
           />
-
+          ) },
+          { id: 'batch', label: t('batch.title'), node: (
           <BatchPanel
             tx={tx} technology={technology} dxfId={georef?.dxf_id ?? null}
             foliageDepth={foliageDepth} rainRate={rainRate}
@@ -570,7 +592,8 @@ export default function Home() {
               setFlyTarget({ lat, lng: lon, zoom: 14, seq: flySeq.current++ });
             }}
           />
-
+          ) },
+          { id: 'indoor', label: 'Indoor & underground', node: (
           <div className="panel">
             <h3>Indoor &amp; underground</h3>
             <p className="hint">
@@ -581,7 +604,8 @@ export default function Home() {
               Open indoor / underground studio…
             </button>
           </div>
-
+          ) },
+          { id: 'advanced', label: t('advanced.panelTitle'), node: (
           <div className="panel">
             <h3>{t('advanced.panelTitle')}</h3>
             <p className="hint">{t('advanced.panelHint')}</p>
@@ -589,20 +613,11 @@ export default function Home() {
               {t('advanced.open')}
             </button>
           </div>
-
+          ) },
+          { id: 'lidar', label: 'LiDAR', node: (
           <LidarPanel tx={tx} rx={rx} freqMhz={Number(freqMhz) || 2400} />
-
-          {validation?.warning && (
-            <div className="warning-box">
-              <b>⚠ Terrain validation warning</b><br />
-              {validation.warning}
-            </div>
-          )}
-          {validation?.error && (
-            <div className="warning-box"><b>⚠</b> {validation.error}</div>
-          )}
-
-          {profile && tx && rx && (
+          ) },
+          ...((profile && tx && rx) ? [{ id: 'linkAnalysis', label: 'Link analysis', node: (
             <div className="panel">
               <h3>Link analysis</h3>
               <div className="stat-line"><span className="k">Distance</span><span className="v">{(profile.distance_m / 1000).toFixed(2)} km</span></div>
@@ -666,9 +681,8 @@ export default function Home() {
                 <span style={{ color: 'var(--ink-muted)' }}>{t('link.provenanceNote')}</span>
               </div>
             </div>
-          )}
-          {profileError && <div className="error-box">{profileError}</div>}
-
+          ) }] : []),
+          { id: 'mapProvider', label: 'Map provider', node: (
           <div className="panel">
             <h3>Map provider</h3>
             <label>Custom XYZ tile URL (optional)</label>
@@ -680,6 +694,10 @@ export default function Home() {
             <p className="hint">Appears as “Custom provider” in the map’s layer switcher.
               Built-ins: OSM, OpenTopoMap, Carto, Esri.</p>
           </div>
+          ) },
+            ] as SortablePanelItem[])}
+          />
+          {profileError && <div className="error-box">{profileError}</div>}
         </aside>
 
         <div className="map-and-chart">

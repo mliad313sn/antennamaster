@@ -118,6 +118,15 @@ Ouvrez **http://localhost:3010**. L'API REST est auto-documentée à l'adresse
 - **Info-bulles du glossaire** — chaque champ technique porte une icône **ⓘ**.
   Survolez-la, mettez-la au focus ou touchez-la pour une explication en langage
   clair, sans équations (également traduite).
+- **Organiser les panneaux (glisser-déposer)** — cliquez sur **⠿ Organiser les
+  panneaux** en haut de la barre latérale pour la réorganiser à votre goût.
+  Saisissez la poignée **⠿** d'un panneau et glissez-le où vous voulez (ou
+  mettez la poignée au focus et appuyez sur **↑ / ↓** — sans souris), et cliquez
+  sur l'**œil 👁** d'un panneau pour masquer les outils que vous n'utilisez pas.
+  Cliquez sur **Terminé** pour reprendre le travail ; les panneaux masqués
+  disparaissent et une pastille sur le bouton indique combien sont cachés. Votre
+  ordre et vos panneaux masqués sont enregistrés dans ce navigateur et restaurés
+  à chaque visite — **Réinitialiser** rétablit la disposition par défaut.
 
 ### Carte et fournisseurs
 

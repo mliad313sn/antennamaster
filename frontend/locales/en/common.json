@@ -221,6 +221,10 @@
       "title": "Simple or Expert",
       "body": "New to RF? Start in Simple mode and pick what you want to connect. Switch to Expert for full control."
     },
+    "arrange": {
+      "title": "Make it your own",
+      "body": "Click \"Arrange panels\" to drag the sidebar tools into any order with the ⠿ handle (or the ↑/↓ keys), and hide the ones you never use. Your layout is saved on this device."
+    },
     "place": {
       "title": "Place your points",
       "body": "Click the map to drop the transmitter (TX), then the receiver (RX) — or type exact coordinates. The terrain profile appears instantly."
@@ -574,5 +578,13 @@
   },
   "a11y": {
     "skipToMain": "Skip to main content"
+  },
+  "arrange": {
+    "toggle": "Arrange panels",
+    "done": "Done",
+    "reset": "Reset",
+    "hide": "Hide panel",
+    "show": "Show panel",
+    "hint": "Drag the ⠿ handle to reorder (or focus it and press ↑ / ↓); click the eye to hide a panel."
   }
 }

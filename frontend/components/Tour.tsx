@@ -33,6 +33,8 @@ export default function Tour({ run, onFinish }: TourProps) {
         title: t('tour.welcome.title'), content: t('tour.welcome.body') },
       { target: '[data-tour="mode"]',
         title: t('tour.simpleMode.title'), content: t('tour.simpleMode.body') },
+      { target: '[data-tour="arrange"]',
+        title: t('tour.arrange.title'), content: t('tour.arrange.body') },
       { target: '[data-tour="map"]', placement: 'right',
         title: t('tour.place.title'), content: t('tour.place.body') },
       { target: '[data-tour="technology"]',

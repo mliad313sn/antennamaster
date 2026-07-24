@@ -113,6 +113,14 @@ Open **http://localhost:3010**. The REST API is self-documenting at
 - **Glossary tooltips** — every technical field has an **ⓘ** icon. Hover,
   focus or tap it for a plain-language, equation-free explanation (also
   translated).
+- **Arrange panels (drag-and-drop layout)** — click **⠿ Arrange panels** at
+  the top of the sidebar to reshape it into your own workspace. Grab a panel's
+  **⠿** handle and drag it anywhere in the stack (or focus the handle and press
+  **↑ / ↓** — no mouse needed), and click a panel's **👁 eye** to hide the tools
+  you never use. Click **Done** to return to work; hidden panels disappear and a
+  small badge on the button shows how many are tucked away. Your order and
+  hidden set are saved in this browser and restored on every visit — **Reset**
+  puts everything back to the default layout.
 
 ### Map & providers
 
