@@ -9,6 +9,7 @@
  */
 import L from 'leaflet';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ImageOverlay, LayersControl, MapContainer, Marker, Polygon, Polyline, Popup,
   TileLayer, useMap, useMapEvents,
@@ -98,6 +99,7 @@ function ClickHandler({ onClick }: { onClick: (p: LatLng) => void }) {
  * cannot contradict the colour underneath it.
  */
 function CoverageInspector({ coverageId }: { coverageId: string }) {
+  const { t } = useTranslation();
   const [at, setAt] = useState<{ p: LatLng; v: CoveragePoint | null; err?: string } | null>(null);
   const seq = useRef(0);
 
@@ -123,11 +125,11 @@ function CoverageInspector({ coverageId }: { coverageId: string }) {
   return (
     <Popup position={[at.p.lat, at.p.lng]} eventHandlers={{ remove: () => setAt(null) }}>
       <div style={{ minWidth: 168, lineHeight: 1.5 }}>
-        <div style={{ fontWeight: 700, marginBottom: 2 }}>Signal here</div>
+        <div style={{ fontWeight: 700, marginBottom: 2 }}>{t('map.signalHere')}</div>
         {at.err && <div style={{ color: '#c0392b' }}>{at.err}</div>}
-        {!v && !at.err && <div>Reading…</div>}
+        {!v && !at.err && <div>{t('map.reading')}</div>}
         {v && !v.inside && (
-          <div>Outside the study area ({(v.distance_m / 1000).toFixed(2)} km from TX).</div>
+          <div>{t('map.outsideArea', { km: (v.distance_m / 1000).toFixed(2) })}</div>
         )}
         {v && v.inside && (
           <>
@@ -135,12 +137,12 @@ function CoverageInspector({ coverageId }: { coverageId: string }) {
               <span style={{ width: 11, height: 11, borderRadius: 3, flex: 'none',
                              background: v.grade ? v.grade.color : 'transparent',
                              border: v.grade ? 'none' : '1px solid #888' }} />
-              <b>{v.grade ? v.grade.label.replace(/\s*\(.*\)$/, '') : 'No service'}</b>
+              <b>{v.grade ? v.grade.label.replace(/\s*\(.*\)$/, '') : t('map.noService')}</b>
             </div>
             <div><b>{v.rx_power_dbm?.toFixed(1)}</b> dBm
-              {' · '}margin <b>{(v.margin_db ?? 0) >= 0 ? '+' : ''}{v.margin_db?.toFixed(1)}</b> dB</div>
+              {' · '}{t('map.margin')} <b>{(v.margin_db ?? 0) >= 0 ? '+' : ''}{v.margin_db?.toFixed(1)}</b> dB</div>
             <div style={{ color: '#666' }}>
-              {(v.distance_m / 1000).toFixed(2)} km @ {v.bearing_deg?.toFixed(0)}° from TX
+              {t('map.fromTx', { km: (v.distance_m / 1000).toFixed(2), bearing: v.bearing_deg?.toFixed(0) })}
             </div>
             <div style={{ color: '#666', fontSize: 11 }}>
               {at.p.lat.toFixed(5)}, {at.p.lng.toFixed(5)}
@@ -252,6 +254,7 @@ export default function MapView({
   tx, rx, placing, onPlace, georef, showOverlay, coverage, customTileUrl,
   flyTarget,
 }: MapViewProps) {
+  const { t } = useTranslation();
   const view = useMemo(initialView, []);
   const overlayBounds = useMemo(() => {
     if (!georef) return null;
@@ -269,7 +272,7 @@ export default function MapView({
     <>
       {placing && (
         <div className="map-hint">
-          Click the map to place the {placing === 'tx' ? 'transmitter (TX)' : 'receiver (RX)'}
+          {placing === 'tx' ? t('map.placeHintTx') : t('map.placeHintRx')}
         </div>
       )}
       {/* Click-to-inspect is invisible unless we say so. */}

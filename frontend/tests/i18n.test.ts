@@ -60,7 +60,11 @@ describe('routes are wired to the translator', () => {
   // at full parity, so the strings existed and were simply never used.
   const wired = [
     'app/field/page.tsx',
+    'app/dashboard/page.tsx',
+    'app/pitch/page.tsx',
     'components/AuthPanel.tsx',
+    'components/MapView.tsx',
+    'components/ProfileChart.tsx',
     'components/LiveOps.tsx',
     'app/page.tsx',
   ];

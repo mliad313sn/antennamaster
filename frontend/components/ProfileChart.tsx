@@ -10,6 +10,7 @@
  * the straight LOS line on the chart is geometrically honest.
  */
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Area, ComposedChart, Legend, Line, ReferenceDot, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
@@ -86,6 +87,7 @@ function ProfileTooltip({ active, payload, label }: {
   payload?: { payload: ChartRow }[];
   label?: number;
 }) {
+  const { t } = useTranslation();
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   const elev = row.dxf ?? row.srtm;
@@ -96,21 +98,22 @@ function ProfileTooltip({ active, payload, label }: {
       boxShadow: '0 4px 14px rgba(0,0,0,0.12)',
     }}>
       <div style={{ fontWeight: 650, marginBottom: 4 }}>{Number(label).toFixed(2)} km</div>
-      <div>Terrain: <b>{elev?.toFixed(1)} m</b>{' '}
+      <div>{t('chart.terrain')}: <b>{elev?.toFixed(1)} m</b>{' '}
         <span className={`badge ${row.source === 'srtm' ? 'srtm' : 'dxf'}`}>
           {row.source.toUpperCase()}
         </span>
       </div>
-      <div style={{ color: 'var(--ink-secondary)' }}>LOS: {row.los.toFixed(1)} m</div>
-      <div style={{ color: 'var(--ink-secondary)' }}>F1 lower: {row.fresnel.toFixed(1)} m</div>
+      <div style={{ color: 'var(--ink-secondary)' }}>{t('chart.losShort')}: {row.los.toFixed(1)} m</div>
+      <div style={{ color: 'var(--ink-secondary)' }}>{t('chart.f1Lower')}: {row.fresnel.toFixed(1)} m</div>
       {row.rxPower !== undefined && (
-        <div style={{ color: 'var(--ink-secondary)' }}>RX power: <b>{row.rxPower.toFixed(1)} dBm</b></div>
+        <div style={{ color: 'var(--ink-secondary)' }}>{t('chart.rxPower')}: <b>{row.rxPower.toFixed(1)} dBm</b></div>
       )}
     </div>
   );
 }
 
 export default function ProfileChart({ profile }: { profile: ProfileResponse }) {
+  const { t } = useTranslation();
   const rows = useMemo(() => toRows(profile.points), [profile]);
   const hasDxf = rows.some((r) => r.dxf !== null);
 
@@ -149,13 +152,13 @@ export default function ProfileChart({ profile }: { profile: ProfileResponse }) 
           {/* Terrain, colored by provenance. connectNulls stays OFF so each
               area only spans its own provenance segments. */}
           <Area
-            dataKey="srtm" name="Terrain (SRTM)" stroke={SRTM_COLOR}
+            dataKey="srtm" name={t('chart.terrainSrtm')} stroke={SRTM_COLOR}
             fill={SRTM_COLOR} fillOpacity={0.35} strokeWidth={2}
             dot={false} activeDot={false} isAnimationActive={false}
           />
           {hasDxf && (
             <Area
-              dataKey="dxf" name="Terrain (DXF)" stroke={DXF_COLOR}
+              dataKey="dxf" name={t('chart.terrainDxf')} stroke={DXF_COLOR}
               fill={DXF_COLOR} fillOpacity={0.4} strokeWidth={2}
               dot={false} activeDot={false} isAnimationActive={false}
             />
@@ -164,22 +167,22 @@ export default function ProfileChart({ profile }: { profile: ProfileResponse }) 
               edge) around the sight line — terrain rising into this band
               degrades the link even with clear line of sight. */}
           <Area
-            dataKey="fresnelZone" name="1st Fresnel zone" stroke={FRESNEL_COLOR}
+            dataKey="fresnelZone" name={t('chart.fresnelZone')} stroke={FRESNEL_COLOR}
             fill={FRESNEL_COLOR} fillOpacity={0.14} strokeOpacity={0.5}
             strokeWidth={1} dot={false} activeDot={false} isAnimationActive={false}
           />
           {/* 60%-clearance reference (lower edge), then the TX-RX sight line. */}
           <Line
-            dataKey="fresnel" name="1st Fresnel lower (60% ref)" stroke="var(--ink-muted)"
+            dataKey="fresnel" name={t('chart.fresnelLower')} stroke="var(--ink-muted)"
             strokeDasharray="2 4" strokeWidth={1.5} dot={false} isAnimationActive={false}
           />
           <Line
-            dataKey="los" name="Line of sight (k=4/3)" stroke="var(--ink-primary)"
+            dataKey="los" name={t('chart.los')} stroke="var(--ink-primary)"
             strokeDasharray="6 4" strokeWidth={1.5} dot={false} isAnimationActive={false}
           />
           {/* Seam samples where SRTM and DXF are fused (teal dots). */}
           <Line
-            dataKey="seam" name="Fused seam" stroke={SEAM_COLOR} strokeWidth={0}
+            dataKey="seam" name={t('chart.fusedSeam')} stroke={SEAM_COLOR} strokeWidth={0}
             dot={{ r: 2.5, fill: SEAM_COLOR, strokeWidth: 0 }}
             activeDot={false} isAnimationActive={false} legendType="circle"
           />
@@ -190,7 +193,7 @@ export default function ProfileChart({ profile }: { profile: ProfileResponse }) 
             return p ? (
               <ReferenceDot x={p.d / 1000} y={p.elev_curved} r={5}
                 fill="var(--status-critical)" stroke="#fff" strokeWidth={1.5}
-                label={{ value: 'worst obstruction', position: 'top', fontSize: 10,
+                label={{ value: t('chart.worstObstruction'), position: 'top', fontSize: 10,
                          fill: 'var(--status-critical)' }} />
             ) : null;
           })()}

@@ -7,6 +7,7 @@
  */
 import Link from 'next/link';
 import { useEffect, useState, useId } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   awaitJob, downloadReportPdf, fetchCosts, startAsyncCoverage,
   type CostEstimate,
@@ -32,11 +33,12 @@ const empty = (label: string): Scenario => ({
 });
 
 export default function Pitch() {
+  const { t } = useTranslation();
   const _uid = useId();
   const [lat, setLat] = useState('47.05');
   const [lon, setLon] = useState('15.45');
-  const [a, setA] = useState<Scenario>(empty('Option A'));
-  const [b, setB] = useState<Scenario>({ ...empty('Option B'), technology: 'wifi5800' });
+  const [a, setA] = useState<Scenario>(empty(t('pitch.optionA')));
+  const [b, setB] = useState<Scenario>({ ...empty(t('pitch.optionB')), technology: 'wifi5800' });
   const [techs, setTechs] = useState<Technology[]>([]);
   const [costsA, setCostsA] = useState<CostEstimate | null>(null);
   const [costsB, setCostsB] = useState<CostEstimate | null>(null);
@@ -100,26 +102,26 @@ export default function Pitch() {
                 costs: CostEstimate | null) => (
     <section className="panel" style={{ flex: 1, minWidth: 0 }}>
       <h3>{sc.label}</h3>
-      <label htmlFor={`${_uid}-0`}>Technology</label>
+      <label htmlFor={`${_uid}-0`}>{t('pitch.technology')}</label>
       <select id={`${_uid}-0`} value={sc.technology}
         onChange={(e) => set({ ...sc, technology: e.target.value, result: null })}>
         {techs.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
       </select>
       <div className="row" style={{ marginTop: 6 }}>
         <div>
-          <label htmlFor={`${_uid}-1`}>Radius (km)</label>
+          <label htmlFor={`${_uid}-1`}>{t('pitch.radius')}</label>
           <input id={`${_uid}-1`} type="number" min={1} max={50} value={sc.radiusKm}
             onChange={(e) => set({ ...sc, radiusKm: parseFloat(e.target.value) || 6 })} />
         </div>
         <div>
-          <label htmlFor={`${_uid}-2`}>Downtilt (°)</label>
+          <label htmlFor={`${_uid}-2`}>{t('pitch.downtilt')}</label>
           <input id={`${_uid}-2`} type="number" min={0} max={15} value={sc.downtilt}
             onChange={(e) => set({ ...sc, downtilt: parseFloat(e.target.value) || 0 })} />
         </div>
       </div>
       <button className="primary" style={{ width: '100%' }} disabled={sc.running}
         onClick={() => run(which)}>
-        {sc.running ? `Simulating… ${(sc.progress * 100).toFixed(0)}%` : 'Run coverage'}
+        {sc.running ? t('pitch.simulating', { pct: (sc.progress * 100).toFixed(0) }) : t('pitch.runCoverage')}
       </button>
       {sc.running && (
         <div className="progress"><div className="progress-fill"
@@ -128,13 +130,13 @@ export default function Pitch() {
       {sc.result && (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={sc.result.png_url} alt={`${sc.label} coverage heatmap`}
+          <img src={sc.result.png_url} alt={t('pitch.heatmapAlt', { label: sc.label })}
             style={{ width: '100%', marginTop: 8, borderRadius: 8,
                      border: '1px solid var(--hairline)',
                      background: 'var(--page)' }} />
           <div className="kpi-row">
-            <div className="kpi"><div className="kpi-v">{sc.result.served !== null ? `${(sc.result.served * 100).toFixed(0)}%` : '—'}</div><div className="kpi-k">served area</div></div>
-            <div className="kpi"><div className="kpi-v">{sc.result.peak.toFixed(0)}</div><div className="kpi-k">peak dBm</div></div>
+            <div className="kpi"><div className="kpi-v">{sc.result.served !== null ? `${(sc.result.served * 100).toFixed(0)}%` : '—'}</div><div className="kpi-k">{t('pitch.servedArea')}</div></div>
+            <div className="kpi"><div className="kpi-v">{sc.result.peak.toFixed(0)}</div><div className="kpi-k">{t('pitch.peakDbm')}</div></div>
             <div className="kpi"><div className="kpi-v">{roi(costs).payback}</div><div className="kpi-k">payback</div></div>
             <div className="kpi"><div className="kpi-v">{roi(costs).y5}</div><div className="kpi-k">5-yr net</div></div>
           </div>
@@ -145,9 +147,11 @@ export default function Pitch() {
         </>
       )}
       {costs && (
-        <p className="hint">CAPEX ${(costs.capex_total_usd / 1000).toFixed(0)}k ·
-          OPEX ${(costs.opex_total_year_usd / 1000).toFixed(1)}k/yr ·
-          TCO₅ ${(costs.tco_5y_usd / 1000).toFixed(0)}k</p>
+        <p className="hint">{t('pitch.costs', {
+          capex: (costs.capex_total_usd / 1000).toFixed(0),
+          opex: (costs.opex_total_year_usd / 1000).toFixed(1),
+          tco: (costs.tco_5y_usd / 1000).toFixed(0),
+        })}</p>
       )}
     </section>
   );
@@ -156,22 +160,21 @@ export default function Pitch() {
     <div className="dash-shell">
       <DashNav active="pitch" />
       <main id="main" className="dash-main">
-        <h1>Pitch interface</h1>
-        <p className="hint">Compare two deployment options side by side, with live
-          simulation progress, budget and payback — then export the branded PDF.
-          Deep-dive edits belong in the <Link href="/">planner</Link>.</p>
+        <h1>{t('pitch.title')}</h1>
+        <p className="hint">{t('pitch.intro')}{' '}
+          <Link href="/">{t('pitch.plannerLink')}</Link></p>
         <div className="row" style={{ maxWidth: 560 }}>
-          <div><label htmlFor={`${_uid}-3`}>Site latitude</label>
+          <div><label htmlFor={`${_uid}-3`}>{t('pitch.siteLat')}</label>
             <input id={`${_uid}-3`} value={lat} onChange={(e) => setLat(e.target.value)} /></div>
-          <div><label htmlFor={`${_uid}-4`}>Site longitude</label>
+          <div><label htmlFor={`${_uid}-4`}>{t('pitch.siteLon')}</label>
             <input id={`${_uid}-4`} value={lon} onChange={(e) => setLon(e.target.value)} /></div>
-          <div><label htmlFor={`${_uid}-5`}>Sites</label>
+          <div><label htmlFor={`${_uid}-5`}>{t('pitch.sites')}</label>
             <input id={`${_uid}-5`} type="number" min={1} max={100} value={sites}
               onChange={(e) => {
                 const v = parseInt(e.target.value, 10);
                 if (Number.isFinite(v) && v >= 1) setSites(v);
               }} /></div>
-          <div><label htmlFor={`${_uid}-6`}>Revenue $/mo (fleet)</label>
+          <div><label htmlFor={`${_uid}-6`}>{t('pitch.revenue')}</label>
             <input id={`${_uid}-6`} type="number" value={revenuePerMonth}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);

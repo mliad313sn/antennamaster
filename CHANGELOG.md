@@ -19,9 +19,11 @@ while the running server was probed empirically for behaviour and defects.
   committee reported the strings as "already there and simply unwired"; in
   fact no `auth`/`field`/`dashboard`/`pitch` section existed in *either*
   language, so they had to be written.) `AuthPanel` — the gate to every
-  account — and `/field`, the field technician's own route, are now fully
-  translated, with guards keeping the two locales key-for-key identical,
-  free of empty strings, and consistent in their `{{interpolation}}` tokens.
+  account — `/field`, `/dashboard`, `/pitch`, the Leaflet map (placement hint
+  and the click-to-inspect signal popup) and the terrain chart (series names,
+  axis labels, tooltip) are now all translated: **616 keys in each language**,
+  up from 521, with guards keeping the two locales key-for-key identical, free
+  of empty strings, and consistent in their `{{interpolation}}` tokens.
 - **Plan cards could not be chosen by keyboard.** The registration tier picker
   was a bare `<div onClick>`: not focusable, not announced, unusable without a
   pointer. It is now a proper `radiogroup` with `aria-checked` and Enter/Space.
