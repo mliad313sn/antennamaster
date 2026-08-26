@@ -123,6 +123,8 @@
     "txGround": "TX ground",
     "peakRxPower": "Peak RX power",
     "clearCoverage": "Clear coverage layer",
+    "staleResult": "These results no longer match the settings above — re-run the study.",
+    "staleExports": "Exports are disabled until you re-run: the stored raster does not match the current settings.",
     "meanSinr": "Mean SINR (co-channel)",
     "sinrGe6": "Area ≥ 6 dB SINR",
     "cellEdge": "Cell-edge (< 0 dB)",

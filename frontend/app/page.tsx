@@ -58,7 +58,11 @@ export default function Home() {
   const [rx, setRx] = useState<LatLng | null>(null);
   const [placing, setPlacing] = useState<'tx' | 'rx' | null>('tx');
   // Guided (Simple) vs full (Expert) UI; guided tour run state.
-  const [uiMode, setUiMode] = useState<'simple' | 'expert'>('expert');
+  // First run starts guided: Simple mode exists precisely so a non-RF user
+  // is not handed the expert sidebar, and defaulting to 'expert' meant every
+  // first-time visitor got exactly what it was built to prevent.  A stored
+  // choice still wins (restored in the effect below).
+  const [uiMode, setUiMode] = useState<'simple' | 'expert'>('simple');
   const [tourRun, setTourRun] = useState(false);
 
   // Numeric fields keep their raw string so clearing mid-edit never snaps
@@ -526,6 +530,7 @@ export default function Home() {
                 <div className="stat-line"><span className="k">RX</span><span className="v">{endB.elev.toFixed(1)} m ASL</span></div>
               </>
             )}
+            {uiMode === 'expert' && (
             <div className="row" style={{ marginTop: 8 }}>
               <div>
                 <label htmlFor={`${_uid}-4`}>{t('planner.txHeight')}</label>
@@ -538,11 +543,14 @@ export default function Home() {
                   onChange={(e) => setRxHeight(e.target.value)} />
               </div>
             </div>
+            )}
+            {uiMode === 'expert' && (
             <div data-tour="glossary">
               <label htmlFor={`${_uid}-6`}>{t('planner.frequency')}<Help term="fspl" /></label>
               <input id={`${_uid}-6`} type="number" min={1} value={freqMhz}
                 onChange={(e) => setFreqMhz(e.target.value)} />
             </div>
+            )}
           </div>
           ) },
           { id: 'terrain', label: t('planner.localTerrain'), node: (
@@ -605,6 +613,7 @@ export default function Home() {
             calibration={calibration} onCalibrationChange={setCalibration}
             surfaceAvailable={surfaceAvailable}
             scenario={scenario}
+            compact={uiMode === 'simple'}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={handleCoverage}
           />
@@ -722,7 +731,13 @@ export default function Home() {
               Built-ins: OSM, OpenTopoMap, Carto, Esri.</p>
           </div>
           ) },
-            ] as SortablePanelItem[])}
+            ] as SortablePanelItem[]).filter(
+              // Simple mode keeps only what a non-RF user needs to get an
+              // answer: place the points, run the study, read the result.
+              // It used to be purely additive -- the scenario grid was
+              // prepended and all eight expert panels still rendered -- so it
+              // hid nothing at all, which is the opposite of its purpose.
+              (it) => uiMode === 'expert' || ['link', 'study'].includes(it.id))}
           />
           {profileError && <div className="error-box">{profileError}</div>}
         </aside>

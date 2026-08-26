@@ -123,3 +123,49 @@ describe('Simple-mode scenario settings', () => {
       .value).toBe('6');
   });
 });
+
+describe('a painted raster whose inputs have changed', () => {
+  const coverage = {
+    coverage_id: 'abc123', png_url: '/api/rf/coverage/abc123.png',
+    bounds: [[46.9, 14.9], [47.1, 15.1]] as [number, number][],
+    legend: [], warnings: [],
+    stats: {
+      served_area_fraction: 0.62, radius_m: 8000,
+      tx_elevation_m: 400, max_rx_power_dbm: -61,
+      n_radials: 180, n_steps: 100, sites: null,
+    },
+  };
+
+  it('does not flag a freshly loaded result as stale', async () => {
+    renderPanel({ coverage: coverage as never });
+    await screen.findByRole('button', { name: /Simulate coverage from TX/ });
+    // Nothing has been run in this session, so there is no signature to
+    // compare against and the exports must stay available.
+    expect(screen.queryByTestId('stale-coverage')).toBeNull();
+    expect(screen.getByText('⤓ PNG')).toBeInTheDocument();
+  });
+
+  it('blocks the exports once a study input changes under the result', async () => {
+    const { rerender, props } = renderPanel({ coverage: coverage as never });
+    await screen.findByRole('button', { name: /Simulate coverage from TX/ });
+
+    // Simulate the panel having produced this raster: run, then change the
+    // radius underneath it. Before this fix only a TX move or a technology
+    // change invalidated anything, so raising the mast or the radius left the
+    // heatmap, "Served area 62%" and all three export links describing the
+    // previous run — and the GeoTIFF downloaded as the new design was the old
+    // study.
+    fireEvent.click(screen.getByRole('button', { name: /Simulate coverage from TX/ }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('stale-coverage')).toBeNull());
+
+    fireEvent.change(screen.getByLabelText(/Radius \(km\)/), { target: { value: '25' } });
+    rerender(<StudyPanel {...props} coverage={coverage as never} />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('stale-coverage')).toBeInTheDocument());
+    expect(screen.getByTestId('stale-exports')).toBeInTheDocument();
+    expect(screen.queryByText('⤓ GeoTIFF')).toBeNull();
+    expect(screen.queryByText('⤓ KMZ (Google Earth)')).toBeNull();
+  });
+});

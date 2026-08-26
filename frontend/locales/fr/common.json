@@ -123,6 +123,8 @@
     "txGround": "Sol émetteur",
     "peakRxPower": "Puissance reçue max",
     "clearCoverage": "Effacer la couche de couverture",
+    "staleResult": "Ces résultats ne correspondent plus aux paramètres ci-dessus — relancez l’étude.",
+    "staleExports": "Exports désactivés jusqu’à une nouvelle exécution : le raster enregistré ne correspond pas aux paramètres actuels.",
     "meanSinr": "SINR moyen (co-canal)",
     "sinrGe6": "Zone ≥ 6 dB SINR",
     "cellEdge": "Bord de cellule (< 0 dB)",

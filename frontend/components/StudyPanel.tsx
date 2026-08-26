@@ -50,6 +50,11 @@ export interface StudyPanelProps {
   /** Resolved Simple-mode scenario: its radius / sector / fade-margin are
    *  applied here, because those three live in this panel's own state. */
   scenario?: ScenarioResolved | null;
+  /** Guided (Simple) mode: show only what is needed to get an answer --
+   *  place the points, run the study, read the result -- and hide every RF
+   *  knob.  The scenario has already chosen technology, heights, radius,
+   *  sector and fade margin. */
+  compact?: boolean;
   study: StudyResult | null;
   coverage: CoverageResponse | null;
   onCoverage: (c: CoverageResponse | null) => void;
@@ -57,6 +62,7 @@ export interface StudyPanelProps {
 
 export default function StudyPanel(props: StudyPanelProps) {
   const _uid = useId();
+  const compact = Boolean(props.compact);
   const { t } = useTranslation();
   const [techs, setTechs] = useState<Technology[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -156,6 +162,29 @@ export default function StudyPanel(props: StudyPanelProps) {
     setSector(false); setAzimuth(0); setBeamwidth(65); setDowntilt(0);
   }
 
+  /** Fingerprint of every input the coverage run consumes.
+   *
+   *  The painted raster, its statistics and its PNG/GeoTIFF/KMZ links used to
+   *  be invalidated only when the TX moved or the technology changed, while a
+   *  dozen other inputs -- radius, model, environment, TX height, downtilt,
+   *  fade margin, clutter, WorldCover, DSM, every budget override -- are sent
+   *  to the engine and were not watched.  Raise the mast 20 m -> 40 m and the
+   *  live link budget updated while the heatmap, "Served area 62%" and the
+   *  export links still described the 20 m run, so the GeoTIFF a user
+   *  downloaded as their 40 m design was the wrong study. */
+  const runSignature = JSON.stringify([
+    props.tx?.lat, props.tx?.lng, props.technology, radiusKm, props.dxfId,
+    freqOverride, props.model, props.environment,
+    (sector || antennaId) ? azimuth : null, beamwidth, downtilt, antennaId,
+    shadowMargin, props.foliageDepth, props.rainRate, props.clutterPct,
+    props.surfaceOn, props.worldcoverOn, props.calibration ?? null,
+    props.txHeight, ovrPower, ovrTxGain, ovrRxGain, ovrLosses, ovrSens,
+  ]);
+  // Signature captured when the painted result was produced.
+  const [paintedSignature, setPaintedSignature] = useState<string | null>(null);
+  const stale = Boolean(props.coverage) && paintedSignature !== null
+    && paintedSignature !== runSignature;
+
   /** Any override currently in force, so the UI can say so instead of
    *  showing the preset's numbers as if they were what will run. */
   const overrideCount = [ovrPower, ovrTxGain, ovrRxGain, ovrLosses, ovrSens]
@@ -206,6 +235,7 @@ export default function StudyPanel(props: StudyPanelProps) {
       });
       setMultiRaw(resp);
       setSinrView(false);
+      setPaintedSignature(runSignature);
       props.onCoverage(resp);
     } catch (e) { setError(friendlyError((e as Error).message)); } finally { setBusy(false); }
   }
@@ -331,6 +361,7 @@ export default function StudyPanel(props: StudyPanelProps) {
       }, setProgress, (cancel) => setCancelRun(() => cancel));
       setMultiRaw(null);
       setSinrView(false);
+      setPaintedSignature(runSignature);
       props.onCoverage(resp);
     } catch (e) {
       // Stopping your own study is an expected outcome, not an error.
@@ -359,7 +390,7 @@ export default function StudyPanel(props: StudyPanelProps) {
 
       {/* Equipment Selector — pick real gear; it auto-fills the RF settings,
           all of which stay editable below. */}
-      {equipment.length > 0 && (
+      {!compact && equipment.length > 0 && (
         <div style={{ marginBottom: 8 }}>
           <label htmlFor={`${_uid}-0`}>{t('study.equipment')}<Help term="gain" /></label>
           <select id={`${_uid}-0`} value={equipmentId} onChange={(e) => applyEquipment(e.target.value)}>
@@ -380,6 +411,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         </div>
       )}
 
+      {!compact && (<>
       <label htmlFor={`${_uid}-1`}>{t('study.technology')}</label>
       <select id={`${_uid}-1`}
         value={props.technology ?? ''}
@@ -407,9 +439,11 @@ export default function StudyPanel(props: StudyPanelProps) {
           </optgroup>
         ))}
       </select>
+      </>)}
 
       {selectedTech && (
         <>
+          {!compact && (<>
           <div className="row" style={{ marginTop: 8 }}>
             <div>
               <label htmlFor={`${_uid}-2`}>{t('study.model')}</label>
@@ -450,9 +484,10 @@ export default function StudyPanel(props: StudyPanelProps) {
               {sector && ` · ${beamwidth}° @ ${azimuth}°`}
             </span>
           </div>
+          </>)}
 
           {/* ---------------- link budget of the current profile ---------- */}
-          {props.study && (
+          {!compact && props.study && (
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <div className="stat-line"><span className="k">{t('study.pathLoss', { model: props.study.technology.model })}</span><span className="v">{props.study.path_loss_db.toFixed(1)} dB</span></div>
               <div className="stat-line"><span className="k">{t('study.diffraction')}<Help term="deygout" /></span><span className="v">{props.study.diffraction_loss_db.toFixed(1)} dB</span></div>
@@ -495,6 +530,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <input id={`${_uid}-4`} type="number" min={1} max={150} value={radiusKm}
                   onChange={(e) => setRadiusKm(parseFloat(e.target.value) || 1)} />
               </div>
+              {!compact && (
               <div>
                 <label htmlFor={`${_uid}-5`} style={{ marginBottom: 6 }}>{t('study.antenna')}</label>
                 <select id={`${_uid}-5`} value={sector ? 'sector' : 'omni'}
@@ -503,7 +539,9 @@ export default function StudyPanel(props: StudyPanelProps) {
                   <option value="sector">{t('study.sector')}</option>
                 </select>
               </div>
+              )}
             </div>
+            {!compact && (<>
             {(sector || antennaId) && (
               <div className="row">
                 <div>
@@ -633,6 +671,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 </div>
               </>
             )}
+            </>)}
             <button className="primary" style={{ width: '100%' }} data-tour="coverage"
               disabled={!props.tx || busy} onClick={runCoverage}>
               {busy
@@ -655,6 +694,7 @@ export default function StudyPanel(props: StudyPanelProps) {
               </button>
             )}
             {/* ------------------- multi-site best-server study ---------- */}
+            {!compact && (
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <button style={{ width: '100%' }} disabled={!props.tx}
                 onClick={() => props.tx && (setFreqPlan(null), setTpRaw(null), setMcRaw(null),
@@ -808,6 +848,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                 </>
               )}
             </div>
+            )}
 
             {props.coverage && (
               <>
@@ -865,7 +906,21 @@ export default function StudyPanel(props: StudyPanelProps) {
                   <span className="k">{t('study.peakRxPower')}</span>
                   <span className="v">{props.coverage.stats.max_rx_power_dbm.toFixed(1)} dBm</span>
                 </div>
+                {/* A result whose inputs have since changed must not be
+                    exportable: the whole failure mode is a user downloading a
+                    GeoTIFF as "the 40 m design" when it is the 20 m run. */}
+                {stale && (
+                  <div className="warning-box" role="status" data-testid="stale-coverage"
+                    style={{ marginTop: 6 }}>
+                    ⚠ {t('study.staleResult')}
+                  </div>
+                )}
                 <div className="row" style={{ marginTop: 6, flexWrap: 'wrap', gap: 6 }}>
+                  {stale ? (
+                    <span className="hint" data-testid="stale-exports">
+                      {t('study.staleExports')}
+                    </span>
+                  ) : (<>
                   <a className="download-link" href={props.coverage.png_url} download>⤓ PNG</a>
                   <a className="download-link"
                     href={props.coverage.png_url.replace(/\.png$/, '.tif')} download
@@ -876,6 +931,7 @@ export default function StudyPanel(props: StudyPanelProps) {
                     href={props.coverage.png_url.replace(/\.png$/, '.kmz')} download>
                     ⤓ KMZ (Google Earth)
                   </a>
+                  </>)}
                 </div>
                 <div style={{ marginTop: 4 }}>
                   {props.coverage.legend.map((l) => (

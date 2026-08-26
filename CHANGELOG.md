@@ -9,6 +9,28 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Fixed — guided mode, and results that outlive their inputs
+
+- **Simple mode hid nothing, and nobody started in it.** The guided mode was
+  purely additive: it prepended a scenario grid and still rendered all eight
+  expert panels, including the ~25-control Radio study panel — and the app
+  booted in Expert, so every first-time visitor was handed exactly what Simple
+  mode exists to prevent. First run now starts guided (a stored choice still
+  wins), the sidebar keeps only placement and the study, and the study panel
+  itself has a compact form: no propagation model, antenna pattern, downtilt,
+  clutter, budget overrides, multi-site, frequency plan or capacity — just
+  place the points, run, read the result. Six form controls instead of forty.
+- **A result outlived the inputs that produced it.** The painted raster, its
+  statistics and its PNG/GeoTIFF/KMZ links were invalidated only when the TX
+  moved or the technology changed, while a dozen inputs that *are* sent to the
+  engine — radius, model, environment, TX height, downtilt, fade margin,
+  clutter, WorldCover, DSM, every budget override — were not watched. Raise a
+  mast from 20 m to 40 m and the live link budget updated while the heatmap and
+  "Served area 62 %" still described the 20 m run, so the GeoTIFF downloaded as
+  the 40 m design was the wrong study. A run now records a fingerprint of every
+  input it consumed; when the current settings drift from it the result is
+  marked stale and **the three exports are withdrawn until it is re-run**.
+
 ### Fixed — the panel showed one thing and ran another
 
 - **Equipment and link-budget overrides survived a technology change.**
