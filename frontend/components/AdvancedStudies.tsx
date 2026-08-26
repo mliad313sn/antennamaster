@@ -130,7 +130,7 @@ function TwoWayTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -200,7 +200,7 @@ function EmfTab() {
       <button className="primary" style={{ width: '100%' }} disabled={busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -215,7 +215,7 @@ function EmfTab() {
           {pdfBusy ? t('advanced.running') : t('advanced.emfPdf')}
         </button>
       )}
-      {pdfErr && <div className="warning-box">{pdfErr}</div>}
+      {pdfErr && <div className="warning-box" role="status">{pdfErr}</div>}
     </div>
   );
 }
@@ -261,7 +261,7 @@ function ItmTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -312,7 +312,7 @@ function P1812Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -366,7 +366,7 @@ function P452Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -414,7 +414,7 @@ function P2001Tab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -470,7 +470,7 @@ function AvailTab({ tx, rx }: { tx: LatLng | null; rx: LatLng | null }) {
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -518,7 +518,7 @@ function ErlangTab() {
       <button className="primary" style={{ width: '100%' }} disabled={busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.run')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <table className="result-table">
           <tbody>
@@ -570,7 +570,7 @@ function CalibTab({ tx, technology, calibration, onCalibration }: {
         disabled={!tx || points.length < 2 || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.calibFit')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <>
           <table className="result-table">
@@ -621,7 +621,7 @@ function CopilotTab(
       <button className="primary" style={{ width: '100%' }} disabled={!tx || !rx || busy} onClick={go}>
         {busy ? t('advanced.running') : t('advanced.analyze')}
       </button>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {res && (
         <div>
           <p style={{ whiteSpace: 'pre-line', marginTop: 10 }}>{res.summary}</p>

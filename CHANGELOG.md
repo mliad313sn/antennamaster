@@ -9,6 +9,25 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Fixed — accessibility (screen reader and keyboard)
+
+- **Nothing was ever announced.** The entire frontend contained one live
+  region, so a coverage sweep ran for up to half a minute in complete silence
+  and every failure appeared in an inert `<div>`. A study now announces that it
+  started, what it found ("78 % of the area served, peak −61 dBm") or why it
+  failed, through a polite `role="status"` region; and all 29 error surfaces
+  across 12 files carry `role="alert"`, with warnings as `role="status"`.
+- **The indoor DAS tab could not be used without a mouse.** Antenna placement
+  existed only as a click on a bare `<img>` — no `tabIndex`, no key handler —
+  so a keyboard or screen-reader user could never add one and the Run button
+  stayed disabled forever. There is now an explicit *Add antenna at plan
+  centre* control plus labelled X/Y fields on each antenna, so the whole
+  workflow is reachable without a pointer.
+- **Repeated rows had no accessible name.** The DXF wizard emitted the same
+  four ids for every control point and the DAS list the same three for every
+  antenna, so with three rows nine inputs shared four ids: rows 2 and 3 were
+  nameless and every label pointed at row 1's field. Ids are now per-row.
+
 ### Fixed — guided mode, and results that outlive their inputs
 
 - **Simple mode hid nothing, and nobody started in it.** The guided mode was

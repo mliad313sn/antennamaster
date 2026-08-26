@@ -287,7 +287,7 @@ function PlanStudy() {
           </div>
         </div>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }
@@ -375,7 +375,7 @@ function TunnelStudy() {
           </div>
         </>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }
@@ -519,7 +519,7 @@ function FeederStudy() {
           </div>
         </>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }
@@ -587,7 +587,7 @@ function TteStudy() {
           </div>
         </div>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }
@@ -748,6 +748,24 @@ function DasStudy() {
             <h3 style={{ margin: '8px 0 4px', fontSize: 13 }}>
               {t('indoor.dasAntennas', { count: antennas.length })}
             </h3>
+            {/* Placement used to exist only as a click on the plan <img>, so a
+                keyboard or screen-reader user could never add an antenna and
+                the Run button below stayed disabled forever.  This adds one at
+                the centre of the plan; the X/Y fields on each row then position
+                it exactly, no pointer involved. */}
+            <button style={{ width: '100%', marginBottom: 4 }}
+              disabled={!preview || antennas.length >= 32}
+              onClick={() => {
+                if (!preview || antennas.length >= 32) return;
+                const [x0, y0, x1, y1] = preview.bounds;
+                setAntennas((prev) => [...prev, {
+                  x: (x0 + x1) / 2, y: (y0 + y1) / 2,
+                  gain: 2, cableLen: 10, tapDb: 10,
+                }]);
+                setResult(null);
+              }}>
+              + {t('indoor.dasAddAntenna')}
+            </button>
             <div style={{ maxHeight: 190, overflowY: 'auto' }}>
               {antennas.map((a, i) => (
                 <div key={i} style={{ borderBottom: '1px solid var(--hairline)', padding: '3px 0', fontSize: 11 }}>
@@ -759,19 +777,31 @@ function DasStudy() {
                   </div>
                   <div className="row">
                     <div>
-                      <label htmlFor={`${_uid}-37`}>{t('indoor.dasGain')}</label>
-                      <input id={`${_uid}-37`} type="number" step={0.5} value={a.gain}
+                      <label htmlFor={`${_uid}-ax-${i}`}>X</label>
+                      <input id={`${_uid}-ax-${i}`} type="number" step={0.5} value={a.x}
+                        onChange={(e) => { const v = parseFloat(e.target.value) || 0; setAntennas((p) => p.map((x, j) => j === i ? { ...x, x: v } : x)); setResult(null); }} />
+                    </div>
+                    <div>
+                      <label htmlFor={`${_uid}-ay-${i}`}>Y</label>
+                      <input id={`${_uid}-ay-${i}`} type="number" step={0.5} value={a.y}
+                        onChange={(e) => { const v = parseFloat(e.target.value) || 0; setAntennas((p) => p.map((x, j) => j === i ? { ...x, y: v } : x)); setResult(null); }} />
+                    </div>
+                  </div>
+                  <div className="row">
+                    <div>
+                      <label htmlFor={`${_uid}-37-${i}`}>{t('indoor.dasGain')}</label>
+                      <input id={`${_uid}-37-${i}`} type="number" step={0.5} value={a.gain}
                         onChange={(e) => { const v = parseFloat(e.target.value) || 0; setAntennas((p) => p.map((x, j) => j === i ? { ...x, gain: v } : x)); setResult(null); }} />
                     </div>
                     <div>
-                      <label htmlFor={`${_uid}-38`}>{t('indoor.dasCable')}</label>
-                      <input id={`${_uid}-38`} type="number" min={0} value={a.cableLen}
+                      <label htmlFor={`${_uid}-38-${i}`}>{t('indoor.dasCable')}</label>
+                      <input id={`${_uid}-38-${i}`} type="number" min={0} value={a.cableLen}
                         onChange={(e) => { const v = Math.max(0, parseFloat(e.target.value) || 0); setAntennas((p) => p.map((x, j) => j === i ? { ...x, cableLen: v } : x)); setResult(null); }} />
                     </div>
                     {topology === 'cascade' && i < antennas.length - 1 && (
                       <div>
-                        <label htmlFor={`${_uid}-39`}>{t('indoor.dasTap')}</label>
-                        <input id={`${_uid}-39`} type="number" min={1} value={a.tapDb}
+                        <label htmlFor={`${_uid}-39-${i}`}>{t('indoor.dasTap')}</label>
+                        <input id={`${_uid}-39-${i}`} type="number" min={1} value={a.tapDb}
                           onChange={(e) => { const v = Math.max(1, parseFloat(e.target.value) || 1); setAntennas((p) => p.map((x, j) => j === i ? { ...x, tapDb: v } : x)); setResult(null); }} />
                       </div>
                     )}
@@ -821,7 +851,7 @@ function DasStudy() {
           </div>
         </div>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }
@@ -1030,7 +1060,7 @@ function FloorsStudy() {
           </div>
         </div>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }

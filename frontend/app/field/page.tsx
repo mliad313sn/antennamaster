@@ -153,7 +153,7 @@ export default function Field() {
           ))}
         </div>
 
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert">{error}</div>}
         <p className="hint" style={{ marginTop: 14 }}>
           Full studies live in the <Link href="/">planner</Link>; underground
           checks in the indoor studio there.

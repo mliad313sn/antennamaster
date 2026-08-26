@@ -182,7 +182,7 @@ export default function Pitch() {
           {card(a, setA, 'a', costsA)}
           {card(b, setB, 'b', costsB)}
         </div>
-        {error && <div className="error-box">{error}</div>}
+        {error && <div className="error-box" role="alert">{error}</div>}
       </main>
     </div>
   );

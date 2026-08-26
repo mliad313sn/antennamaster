@@ -84,7 +84,7 @@ export default function SimpleMode({ onApply, onExpert }: SimpleModeProps) {
       <button className="link-btn" onClick={onExpert} style={{ marginTop: 10 }}>
         {t('simple.advanced')} →
       </button>
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }

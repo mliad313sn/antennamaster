@@ -182,7 +182,7 @@ export default function Dashboard() {
                 catch (err) { setError((err as Error).message); }
               }} />
             {user.has_logo && <p className="hint">✓ Logo on file — reports are branded.</p>}
-            {error && <div className="error-box">{error}</div>}
+            {error && <div className="error-box" role="alert">{error}</div>}
           </section>
 
           {/* --------------------------------------------------- audit log */}

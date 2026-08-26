@@ -215,7 +215,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
 
           {step === 2 && (
             <div>
-              {hint && <div className="warning-box" style={{ marginBottom: 10 }}>💡 {hint}</div>}
+              {hint && <div className="warning-box" role="status" style={{ marginBottom: 10 }}>💡 {hint}</div>}
               <div className="mode-tabs">
                 <button className={mode === 'known_crs' ? 'active' : ''} onClick={() => setMode('known_crs')}>{t('dxf.modeKnownCrs')}</button>
                 <button className={mode === 'control_points' ? 'active' : ''} onClick={() => setMode('control_points')}>{t('dxf.modeControlPoints')}</button>
@@ -235,10 +235,10 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                   <p className="hint">{t('dxf.cpHint')}</p>
                   {cps.map((cp, i) => (
                     <div key={i} className="cp-grid">
-                      <div><label htmlFor={`${_uid}-1`}>{t('dxf.dxfX')}</label><input id={`${_uid}-1`} value={cp.dxf_x} onChange={(e) => setCp(i, 'dxf_x', e.target.value)} /></div>
-                      <div><label htmlFor={`${_uid}-2`}>{t('dxf.dxfY')}</label><input id={`${_uid}-2`} value={cp.dxf_y} onChange={(e) => setCp(i, 'dxf_y', e.target.value)} /></div>
-                      <div><label htmlFor={`${_uid}-3`}>{t('dxf.lat')}</label><input id={`${_uid}-3`} value={cp.lat} onChange={(e) => setCp(i, 'lat', e.target.value)} /></div>
-                      <div><label htmlFor={`${_uid}-4`}>{t('dxf.lon')}</label><input id={`${_uid}-4`} value={cp.lon} onChange={(e) => setCp(i, 'lon', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-1-${i}`}>{t('dxf.dxfX')}</label><input id={`${_uid}-1-${i}`} value={cp.dxf_x} onChange={(e) => setCp(i, 'dxf_x', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-2-${i}`}>{t('dxf.dxfY')}</label><input id={`${_uid}-2-${i}`} value={cp.dxf_y} onChange={(e) => setCp(i, 'dxf_y', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-3-${i}`}>{t('dxf.lat')}</label><input id={`${_uid}-3-${i}`} value={cp.lat} onChange={(e) => setCp(i, 'lat', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-4-${i}`}>{t('dxf.lon')}</label><input id={`${_uid}-4-${i}`} value={cp.lon} onChange={(e) => setCp(i, 'lon', e.target.value)} /></div>
                       <button
                         disabled={cps.length <= 2}
                         onClick={() => setCps((prev) => prev.filter((_, j) => j !== i))}
@@ -284,7 +284,7 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
             </div>
           )}
 
-          {error && <div className="error-box">{error}</div>}
+          {error && <div className="error-box" role="alert">{error}</div>}
         </div>
 
         <div className="modal-foot">

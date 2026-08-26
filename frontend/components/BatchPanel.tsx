@@ -159,7 +159,7 @@ export default function BatchPanel(props: BatchPanelProps) {
           </button>
         </>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }

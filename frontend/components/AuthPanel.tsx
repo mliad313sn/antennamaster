@@ -109,7 +109,7 @@ export default function AuthPanel({ onClose, onUser }: {
               </div>
             </>
           )}
-          {error && <div className="error-box">{error}</div>}
+          {error && <div className="error-box" role="alert">{error}</div>}
         </div>
         <div className="modal-foot">
           <span className="hint">Open self-hosted mode keeps all features free without an account.</span>

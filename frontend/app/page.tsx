@@ -461,13 +461,13 @@ export default function Home() {
             <SimpleMode onApply={applyScenario} onExpert={() => setUiMode('expert')} />
           )}
           {validation?.warning && (
-            <div className="warning-box">
+            <div className="warning-box" role="status">
               <b>⚠ Terrain validation warning</b><br />
               {validation.warning}
             </div>
           )}
           {validation?.error && (
-            <div className="warning-box"><b>⚠</b> {validation.error}</div>
+            <div className="warning-box" role="status"><b>⚠</b> {validation.error}</div>
           )}
           <SortablePanels
             arrangeLabel={t('arrange.toggle')}
@@ -739,7 +739,7 @@ export default function Home() {
               // hid nothing at all, which is the opposite of its purpose.
               (it) => uiMode === 'expert' || ['link', 'study'].includes(it.id))}
           />
-          {profileError && <div className="error-box">{profileError}</div>}
+          {profileError && <div className="error-box" role="alert">{profileError}</div>}
         </aside>
 
         <div className="map-and-chart">

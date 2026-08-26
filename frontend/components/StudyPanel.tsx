@@ -86,6 +86,10 @@ export default function StudyPanel(props: StudyPanelProps) {
   // Set while a queued study is in flight so the user can stop it.
   const [cancelRun, setCancelRun] = useState<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Spoken status for assistive technology (WCAG 4.1.3). A coverage sweep can
+  // take half a minute; without this the user gets no signal that it started,
+  // finished, or what it found.
+  const [announce, setAnnounce] = useState('');
 
   // Measured antenna patterns (MSI Planet uploads).
   const [antennas, setAntennas] = useState<AntennaInfo[]>([]);
@@ -336,6 +340,7 @@ export default function StudyPanel(props: StudyPanelProps) {
     setBusy(true);
     setProgress(0);
     setError(null);
+    setAnnounce(t('study.a11yStarted'));
     try {
       const resp = await simulateCoverageTracked({
         lat: props.tx.lat, lon: props.tx.lng,
@@ -363,10 +368,20 @@ export default function StudyPanel(props: StudyPanelProps) {
       setSinrView(false);
       setPaintedSignature(runSignature);
       props.onCoverage(resp);
+      const served = resp?.stats?.served_area_fraction;
+      const peak = resp?.stats?.max_rx_power_dbm;
+      setAnnounce(t('study.a11yDone', {
+        served: served != null ? Math.round(served * 100) : '—',
+        peak: peak != null ? peak.toFixed(0) : '—',
+      }));
     } catch (e) {
       // Stopping your own study is an expected outcome, not an error.
       if (!(e instanceof CoverageCancelled)) {
-        setError(friendlyError((e as Error).message));
+        const msg = friendlyError((e as Error).message);
+        setError(msg);
+        setAnnounce(msg);
+      } else {
+        setAnnounce(t('study.a11yCancelled'));
       }
     } finally {
       setBusy(false);
@@ -387,6 +402,10 @@ export default function StudyPanel(props: StudyPanelProps) {
   return (
     <div className="panel">
       <h3 data-tour="technology">{t('study.title')}</h3>
+      {/* Polite live region: start / completion / failure of a study is spoken,
+          so a screen-reader user is not left waiting in silence. */}
+      <div role="status" aria-live="polite" className="sr-only"
+        data-testid="study-status">{announce}</div>
 
       {/* Equipment Selector — pick real gear; it auto-fills the RF settings,
           all of which stay editable below. */}
@@ -953,7 +972,7 @@ export default function StudyPanel(props: StudyPanelProps) {
           </div>
         </>
       )}
-      {error && <div className="error-box">{error}</div>}
+      {error && <div className="error-box" role="alert">{error}</div>}
     </div>
   );
 }

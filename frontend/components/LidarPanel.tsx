@@ -49,7 +49,7 @@ export default function LidarPanel(
         {busy && !dsm ? t('lidar.parsing') : t('lidar.upload')}
         <input type="file" accept=".las,.laz" onChange={onFile} style={{ display: 'none' }} />
       </label>
-      {err && <div className="warning-box">{err}</div>}
+      {err && <div className="warning-box" role="status">{err}</div>}
       {dsm && (
         <div style={{ marginTop: 8 }}>
           <table className="result-table">
