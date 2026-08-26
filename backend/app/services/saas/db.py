@@ -144,6 +144,24 @@ def get_user_by_email(email: str) -> dict | None:
     return dict(row) if row else None
 
 
+def org_exists(org_name: str) -> bool:
+    """Whether any account already claims this organisation name.
+
+    Tenancy is scoped on ``users.org_name``, so registration must not let a
+    stranger join an existing tenant merely by typing its name (see
+    ``routes_auth.register``).  Compared case-insensitively and trimmed, since
+    "AcmeTelecom" and "acme telecom " must not be treated as different orgs.
+    """
+    name = (org_name or "").strip()
+    if not name:
+        return False
+    with _conn() as c:
+        row = c.execute(
+            "SELECT 1 FROM users WHERE TRIM(org_name) = ? COLLATE NOCASE "
+            "LIMIT 1", (name,)).fetchone()
+    return row is not None
+
+
 def update_user(user_id: int, **fields) -> None:
     allowed = {"name", "role", "tier", "org_name", "logo_path"}
     sets = {k: v for k, v in fields.items() if k in allowed}

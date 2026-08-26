@@ -26,6 +26,119 @@ def _register(client, email, role="field", org="Org A"):
     return {"Authorization": f"Bearer {r.json()['token']}"}
 
 
+def test_tenancy_cannot_be_joined_by_asserting_an_org_name(client, monkeypatch):
+    """A tenant is not a string the caller supplies.
+
+    Exploit this closes: the audit log is scoped on `users.org_name`, and BOTH
+    that string and `role` were accepted verbatim from the registration body.
+    An attacker who reads a customer's organisation name off any exported PDF
+    (it is printed on the report header) could register as
+    role="manager", org_name="<that org>" and read the tenant's entire audit
+    log - every employee email, client IP and action.  SECURITY_COMPLIANCE.md
+    and the endpoint's own docstring promise the exact opposite.
+    """
+    monkeypatch.setenv("AM_SAAS_MODE", "1")
+    victim_org = f"AcmeTelecom{time.time_ns()}"
+    victim_email = f"victim{time.time_ns()}@acme.example"
+    victim = _register(client, victim_email, role="manager", org=victim_org)
+    # The victim's own manager can see their own org's activity.
+    own = client.get("/api/auth/audit", headers=victim)
+    assert own.status_code == 200
+    assert any(victim_email == e.get("email") for e in own.json()["entries"])
+
+    # The attacker knows only the org NAME and claims to be its manager.
+    attack = client.post("/api/auth/register", json={
+        "email": f"mallory{time.time_ns()}@evil.example",
+        "password": "hunter22secure", "role": "manager",
+        "org_name": victim_org})
+    if attack.status_code == 200:
+        # If registration is allowed at all, it must not confer tenancy.
+        hdrs = {"Authorization": f"Bearer {attack.json()['token']}"}
+        leaked = client.get("/api/auth/audit", headers=hdrs)
+        entries = leaked.json().get("entries", []) if leaked.status_code == 200 else []
+        assert not any(e.get("email") == victim_email for e in entries), (
+            "cross-tenant audit disclosure: attacker read the victim's log")
+    else:
+        # Preferred: claiming an existing organisation is refused outright.
+        assert attack.status_code == 409, attack.text
+
+
+def test_validation_errors_never_echo_the_submitted_value(client):
+    """A 422 must not reflect what was sent.
+
+    Regression: FastAPI's default handler puts the rejected value in an
+    `input` field, so registering with a too-short password answered with
+    that plaintext password - straight into browser devtools, reverse-proxy
+    logs and any client-side error reporter.
+    """
+    secret = "hunter2"                      # 7 chars: fails min_length=8
+    r = client.post("/api/auth/register",
+                    json={"email": "leak@x.io", "password": secret})
+    assert r.status_code == 422
+    assert secret not in r.text, "422 echoed the submitted password"
+    # The client still gets what it needs to fix the call.
+    err = r.json()["detail"][0]
+    assert err["loc"] == ["body", "password"]
+    assert "8 characters" in err["msg"]
+    assert "input" not in err and "ctx" not in err
+
+    # Not just passwords - no rejected value is reflected, whatever the field.
+    r2 = client.post("/api/rf/coverage", json={
+        "lat": 999.0, "lon": 15.0, "technology": "gsm900"})
+    assert r2.status_code == 422
+    assert "999" not in r2.text
+
+
+def test_coverage_results_are_owner_scoped(client):
+    """A coverage id is not a bearer capability.
+
+    Result ids travel in share links, exported PDF footers, audit detail
+    fields and reverse-proxy logs.  The .png/.tif/.kmz endpoints and the /at
+    point query took no user dependency at all, so anyone holding a 12-hex id
+    could pull another tenant's georeferenced site footprint - confidential
+    infrastructure locations for operators, mines and public-safety networks.
+    """
+    owner = _register(client, f"cov{time.time_ns()}@x.io")
+    run = client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20}, headers=owner)
+    assert run.status_code == 200, run.text
+    cid = run.json()["coverage_id"]
+
+    # The owner reads every representation.
+    for path in (f"/api/rf/coverage/{cid}.png", f"/api/rf/coverage/{cid}.tif",
+                 f"/api/rf/coverage/{cid}.kmz"):
+        assert client.get(path, headers=owner).status_code == 200, path
+    assert client.get(f"/api/rf/coverage/{cid}/at",
+                      params={"lat": 47.0, "lon": 15.0},
+                      headers=owner).status_code == 200
+
+    # A stranger holding the id gets 404 - not 403, so the id is not an
+    # existence oracle - on every representation, including anonymously.
+    other = _register(client, f"cx{time.time_ns()}@x.io")
+    for hdrs in (other, None):
+        for path in (f"/api/rf/coverage/{cid}.png",
+                     f"/api/rf/coverage/{cid}.tif",
+                     f"/api/rf/coverage/{cid}.kmz"):
+            r = client.get(path, headers=hdrs) if hdrs else client.get(path)
+            assert r.status_code == 404, f"{path} leaked to a non-owner"
+        at = f"/api/rf/coverage/{cid}/at"
+        r = (client.get(at, params={"lat": 47.0, "lon": 15.0}, headers=hdrs)
+             if hdrs else client.get(at, params={"lat": 47.0, "lon": 15.0}))
+        assert r.status_code == 404, "point query leaked to a non-owner"
+
+
+def test_anonymous_coverage_stays_open_for_self_hosting(client):
+    """Owner-scoping must not break the anonymous single-tenant deployment:
+    a result with no owner stays readable, exactly like an anonymous DXF."""
+    run = client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20})
+    assert run.status_code == 200
+    cid = run.json()["coverage_id"]
+    assert client.get(f"/api/rf/coverage/{cid}.png").status_code == 200
+
+
 def test_saas_mode_blocks_self_serve_tier_escalation(client, monkeypatch):
     hdrs = _register(client, f"esc{time.time_ns()}@x.io")
     monkeypatch.setenv("AM_SAAS_MODE", "1")

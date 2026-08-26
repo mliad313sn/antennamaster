@@ -9,6 +9,29 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Fixed — security (usability/benchmark/infosec committee)
+
+- **Cross-tenant disclosure: a tenant could be joined by naming it.** The
+  audit log scopes on `users.org_name`, and both that string *and* `role` were
+  accepted verbatim from the registration body. Anyone who had seen a
+  customer's organisation name — it is printed on every exported report header
+  — could register as `role="manager"` of it and read that tenant's entire
+  audit log: employee emails, client IPs, actions. In SaaS mode registration
+  now refuses an organisation that already exists (409, invite required) and
+  only the account that *creates* an organisation administers it; an account
+  with no organisation is `field` and has no audit access.
+- **Coverage results were readable by id alone (IDOR).** `/coverage/{id}.png`,
+  `.tif`, `.kmz` and the `/at` point query took no user dependency, so a
+  12-hex id — which travels in share links, PDF footers, audit details and
+  proxy logs — returned another tenant's georeferenced site footprint.
+  Rasters now record their owner and the four routes go through a
+  `resolve_result()` guard returning 404 (not 403) to a non-owner.
+  Anonymous/self-hosted results stay open.
+- **422 responses echoed the submitted value, including passwords.**
+  Registering with a too-short password returned that plaintext password in
+  the error body, landing in devtools, proxy logs and error reporters. The
+  handler now returns only location, type and message.
+
 ### Fixed — trust and safety (committee round 2)
 
 - **EMF exposure was under-reported, on the document that carries a signature.**

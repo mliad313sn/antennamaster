@@ -126,16 +126,27 @@ def _json_safe(value):
 
 @app.exception_handler(RequestValidationError)
 async def validation_error_handler(request, exc: RequestValidationError):
-    """Return 422 for an invalid body even when the offending value is NaN.
+    """Return 422 for an invalid body without echoing what was submitted.
 
-    FastAPI's default handler echoes the rejected input back inside the error
-    detail. When that input is NaN or Infinity - which json.loads happily
-    accepts on the way in - serializing the *error* raises, turning a clean
-    422 into a 500 with a stack trace. Scrub the payload first so bad input
-    is always reported as bad input.
+    Two problems with FastAPI's default handler, which reflects the rejected
+    value back inside the error detail:
+
+    * **It leaks credentials.** POST /api/auth/register with a 5-character
+      password answered `{"input": "<the plaintext password>"}`, which then
+      lands in browser devtools, reverse-proxy logs and any client-side error
+      reporter.  The same is true of any rejected field.
+    * **It can 500.** When the input is NaN or Infinity - which json.loads
+      happily accepts on the way in - serializing the *error* raises, turning
+      a clean 422 into a stack trace.
+
+    A client needs the location, the type and the message to fix its call; it
+    never needs the value it just sent.  Drop `input` and `ctx` (which can
+    carry fragments of the value too) and keep the rest.
     """
+    safe = [{k: v for k, v in err.items() if k in ("type", "loc", "msg")}
+            for err in exc.errors()]
     return JSONResponse(status_code=422,
-                        content={"detail": _json_safe(exc.errors())})
+                        content={"detail": _json_safe(safe)})
 
 
 def _client_ip(request) -> str | None:

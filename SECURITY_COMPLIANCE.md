@@ -36,6 +36,16 @@ requires the `X-Billing-Secret` header to match `AM_BILLING_SECRET` — a user
 cannot grant themselves Enterprise; only the billing provider's webhook can.
 
 ### Resource ownership (cross-tenant isolation)
+**Coverage results** are owner-scoped at the store: `results_store` records the
+owner with each raster and `resolve_result()` fronts `/coverage/{id}.png`,
+`.tif`, `.kmz` and the `/at` point query, answering **404** (not 403) to a
+non-owner so an id is not an existence oracle. This matters because a result id
+is not a secret — it travels in share links, exported PDF footers, audit detail
+fields and reverse-proxy logs — and those four routes previously took no user
+dependency at all, so holding a 12-hex id yielded another tenant's
+georeferenced site footprint. Results with no owner (the anonymous self-hosted
+default) stay readable, exactly like an anonymous DXF.
+
 Every consumer of a DXF, antenna pattern or async job is guarded so one tenant
 cannot read another's data by guessing an id:
 - **DXF**: a central `resolve_dxf()` guard runs existence (404) → **owner
@@ -94,6 +104,20 @@ token yet, so the endpoint stamps identity via `request.state`).
 2. **Database** — the tenant-scoped `audit_log` table. `GET /api/auth/audit`
    (manager only) returns entries **scoped to the caller's organization** in
    SaaS mode — a manager never sees another tenant's emails or activity.
+
+   That scoping keys on `users.org_name`, so in SaaS mode **an organization
+   cannot be joined by naming it**: registration refuses an org name that
+   already exists (409 — an existing administrator must invite you), and only
+   the account that *creates* an organization gets the `manager` role. An
+   account registered without an organization is `field` and has no audit
+   access at all. Before this was enforced, both `role` and `org_name` were
+   accepted verbatim from the registration body, so anyone who had seen a
+   customer's organization name — it is printed on every exported report
+   header — could register as its manager and read that tenant's entire audit
+   log. Regression: `test_tenancy_cannot_be_joined_by_asserting_an_org_name`.
+   *Known gap:* the 409 makes org names enumerable (they are already
+   semi-public, appearing on exported reports), and invite tokens are not yet
+   implemented — a second member must currently be added out of band.
 
 Auditing is best-effort with respect to request handling: an audit-write
 failure is caught and logged, never propagated, so it cannot break a user

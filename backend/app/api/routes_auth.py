@@ -85,14 +85,32 @@ class TierIn(BaseModel):
 def register(request: Request, body: RegisterIn) -> dict:
     if db.get_user_by_email(body.email):
         raise HTTPException(409, "An account with this email already exists")
+
+    role, org = body.role, (body.org_name or "").strip()
+    if saas_mode():
+        # Tenancy is NOT something the caller may assert.  The audit log is
+        # scoped on users.org_name, so accepting both that string and
+        # role="manager" verbatim let anyone who had seen a customer's
+        # organisation name -- it is printed on every exported report header --
+        # register into that tenant and read its entire activity log.
+        # Only the account that CREATES an organisation administers it;
+        # everyone else must be invited (see below), and an account with no
+        # organisation gets the lowest role and no audit access at all.
+        if org and db.org_exists(org):
+            raise HTTPException(
+                409, "That organization already exists. Ask one of its "
+                     "administrators to invite you instead of registering "
+                     "into it.")
+        role = "manager" if org else "field"
     user = db.create_user(body.email, body.password, name=body.name,
-                          role=body.role, org_name=body.org_name)
+                          role=role, org_name=org)
     token = db.issue_token(user["id"])
     # The audit middleware records this with the client IP; the request has no
     # token yet, so stamp the identity it should attribute the action to.
     request.state.audit_user_id = user["id"]
     request.state.audit_email = user["email"]
-    request.state.audit_detail = f"role={body.role}"
+    # Record the EFFECTIVE role, not the one that was asked for.
+    request.state.audit_detail = f"role={role}"
     return {"token": token, "user": _public(user)}
 
 

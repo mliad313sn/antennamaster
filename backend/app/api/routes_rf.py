@@ -221,7 +221,10 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
                        {"bounds": result.bounds,
                         "tx_lat": req.lat, "tx_lon": req.lon,
                         "radius_m": req.radius_km * 1000.0,
-                        "stats": result.stats})
+                        "stats": result.stats,
+                        # Owner-scopes every read of this raster
+                        # (see resolve_result).
+                        "owner_id": user["id"] if user else None})
     # Numeric field sidecar so /at can report the level behind any pixel.
     if result.polar is not None:
         results_store.save_field(
@@ -240,10 +243,33 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
     }
 
 
+def resolve_result(coverage_id: str, user: dict | None,
+                   kind: str = "coverage") -> tuple[bytes, dict]:
+    """Load a stored raster, owner-scoped.
+
+    A result id is not a capability.  It travels in share links, exported PDF
+    footers, audit detail fields and reverse-proxy logs, so treating knowledge
+    of a 12-hex id as authorisation leaked other tenants' georeferenced site
+    footprints through .png/.tif/.kmz and the /at point query -- confidential
+    infrastructure locations for mobile operators, mines and public-safety
+    networks.  Mirrors ``resolve_dxf``: results with no owner (the anonymous
+    self-hosted default) stay open, and someone else's result answers 404
+    rather than 403 so the id is not an existence oracle.
+    """
+    hit = results_store.load(kind, coverage_id)
+    if hit is None:
+        raise HTTPException(404, "Coverage result expired or unknown")
+    owner = (hit[1] or {}).get("owner_id")
+    if owner is not None and (user is None or user.get("id") != owner):
+        raise HTTPException(404, "Coverage result expired or unknown")
+    return hit
+
+
 @router.get("/coverage/{coverage_id}/at")
 def coverage_point(coverage_id: str,
                    lat: float = Query(..., ge=-90, le=90),
-                   lon: float = Query(..., ge=-180, le=180)) -> dict:
+                   lon: float = Query(..., ge=-180, le=180),
+                   user: dict | None = Depends(current_user)) -> dict:
     """Predicted level at one point of an existing coverage study.
 
     A raster shows the class of every pixel but not its value; planners need
@@ -251,9 +277,7 @@ def coverage_point(coverage_id: str,
     The answer is looked up out of the stored polar field with the same
     indexing that painted the raster, so number and colour always agree.
     """
-    hit = results_store.load("coverage", coverage_id)
-    if hit is None:
-        raise HTTPException(404, "Coverage result expired or unknown")
+    hit = resolve_result(coverage_id, user)
     field = results_store.load_field("coverage", coverage_id)
     if field is None:
         raise HTTPException(
@@ -266,22 +290,19 @@ def coverage_point(coverage_id: str,
 
 
 @router.get("/coverage/{coverage_id}.png")
-def coverage_png(coverage_id: str) -> Response:
-    hit = results_store.load("coverage", coverage_id)
-    if hit is None:
-        raise HTTPException(404, "Coverage result expired or unknown")
+def coverage_png(coverage_id: str,
+                 user: dict | None = Depends(current_user)) -> Response:
+    hit = resolve_result(coverage_id, user)
     return Response(content=hit[0], media_type="image/png",
                     headers={"Cache-Control": "max-age=3600"})
 
 
 @router.get("/coverage/{coverage_id}.tif")
-def coverage_geotiff(coverage_id: str) -> Response:
+def coverage_geotiff(coverage_id: str,
+                     user: dict | None = Depends(current_user)) -> Response:
     """Coverage raster as a georeferenced GeoTIFF (EPSG:4326) - the GIS-native
     format ArcGIS/QGIS/Atoll/Pathloss import directly, unlike a bare PNG."""
-    hit = results_store.load("coverage", coverage_id)
-    if hit is None:
-        raise HTTPException(404, "Coverage result expired or unknown")
-    png, meta = hit
+    png, meta = resolve_result(coverage_id, user)
     from ..services.geotiff import rgba_png_to_geotiff
     bounds = meta.get("bounds", [[0, 0], [0, 0]])
     tif = rgba_png_to_geotiff(png, bounds)
@@ -292,13 +313,11 @@ def coverage_geotiff(coverage_id: str) -> Response:
 
 
 @router.get("/coverage/{coverage_id}.kmz")
-def coverage_kmz(coverage_id: str) -> Response:
+def coverage_kmz(coverage_id: str,
+                 user: dict | None = Depends(current_user)) -> Response:
     """Coverage raster as a KMZ GroundOverlay - opens in Google Earth / GIS,
     the deliverable format planners hand to clients."""
-    hit = results_store.load("coverage", coverage_id)
-    if hit is None:
-        raise HTTPException(404, "Coverage result expired or unknown")
-    png, meta = hit
+    png, meta = resolve_result(coverage_id, user)
     (south, west), (north, east) = meta.get("bounds", [[0, 0], [0, 0]])
     kml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
@@ -691,7 +710,9 @@ def throughput_map(req: ThroughputMapRequest,
             raster_px=req.raster_px)
         import uuid as _uuid
         result_id = _uuid.uuid4().hex[:12]
-        results_store.save("coverage", result_id, png, {"bounds": bounds})
+        results_store.save("coverage", result_id, png, {
+            "bounds": bounds,
+            "owner_id": user["id"] if user else None})
         out.update({"png_url": f"/api/rf/coverage/{result_id}.png",
                     "bounds": bounds, "legend": legend,
                     "raster_stats": tstats})
@@ -1142,13 +1163,15 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
             "max_rx_power_dbm": max((s["max_rx_power_dbm"] for s in site_stats),
                                     default=None),
             "sites": len(site_stats),
-        }})
+        },
+        "owner_id": user["id"] if user else None})
 
     sinr_out = None
     if sinr is not None:
         sinr_id = _uuid.uuid4().hex[:12]
         results_store.save("coverage", sinr_id, sinr.pop("png"),
-                           {"bounds": bounds})
+                           {"bounds": bounds,
+                            "owner_id": user["id"] if user else None})
         sinr_out = {"png_url": f"/api/rf/coverage/{sinr_id}.png", **sinr}
 
     return {
