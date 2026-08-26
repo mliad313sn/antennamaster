@@ -299,12 +299,52 @@ def coverage_png(coverage_id: str,
 
 @router.get("/coverage/{coverage_id}.tif")
 def coverage_geotiff(coverage_id: str,
+                     band: str | None = Query(
+                         None, pattern="^(rx_power|margin)$",
+                         description="Export physical values as a single-band "
+                                     "Float32 raster instead of the coloured "
+                                     "picture: rx_power (dBm) or margin (dB)."),
                      user: dict | None = Depends(current_user)) -> Response:
     """Coverage raster as a georeferenced GeoTIFF (EPSG:4326) - the GIS-native
-    format ArcGIS/QGIS/Atoll/Pathloss import directly, unlike a bare PNG."""
+    format ArcGIS/QGIS/Atoll/Pathloss import directly, unlike a bare PNG.
+
+    Without ``band`` this is the coloured RGBA overlay: a *picture*, five
+    hard-coded margin classes at 8 bits.  With ``band`` it is the DATA the
+    picture was drawn from - one Float32 band of dBm or dB, NaN beyond the
+    study radius and declared as nodata - which is what a GIS team needs to
+    threshold at their own level, reclassify, or intersect with a demand
+    layer.  The default is unchanged so existing links keep working.
+    """
     png, meta = resolve_result(coverage_id, user)
-    from ..services.geotiff import rgba_png_to_geotiff
     bounds = meta.get("bounds", [[0, 0], [0, 0]])
+
+    if band:
+        field = results_store.load_field("coverage", coverage_id)
+        if field is None:
+            raise HTTPException(
+                409, "This study predates numeric export - re-run it to get "
+                     "a data GeoTIFF (the coloured raster is still available "
+                     "without the band parameter).")
+        for key in ("tx_lat", "tx_lon", "radius_m"):
+            if key not in meta:
+                raise HTTPException(
+                    409, "This study has no stored geometry - re-run it to "
+                         "export the numeric field.")
+        from PIL import Image as _Image
+        import io as _io
+        with _Image.open(_io.BytesIO(png)) as im:
+            px = im.size[0]
+        grid, fbounds = coverage_mod.resample_field(
+            field["az"], field["dist"], field[band],
+            tx_lat=float(meta["tx_lat"]), tx_lon=float(meta["tx_lon"]),
+            radius_m=float(meta["radius_m"]), px=px)
+        from ..services.geotiff import field_to_geotiff
+        return Response(
+            content=field_to_geotiff(grid, fbounds), media_type="image/tiff",
+            headers={"Content-Disposition":
+                     f'attachment; filename="coverage-{coverage_id}-{band}.tif"'})
+
+    from ..services.geotiff import rgba_png_to_geotiff
     tif = rgba_png_to_geotiff(png, bounds)
     return Response(
         content=tif, media_type="image/tiff",

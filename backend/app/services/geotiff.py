@@ -22,6 +22,68 @@ _GEO_ASCII_PARAMS = 34737
 _TIFF_DOUBLE = 12
 _TIFF_SHORT = 3
 _TIFF_ASCII = 2
+# GDAL's nodata tag: an ASCII string, so NaN travels as the literal "nan".
+_GDAL_NODATA = 42113
+
+
+def _geo_tags(bounds: list[list[float]], width: int, height: int
+              ) -> ImageFileDirectory_v2:
+    """The three geo-tags every EPSG:4326 export shares."""
+    (south, west), (north, east) = bounds
+    dx = (east - west) / max(width, 1)
+    dy = (north - south) / max(height, 1)
+    ifd = ImageFileDirectory_v2()
+    # Degrees per pixel in x and y (z=0). Row 0 is north, so the tiepoint
+    # maps raster (0,0) to the NW corner and the scale is positive.
+    ifd[_MODEL_PIXEL_SCALE] = (dx, dy, 0.0)
+    ifd.tagtype[_MODEL_PIXEL_SCALE] = _TIFF_DOUBLE
+    ifd[_MODEL_TIEPOINT] = (0.0, 0.0, 0.0, west, north, 0.0)
+    ifd.tagtype[_MODEL_TIEPOINT] = _TIFF_DOUBLE
+    # GeoKeyDirectory: version 1.1.0, 3 keys.
+    #   GTModelTypeGeoKey (1024) = 2 (geographic)
+    #   GTRasterTypeGeoKey (1025) = 1 (PixelIsArea)
+    #   GeographicTypeGeoKey (2048) = 4326 (WGS 84)
+    ifd[_GEO_KEY_DIRECTORY] = (
+        1, 1, 0, 3,
+        1024, 0, 1, 2,
+        1025, 0, 1, 1,
+        2048, 0, 1, 4326,
+    )
+    ifd.tagtype[_GEO_KEY_DIRECTORY] = _TIFF_SHORT
+    # GeoTIFF asks for a "|"-terminated string; the TIFF ASCII
+    # writer adds the NUL itself, and adding a second one makes
+    # GDAL warn "contains null byte ... incorrectly truncated"
+    # on every open, in every GIS tool.
+    ifd[_GEO_ASCII_PARAMS] = "WGS 84|"
+    ifd.tagtype[_GEO_ASCII_PARAMS] = _TIFF_ASCII
+    return ifd
+
+
+def field_to_geotiff(grid, bounds: list[list[float]]) -> bytes:
+    """Write a single-band Float32 EPSG:4326 GeoTIFF of physical values.
+
+    The RGBA export is a *picture*: five hard-coded margin classes quantised to
+    8 bits with alpha baked in.  A GIS team cannot threshold it at their own
+    -95 dBm, reclassify it, or intersect it with a demand layer -- so for them
+    the coverage study arrives as something to look at rather than something to
+    compute with.  This writes the numbers instead: one band of dBm (or dB of
+    margin), NaN beyond the study radius and declared as the nodata value, so
+    QGIS/ArcGIS shade it as no-data rather than as a very low signal.
+    """
+    import numpy as np
+
+    arr = np.asarray(grid, dtype=np.float32)
+    h, w = arr.shape
+    ifd = _geo_tags(bounds, w, h)
+    ifd[_GDAL_NODATA] = "nan"
+    ifd.tagtype[_GDAL_NODATA] = _TIFF_ASCII
+
+    img = Image.fromarray(arr, mode="F")
+    buf = io.BytesIO()
+    # No compression: PIL's TIFF encoder does not deflate mode-F reliably
+    # across versions, and a wrong-but-readable file is worse than a big one.
+    img.save(buf, format="TIFF", tiffinfo=ifd)
+    return buf.getvalue()
 
 
 def rgba_png_to_geotiff(png_bytes: bytes,
@@ -55,7 +117,11 @@ def rgba_png_to_geotiff(png_bytes: bytes,
         2048, 0, 1, 4326,
     )
     ifd.tagtype[_GEO_KEY_DIRECTORY] = _TIFF_SHORT
-    ifd[_GEO_ASCII_PARAMS] = "WGS 84|\x00"
+    # GeoTIFF asks for a "|"-terminated string; the TIFF ASCII
+    # writer adds the NUL itself, and adding a second one makes
+    # GDAL warn "contains null byte ... incorrectly truncated"
+    # on every open, in every GIS tool.
+    ifd[_GEO_ASCII_PARAMS] = "WGS 84|"
     ifd.tagtype[_GEO_ASCII_PARAMS] = _TIFF_ASCII
 
     buf = io.BytesIO()

@@ -441,6 +441,45 @@ def classify_margin(margin_db: float) -> dict | None:
     return None
 
 
+def resample_field(az: np.ndarray, dist: np.ndarray, values: np.ndarray,
+                   tx_lat: float, tx_lon: float, radius_m: float,
+                   px: int) -> tuple[np.ndarray, list[list[float]]]:
+    """Resample a polar field onto the SAME raster grid the PNG was painted on.
+
+    The coloured RGBA export is a picture: five hard-coded margin classes at
+    8 bits, which a GIS team cannot threshold, reclassify or intersect.  The
+    numeric field behind it is already computed and persisted, so exporting it
+    as data costs only this projection - deliberately the identical geometry
+    and nearest-neighbour az/dist indexing as ``CoverageEngine._rasterize`` and
+    ``point_value``, so the float raster lines up pixel-for-pixel with the
+    picture and can never disagree with it.
+
+    Returns ``(grid, [[south, west], [north, east]])`` with NaN beyond the
+    study radius (the nodata value declared in the GeoTIFF).
+    """
+    lat_r = np.degrees(radius_m / EARTH_RADIUS_M)
+    lon_r = lat_r / max(np.cos(np.radians(tx_lat)), 0.05)
+    south, north = tx_lat - lat_r, tx_lat + lat_r
+    west, east = tx_lon - lon_r, tx_lon + lon_r
+
+    lat_g = np.linspace(north, south, px)                  # row 0 = north
+    lon_g = np.linspace(west, east, px)
+    mlon, mlat = np.meshgrid(lon_g, lat_g)
+
+    m_e = (mlon - tx_lon) * np.cos(np.radians(tx_lat)) * (np.pi / 180.0) * EARTH_RADIUS_M
+    m_n = (mlat - tx_lat) * (np.pi / 180.0) * EARTH_RADIUS_M
+    pix_d = np.hypot(m_e, m_n)
+    pix_az = (np.degrees(np.arctan2(m_e, m_n)) + 360.0) % 360.0
+
+    ai = np.round(pix_az / (360.0 / len(az))).astype(int) % len(az)
+    d_step = dist[1] - dist[0] if len(dist) > 1 else dist[0]
+    di = np.clip(np.round((pix_d - dist[0]) / d_step).astype(int), 0, len(dist) - 1)
+
+    grid = np.asarray(values, dtype=np.float32)[ai, di]
+    grid = np.where(pix_d <= radius_m, grid, np.float32("nan"))
+    return grid.astype(np.float32), [[south, west], [north, east]]
+
+
 def point_value(az: np.ndarray, dist: np.ndarray, margin: np.ndarray,
                 rx_power: np.ndarray, tx_lat: float, tx_lon: float,
                 radius_m: float, lat: float, lon: float) -> dict:

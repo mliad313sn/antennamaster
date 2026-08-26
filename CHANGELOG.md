@@ -28,6 +28,26 @@ while the running server was probed empirically for behaviour and defects.
   was a bare `<div onClick>`: not focusable, not announced, unusable without a
   pointer. It is now a proper `radiogroup` with `aria-checked` and Enter/Space.
 
+### Added — coverage as data, not just as a picture
+
+- **`GET /api/rf/coverage/{id}.tif?band=rx_power|margin`** returns a
+  **single-band Float32 GeoTIFF** in EPSG:4326 with `NaN` beyond the study
+  radius, declared as the nodata value. Until now every GIS export was an
+  8-bit RGBA image of five hard-coded margin classes with alpha baked in — a
+  cartographic artifact, not a dataset: a GIS team could not threshold it at
+  their own −95 dBm, reclassify it, or intersect it with a demand layer. The
+  numeric field was already computed and persisted as a sidecar and simply
+  never exported. It is resampled with exactly the geometry and
+  nearest-neighbour indexing that painted the picture, so the two line up
+  pixel-for-pixel and can never disagree. Verified by opening the output with
+  rasterio: 1 band, `float32`, `EPSG:4326`, `nodata=nan`, values round-tripped
+  exactly. Without `band` the export is unchanged, so existing links keep
+  working; an unknown band is refused with 422 rather than ignored.
+- **Fixed a GDAL warning on every export.** `GeoASCIIParams` carried an
+  explicit `\x00` on top of the terminator the TIFF writer adds, so every GIS
+  tool opening an AntennaMaster GeoTIFF logged *"contains null byte … value
+  incorrectly truncated"*. Both exports now write the string the spec asks for.
+
 ### Fixed — the planner on a phone
 
 - **Three nested scrollers, none of them reachable.** The desktop shell pins
