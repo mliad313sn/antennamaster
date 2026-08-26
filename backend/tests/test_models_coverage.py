@@ -71,6 +71,50 @@ def test_deygout_multi_edge():
     assert l2 > l1 + 3.0
 
 
+def test_deygout_is_reciprocal():
+    """Diffraction loss is reciprocal: A->B must equal B->A, exactly.
+
+    Regression: the shared edge budget used to be spent depth-first, so the
+    left sub-path consumed it before the right was examined and the answer
+    depended on which end was called TX -- 36% of random multi-ridge profiles
+    disagreed, by up to 12.8 dB.  Talk-out and talk-in are derived from this
+    number, so the asymmetry was directly visible in two-way coverage.
+
+    Elevations are rounded to whole metres because that is what a real DEM
+    delivers, and exact ties (which is where order-dependence bites) are
+    common on quantised terrain rather than a pathological special case.
+    """
+    rng = np.random.default_rng(20240513)
+    worst = 0.0
+    for _ in range(400):
+        n = int(rng.integers(40, 200))
+        d = np.linspace(0.0, float(rng.uniform(3_000, 80_000)), n)
+        e = np.full(n, float(rng.uniform(50, 400)))
+        for _ in range(int(rng.integers(1, 6))):     # 1-5 ridges
+            c = int(rng.integers(3, n - 3))
+            w = int(rng.integers(1, 10))
+            e[max(0, c - w):min(n, c + w)] += float(rng.uniform(20, 300))
+        e = np.round(e)
+        h = float(rng.uniform(5, 60))
+        f = float(rng.uniform(80, 10_000))
+        fwd = deygout_loss_db(d, e.copy(), h, h, f)
+        rev = deygout_loss_db(d, e[::-1].copy(), h, h, f)
+        worst = max(worst, abs(fwd - rev))
+    assert worst < 1e-9, f"non-reciprocal by {worst:.3f} dB"
+
+    # Full mirror with unequal antenna heights: loss(d, e, tx, rx) must equal
+    # loss(mirror(d), reverse(e), rx, tx).
+    for _ in range(200):
+        n = int(rng.integers(40, 150))
+        d = np.linspace(0.0, float(rng.uniform(4_000, 50_000)), n)
+        e = np.round(np.full(n, 200.0) + rng.uniform(0, 150, n))
+        tx, rx = float(rng.uniform(5, 80)), float(rng.uniform(5, 80))
+        f = float(rng.uniform(100, 6_000))
+        a = deygout_loss_db(d, e.copy(), tx, rx, f)
+        b = deygout_loss_db(d[-1] - d[::-1], e[::-1].copy(), rx, tx, f)
+        assert a == pytest.approx(b, abs=1e-9)
+
+
 # ------------------------------------------------------------- technologies
 def test_technology_presets_cover_all_generations():
     gens = {t["generation"] for t in TECHNOLOGIES.values()}

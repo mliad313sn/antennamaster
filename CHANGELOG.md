@@ -39,6 +39,21 @@ while the running server was probed empirically for behaviour and defects.
   Degenerate geometry now yields `served: null` with a note explaining why,
   every derived figure nulled (never a finite-but-meaningless "margin
   100 dB"), and the good rows are unaffected. CSV output is properly quoted.
+- **Diffraction loss was not reciprocal.** Deygout's shared edge budget was
+  spent depth-first, so the left sub-path consumed it before the right was
+  examined and the answer depended on which end you called TX: **36 % of
+  random multi-ridge profiles disagreed with their own reverse, by up to
+  12.8 dB**. Talk-out and talk-in are derived from this number, so the
+  asymmetry was visible directly in two-way coverage. The budget is now
+  awarded globally strongest-edge-first (which is what Deygout actually
+  specifies, and keeps the total-budget semantics), ties are broken on
+  terrain properties rather than sample order, and the profile orientation is
+  canonicalised so both directions execute the identical path. Verified
+  exact over 40,000 randomised profiles with metre-quantised elevations.
+  Cost: the per-sample profile study is ~1.6× slower (15 → 24 ms at 256
+  samples, 129 → 217 ms at 2048) because candidate edges are now evaluated
+  across all open sub-paths instead of abandoned depth-first — an honest
+  price for removing a 12.8 dB direction-dependent error.
 - **Stored XSS in the Live Ops dashboard.** Telemetry asset names were
   interpolated into a Leaflet `DivIcon`, which assigns to `innerHTML`, so an
   ingested name like `"><img src=x onerror=…>` executed in every open

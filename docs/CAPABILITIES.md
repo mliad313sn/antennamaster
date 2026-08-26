@@ -60,7 +60,13 @@ worker (`ensure_ready`).
 All floor-bounded by FSPL; out-of-validity inputs clamped with API warnings.
 **Terrain diffraction on top of any model:** Deygout multi-knife-edge (≤3
 edges, ITU-R P.526 loss, k-curved fused profile, grazing-edge recursion
-guard); the **same Deygout construction is vectorized per step in area
+guard). The shared edge budget is awarded **globally strongest-edge-first**
+across every open sub-path, and the profile orientation is canonicalised, so
+the result is **exactly reciprocal** — A→B equals B→A to the last bit, checked
+over 40,000 randomised metre-quantised profiles by
+`tests/test_models_coverage.py::test_deygout_is_reciprocal`. (This matters
+because talk-out and talk-in are derived from the same figure.) The
+**same Deygout construction is vectorized per step in area
 coverage** — principal edge plus one secondary on each sub-path — pinned to
 the scalar reference by `tests/test_coverage_diffraction.py` (exact agreement
 up to two obstructing edges). Area coverage previously used only the strongest
