@@ -251,3 +251,26 @@ CesiumJS with a glowing 3D Fresnel tube and draped coverage; a Live Operations
 dashboard (`/live`) tracks moving assets against the RF prediction; drone LiDAR
 surveys replace statistical clutter with real 3D obstructions. Full detail in
 [`VISION_ARCHITECTURE.md`](VISION_ARCHITECTURE.md).
+
+---
+
+## Licence
+
+AntennaMaster is free software, licensed under the
+**[GNU Affero General Public License v3.0](LICENSE)** (`AGPL-3.0-only`).
+
+You may run, study, modify and redistribute it, including commercially. Two
+obligations come with that freedom:
+
+- **Share alike.** Distributed modifications must also be AGPL-3.0.
+- **Network use counts as distribution (§13).** If you run a modified version
+  as a network service, you must offer its users the corresponding source of
+  *your* version. This is the clause that separates the AGPL from the GPL, and
+  it is deliberate: a hosted RF planner is exactly the case the GPL leaves open.
+
+Self-hosting the unmodified project — including air-gapped and on a client
+site — carries no obligation beyond keeping the licence and notices intact.
+
+The RF engine bundles or optionally installs third-party components under their
+own terms, including the ITU-R reference implementations (Py1812 / Py452 /
+Py2001) and PyMuPDF (AGPL-3.0, compatible with this project's licence).

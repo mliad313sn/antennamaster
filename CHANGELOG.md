@@ -9,6 +9,29 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Added — licensing
+
+- **AntennaMaster is now formally licensed under the GNU AGPL-3.0**
+  (`AGPL-3.0-only`). Until now there was no `LICENSE` file, which legally
+  means all-rights-reserved: enterprise open-source review boards reject that
+  on sight, a consultant could not install it on a client's machine, and
+  `docs/MARKET_BENCHMARK.md` was advertising "$0, open source" — a claim the
+  repository did not support. The licence is declared in `README.md` (with
+  §13's network-use obligation spelled out, since a hosted RF planner is
+  exactly the case the plain GPL leaves open) and in `frontend/package.json`.
+  PyMuPDF, previously flagged as an AGPL dependency in the runtime image, is
+  compatible with this choice.
+
+### Changed — packaging
+
+- **The production image no longer ships a test harness.** `requirements.txt`
+  carried `pytest`, `pytest-cov` and `pymupdf` (test-only, ~30 MB) straight
+  into the runtime container. Test and tooling dependencies moved to
+  `requirements-dev.txt`; the CI jobs that run pytest install that, while the
+  end-to-end and launch-path jobs deliberately keep installing only
+  `requirements.txt`, so they now double as a check that the runtime set is
+  genuinely sufficient to serve the app.
+
 ### Fixed — security (usability/benchmark/infosec committee)
 
 - **Cross-tenant disclosure: a tenant could be joined by naming it.** The

@@ -1,0 +1,11 @@
+# Development / CI dependencies: everything needed to run the test suite and
+# the benchmark gates, on top of the runtime set.  Keeping these out of
+# requirements.txt means the production container ships no test harness --
+# smaller image, smaller attack surface -- and the e2e/launch CI jobs, which
+# install only requirements.txt, double as a check that the runtime set is
+# genuinely sufficient to serve the app.
+-r requirements.txt
+
+pytest>=8.0
+pytest-cov>=5.0
+pymupdf>=1.24        # test-only: PDF content assertions (AGPL-3.0)

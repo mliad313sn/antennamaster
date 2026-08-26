@@ -28,10 +28,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
       - name: Install dependencies
         working-directory: backend
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
       - name: Tests
         working-directory: backend
         run: python -m pytest -q
@@ -52,10 +54,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
       - name: Install dependencies
         working-directory: backend
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
       - name: Install the ITU-R reference engines and digital maps
         working-directory: backend
         run: |
