@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import numpy as np
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -12,6 +12,7 @@ from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
 from ..services.saas import jobs
 from ..services.saas.tiers import check_preset_allowed, require_feature
+from ..services.terrain import coverage as coverage_mod
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
 from .routes_auth import current_user
 from .routes_terrain import resolve_fusion
@@ -214,7 +215,15 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
 
     # Disk-backed so any worker can serve the PNG and restarts lose nothing.
     results_store.save("coverage", result.coverage_id, result.png,
-                       {"bounds": result.bounds})
+                       {"bounds": result.bounds,
+                        "tx_lat": req.lat, "tx_lon": req.lon,
+                        "radius_m": req.radius_km * 1000.0})
+    # Numeric field sidecar so /at can report the level behind any pixel.
+    if result.polar is not None:
+        results_store.save_field(
+            "coverage", result.coverage_id,
+            az=result.polar["az"], dist=result.polar["dist"],
+            margin=result.polar["margin"], rx_power=result.polar["rx_power"])
 
     return {
         "coverage_id": result.coverage_id,
@@ -225,6 +234,31 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
         "technology": {**tech, "key": req.technology},
         "warnings": result.warnings,
     }
+
+
+@router.get("/coverage/{coverage_id}/at")
+def coverage_point(coverage_id: str,
+                   lat: float = Query(..., ge=-90, le=90),
+                   lon: float = Query(..., ge=-180, le=180)) -> dict:
+    """Predicted level at one point of an existing coverage study.
+
+    A raster shows the class of every pixel but not its value; planners need
+    to read the actual dBm at a candidate address without re-running a study.
+    The answer is looked up out of the stored polar field with the same
+    indexing that painted the raster, so number and colour always agree.
+    """
+    hit = results_store.load("coverage", coverage_id)
+    if hit is None:
+        raise HTTPException(404, "Coverage result expired or unknown")
+    field = results_store.load_field("coverage", coverage_id)
+    if field is None:
+        raise HTTPException(
+            409, "This study predates point queries - re-run it to inspect points")
+    meta = hit[1]
+    return coverage_mod.point_value(
+        field["az"], field["dist"], field["margin"], field["rx_power"],
+        tx_lat=float(meta["tx_lat"]), tx_lon=float(meta["tx_lon"]),
+        radius_m=float(meta["radius_m"]), lat=lat, lon=lon)
 
 
 @router.get("/coverage/{coverage_id}.png")

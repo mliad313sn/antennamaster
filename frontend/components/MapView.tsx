@@ -8,11 +8,12 @@
  * in page.tsx) because Leaflet touches `window` at module scope.
  */
 import L from 'leaflet';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ImageOverlay, LayersControl, MapContainer, Marker, Polygon, Polyline, Popup,
   TileLayer, useMap, useMapEvents,
 } from 'react-leaflet';
+import { coveragePointValue, type CoveragePoint } from '@/lib/api';
 import type { CoverageResponse, GeorefResponse, LatLng } from '@/lib/types';
 
 /**
@@ -84,6 +85,71 @@ const RX_ICON = pin('#0b7a4b');
 function ClickHandler({ onClick }: { onClick: (p: LatLng) => void }) {
   useMapEvents({ click: (e) => onClick({ lat: e.latlng.lat, lng: e.latlng.lng }) });
   return null;
+}
+
+/**
+ * Click-to-inspect: with a coverage layer painted and no marker to place, a
+ * click reports the predicted level at that spot.
+ *
+ * The raster only encodes the class of a pixel, so without this a planner can
+ * see the colour band but never the number behind it — the value at a
+ * candidate address had to be obtained by re-running a point-to-point study.
+ * The reading comes from the same stored field that painted the raster, so it
+ * cannot contradict the colour underneath it.
+ */
+function CoverageInspector({ coverageId }: { coverageId: string }) {
+  const [at, setAt] = useState<{ p: LatLng; v: CoveragePoint | null; err?: string } | null>(null);
+  const seq = useRef(0);
+
+  useMapEvents({
+    click: async (e) => {
+      const p = { lat: e.latlng.lat, lng: e.latlng.lng };
+      const mine = ++seq.current;
+      setAt({ p, v: null });                       // show "reading…" immediately
+      try {
+        const v = await coveragePointValue(coverageId, p.lat, p.lng);
+        if (seq.current === mine) setAt({ p, v });  // ignore out-of-order replies
+      } catch (err) {
+        if (seq.current === mine) setAt({ p, v: null, err: (err as Error).message });
+      }
+    },
+  });
+
+  // A new study invalidates any reading taken from the previous one.
+  useEffect(() => { seq.current++; setAt(null); }, [coverageId]);
+
+  if (!at) return null;
+  const v = at.v;
+  return (
+    <Popup position={[at.p.lat, at.p.lng]} eventHandlers={{ remove: () => setAt(null) }}>
+      <div style={{ minWidth: 168, lineHeight: 1.5 }}>
+        <div style={{ fontWeight: 700, marginBottom: 2 }}>Signal here</div>
+        {at.err && <div style={{ color: '#c0392b' }}>{at.err}</div>}
+        {!v && !at.err && <div>Reading…</div>}
+        {v && !v.inside && (
+          <div>Outside the study area ({(v.distance_m / 1000).toFixed(2)} km from TX).</div>
+        )}
+        {v && v.inside && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 11, height: 11, borderRadius: 3, flex: 'none',
+                             background: v.grade ? v.grade.color : 'transparent',
+                             border: v.grade ? 'none' : '1px solid #888' }} />
+              <b>{v.grade ? v.grade.label.replace(/\s*\(.*\)$/, '') : 'No service'}</b>
+            </div>
+            <div><b>{v.rx_power_dbm?.toFixed(1)}</b> dBm
+              {' · '}margin <b>{(v.margin_db ?? 0) >= 0 ? '+' : ''}{v.margin_db?.toFixed(1)}</b> dB</div>
+            <div style={{ color: '#666' }}>
+              {(v.distance_m / 1000).toFixed(2)} km @ {v.bearing_deg?.toFixed(0)}° from TX
+            </div>
+            <div style={{ color: '#666', fontSize: 11 }}>
+              {at.p.lat.toFixed(5)}, {at.p.lng.toFixed(5)}
+            </div>
+          </>
+        )}
+      </div>
+    </Popup>
+  );
 }
 
 /** Fly the map to the DXF footprint whenever a new georeferencing lands, so
@@ -206,6 +272,12 @@ export default function MapView({
           Click the map to place the {placing === 'tx' ? 'transmitter (TX)' : 'receiver (RX)'}
         </div>
       )}
+      {/* Click-to-inspect is invisible unless we say so. */}
+      {!placing && coverage && (
+        <div className="map-hint">
+          Click anywhere on the coverage to read the signal level there
+        </div>
+      )}
       {/* preferCanvas: render vector layers (receiver/asset markers, polylines)
           on a single canvas instead of one DOM node each, so thousands of
           points pan/zoom smoothly. The coverage heatmap is already a
@@ -226,6 +298,11 @@ export default function MapView({
           )}
         </LayersControl>
         <ClickHandler onClick={onPlace} />
+        {/* With a coverage layer up and nothing to place, clicking the map
+            reads the predicted level at that point instead. */}
+        {coverage && !placing && (
+          <CoverageInspector coverageId={coverage.coverage_id} />
+        )}
         <FitToFootprint bounds={overlayBounds} />
         <FlyTo target={flyTarget ?? null} />
         <ViewPersist />

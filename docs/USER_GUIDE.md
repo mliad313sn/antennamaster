@@ -113,6 +113,11 @@ Open **http://localhost:3010**. The REST API is self-documenting at
 - **Glossary tooltips** — every technical field has an **ⓘ** icon. Hover,
   focus or tap it for a plain-language, equation-free explanation (also
   translated).
+- **Read the signal at any point** — once a coverage layer is on the map, click
+  anywhere on it to read the predicted level there: received power (dBm), the
+  fade margin, the quality grade, and the distance/bearing from the site. The
+  value is read out of the same field that painted the raster, so the number
+  can never disagree with the colour under your cursor.
 - **Arrange panels (drag-and-drop layout)** — click **⠿ Arrange panels** at
   the top of the sidebar to reshape it into your own workspace. Grab a panel's
   **⠿** handle and drag it anywhere in the stack (or focus the handle and press

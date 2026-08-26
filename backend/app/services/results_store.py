@@ -63,6 +63,29 @@ def load(kind: str, result_id: str) -> tuple[bytes, dict] | None:
     return png, meta
 
 
+def save_field(kind: str, result_id: str, **arrays) -> None:
+    """Persist the numeric field behind a raster as a compact .npz sidecar.
+
+    The PNG only carries the *class* of each pixel; answering "what is the
+    level at this point?" needs the underlying numbers.  Storing them next to
+    the raster (rather than recomputing on demand) is what guarantees the
+    value the user reads always agrees with the colour they see.
+    """
+    import numpy as np
+    _, meta_path = _paths(result_id, kind)
+    np.savez_compressed(meta_path.with_suffix(".npz"), **arrays)
+
+
+def load_field(kind: str, result_id: str):
+    """Load the .npz sidecar written by :func:`save_field`, or None."""
+    import numpy as np
+    _, meta_path = _paths(result_id, kind)
+    path = meta_path.with_suffix(".npz")
+    if not path.exists():
+        return None
+    return np.load(path)
+
+
 def _prune() -> None:
     """Keep at most _MAX_RESULTS result pairs on disk (oldest removed)."""
     pngs = sorted(RESULTS_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime)
@@ -70,3 +93,5 @@ def _prune() -> None:
     for p in pngs[:max(excess, 0)]:
         p.unlink(missing_ok=True)
         p.with_suffix(".json").unlink(missing_ok=True)
+        # The field sidecar is far larger than the raster - never orphan it.
+        p.with_suffix(".npz").unlink(missing_ok=True)

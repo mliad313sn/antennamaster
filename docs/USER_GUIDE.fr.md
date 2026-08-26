@@ -118,6 +118,11 @@ Ouvrez **http://localhost:3010**. L'API REST est auto-documentée à l'adresse
 - **Info-bulles du glossaire** — chaque champ technique porte une icône **ⓘ**.
   Survolez-la, mettez-la au focus ou touchez-la pour une explication en langage
   clair, sans équations (également traduite).
+- **Lire le signal en tout point** — lorsqu'une couche de couverture est
+  affichée, cliquez n'importe où dessus pour lire le niveau prédit à cet
+  endroit : puissance reçue (dBm), marge, classe de qualité, distance et azimut
+  depuis le site. La valeur provient du champ qui a peint le raster : le chiffre
+  ne peut donc jamais contredire la couleur sous le curseur.
 - **Organiser les panneaux (glisser-déposer)** — cliquez sur **⠿ Organiser les
   panneaux** en haut de la barre latérale pour la réorganiser à votre goût.
   Saisissez la poignée **⠿** d'un panneau et glissez-le où vous voulez (ou

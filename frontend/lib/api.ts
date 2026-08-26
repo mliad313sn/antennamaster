@@ -184,6 +184,26 @@ export async function simulateCoverageTracked(
   return job.result as unknown as CoverageResponse;
 }
 
+export interface CoveragePoint {
+  inside: boolean;
+  distance_m: number;
+  lat?: number; lon?: number;
+  bearing_deg?: number;
+  rx_power_dbm?: number;
+  margin_db?: number;
+  served?: boolean;
+  grade?: { margin_db: number; color: string; label: string } | null;
+}
+
+/** Predicted level at one point of an existing coverage study — read out of
+ *  the stored field, so it always agrees with the colour on the map. */
+export async function coveragePointValue(
+  coverageId: string, lat: number, lon: number,
+): Promise<CoveragePoint> {
+  return jsonOrThrow(await fetch(
+    `/api/rf/coverage/${coverageId}/at?lat=${lat}&lon=${lon}`));
+}
+
 /** Restore a georeferenced DXF's map state (footprint/overlay) by id —
  *  used to rebuild the session after a page reload. */
 export async function fetchDxfState(dxfId: string): Promise<GeorefResponse> {

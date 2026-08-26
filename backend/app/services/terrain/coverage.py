@@ -56,6 +56,10 @@ class CoverageResult:
     legend: list[dict]
     stats: dict
     warnings: list[str] = field(default_factory=list)
+    # The polar field the raster was painted from (az, dist, margin,
+    # rx_power).  Kept so a point query can report the number behind a
+    # pixel's colour using the identical indexing - see point_value().
+    polar: dict | None = None
 
 
 class CoverageEngine:
@@ -286,6 +290,7 @@ class CoverageEngine:
                 "max_rx_power_dbm": round(float(polar["rx_power"].max()), 1),
             },
             warnings=polar["warnings"],
+            polar=polar,
         )
 
     # ------------------------------------------------------------ raster
@@ -327,6 +332,52 @@ class CoverageEngine:
         buf = io.BytesIO()
         Image.fromarray(rgba, "RGBA").save(buf, format="PNG")
         return buf.getvalue(), [[south, west], [north, east]]
+
+
+def classify_margin(margin_db: float) -> dict | None:
+    """The legend class a margin falls into, or None when unserved."""
+    for thresh, color, label in LEGEND_STEPS:
+        if margin_db >= thresh:
+            return {"margin_db": thresh, "color": "#%02x%02x%02x" % color,
+                    "label": label}
+    return None
+
+
+def point_value(az: np.ndarray, dist: np.ndarray, margin: np.ndarray,
+                rx_power: np.ndarray, tx_lat: float, tx_lon: float,
+                radius_m: float, lat: float, lon: float) -> dict:
+    """Read the predicted level at one location out of a polar field.
+
+    Uses the SAME equirectangular projection and nearest-neighbour az/dist
+    indexing as :meth:`CoverageEngine._rasterize`, so the value reported here
+    is by construction the value that painted that pixel - a planner reading
+    a number off the map can never be shown something that contradicts the
+    colour under their cursor.
+
+    Returns ``{"inside": False}`` beyond the study radius.
+    """
+    m_e = (lon - tx_lon) * np.cos(np.radians(tx_lat)) * (np.pi / 180.0) * EARTH_RADIUS_M
+    m_n = (lat - tx_lat) * (np.pi / 180.0) * EARTH_RADIUS_M
+    d = float(np.hypot(m_e, m_n))
+    if d > radius_m:
+        return {"inside": False, "distance_m": round(d, 1)}
+
+    bearing = float((np.degrees(np.arctan2(m_e, m_n)) + 360.0) % 360.0)
+    ai = int(round(bearing / (360.0 / len(az)))) % len(az)
+    d_step = float(dist[1] - dist[0]) if len(dist) > 1 else float(dist[0])
+    di = int(np.clip(round((d - float(dist[0])) / d_step), 0, len(dist) - 1))
+
+    margin_db = float(margin[ai, di])
+    return {
+        "inside": True,
+        "lat": lat, "lon": lon,
+        "distance_m": round(d, 1),
+        "bearing_deg": round(bearing, 1),
+        "rx_power_dbm": round(float(rx_power[ai, di]), 1),
+        "margin_db": round(margin_db, 1),
+        "served": bool(margin_db >= 0.0),
+        "grade": classify_margin(margin_db),
+    }
 
 
 # Best-server site colors: the categorical palette order (CVD-safe).

@@ -224,6 +224,11 @@ debounced recomputes; Escape/aria on modals.
   reading the heatmap; fully translated.
 - **Glossary tooltips** (Radix Tooltip, keyboard-accessible) on every
   technical parameter — plain-language, equation-free, translated.
+- **Point inspection on the coverage map** — `GET /api/rf/coverage/{id}/at`
+  reports rx power, margin, grade and distance/bearing at any coordinate,
+  looked up from the stored polar field with the same indexing that painted
+  the raster (so value and colour cannot disagree; pinned by a test that
+  samples the PNG and the query together).
 - **Customizable sidebar (drag-and-drop)** — an "Arrange panels" mode turns
   every sidebar tool into a draggable card: reorder by dragging the ⠿ handle
   (or ↑/↓ keys, WCAG 2.1.1-safe) and hide the panels you don't use. The layout
