@@ -517,11 +517,70 @@ def calibrate(req: CalibrateRequest,
 
 # ------------------------------------------------ frequency / PCI planning
 class SiteIn(BaseModel):
+    """One transmitter in a cluster study.
+
+    Every field below ``downtilt_deg`` is a PER-SITE radio parameter. Without
+    them a cluster study cloned one technology dict across every site, so a
+    real network - an 800 MHz macro layer, a 3.5 GHz capacity layer and a
+    400 MHz PMR overlay, each with its own power, mast height and antenna -
+    simply could not be expressed, and the composite described a network that
+    does not exist. Anything left ``None`` falls back to the request-level
+    value, which in turn falls back to the technology preset, so an existing
+    caller that sends only lat/lon/name behaves exactly as before.
+    """
     lat: float = Field(ge=-90, le=90)
     lon: float = Field(ge=-180, le=180)
     name: str | None = None
     antenna_azimuth_deg: float | None = Field(None, ge=0, lt=360)
     downtilt_deg: float = Field(0.0, ge=-10, le=20)
+    # --- per-site radio parameters (None = inherit) ---------------------
+    freq_mhz: float | None = Field(None, gt=0)
+    tx_power_dbm: float | None = None
+    tx_gain_dbi: float | None = None
+    rx_gain_dbi: float | None = None
+    losses_db: float | None = None
+    rx_sensitivity_dbm: float | None = None
+    h_bs_m: float | None = Field(None, gt=0)
+    h_ut_m: float | None = Field(None, gt=0)
+    antenna_beamwidth_deg: float | None = Field(None, gt=5, le=360)
+
+
+# The per-site fields that override the cluster-wide technology dict.
+_SITE_RADIO_FIELDS = (
+    "freq_mhz", "tx_power_dbm", "tx_gain_dbi", "rx_gain_dbi", "losses_db",
+    "rx_sensitivity_dbm", "h_bs_m", "h_ut_m",
+)
+
+
+def site_tech(base: dict, site: SiteIn) -> dict:
+    """The technology dict this particular transmitter actually runs on.
+
+    Resolution order: the site's own value, else whatever the request already
+    resolved (preset + request-level overrides). Returns a copy, so sites
+    never share mutable state.
+    """
+    tech = dict(base)
+    for f in _SITE_RADIO_FIELDS:
+        v = getattr(site, f, None)
+        if v is not None:
+            tech[f] = v
+    return tech
+
+
+def site_echo(site: SiteIn, tech: dict) -> dict:
+    """What was actually used for this site, echoed back to the caller.
+
+    A cluster study is only auditable if the response says which numbers each
+    transmitter ran on - otherwise a per-site override is indistinguishable
+    from a silently ignored one.
+    """
+    return {
+        "name": site.name,
+        "lat": site.lat, "lon": site.lon,
+        "antenna_azimuth_deg": site.antenna_azimuth_deg,
+        "downtilt_deg": site.downtilt_deg,
+        **{f: tech.get(f) for f in _SITE_RADIO_FIELDS},
+    }
 
 
 class FrequencyPlanRequest(BaseModel):
@@ -575,14 +634,23 @@ def frequency_plan(req: FrequencyPlanRequest,
     try:
         with jobs.sim_slot():
             for s in req.sites:
+                st = site_tech(tech, s)
                 polar = engine.compute_polar(
-                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    s.lat, s.lon, st, radius_m=radius_m,
                     n_radials=req.n_radials, n_steps=req.n_steps,
                     antenna_azimuth_deg=s.antenna_azimuth_deg,
+                    # Only the multi-coverage request carries a cluster-wide
+                    # beamwidth; the planning endpoints fall back to the
+                    # engine default rather than inventing an attribute.
+                    antenna_beamwidth_deg=(
+                        s.antenna_beamwidth_deg
+                        if s.antenna_beamwidth_deg is not None
+                        else getattr(req, "antenna_beamwidth_deg", 65.0)),
                     downtilt_deg=s.downtilt_deg, k=req.k_factor,
                     clutter_heights_fn=clutter_fn)
                 computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
-                                 "radius_m": radius_m, "polar": polar})
+                                 "radius_m": radius_m, "polar": polar,
+                                 "resolved": site_echo(s, st)})
     except jobs.SimBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
     except Exception as exc:
@@ -688,14 +756,23 @@ def throughput_map(req: ThroughputMapRequest,
     try:
         with jobs.sim_slot():
             for s in req.sites:
+                st = site_tech(tech, s)
                 polar = engine.compute_polar(
-                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    s.lat, s.lon, st, radius_m=radius_m,
                     n_radials=req.n_radials, n_steps=req.n_steps,
                     antenna_azimuth_deg=s.antenna_azimuth_deg,
+                    # Only the multi-coverage request carries a cluster-wide
+                    # beamwidth; the planning endpoints fall back to the
+                    # engine default rather than inventing an attribute.
+                    antenna_beamwidth_deg=(
+                        s.antenna_beamwidth_deg
+                        if s.antenna_beamwidth_deg is not None
+                        else getattr(req, "antenna_beamwidth_deg", 65.0)),
                     downtilt_deg=s.downtilt_deg, k=req.k_factor,
                     clutter_heights_fn=clutter_fn)
                 computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
-                                 "radius_m": radius_m, "polar": polar})
+                                 "radius_m": radius_m, "polar": polar,
+                                 "resolved": site_echo(s, st)})
     except jobs.SimBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
     except Exception as exc:
@@ -796,14 +873,23 @@ def montecarlo_traffic(req: MonteCarloRequest,
     try:
         with jobs.sim_slot():
             for s in req.sites:
+                st = site_tech(tech, s)
                 polar = engine.compute_polar(
-                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    s.lat, s.lon, st, radius_m=radius_m,
                     n_radials=req.n_radials, n_steps=req.n_steps,
                     antenna_azimuth_deg=s.antenna_azimuth_deg,
+                    # Only the multi-coverage request carries a cluster-wide
+                    # beamwidth; the planning endpoints fall back to the
+                    # engine default rather than inventing an attribute.
+                    antenna_beamwidth_deg=(
+                        s.antenna_beamwidth_deg
+                        if s.antenna_beamwidth_deg is not None
+                        else getattr(req, "antenna_beamwidth_deg", 65.0)),
                     downtilt_deg=s.downtilt_deg, k=req.k_factor,
                     clutter_heights_fn=clutter_fn)
                 computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
-                                 "radius_m": radius_m, "polar": polar})
+                                 "radius_m": radius_m, "polar": polar,
+                                 "resolved": site_echo(s, st)})
     except jobs.SimBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
     except Exception as exc:
@@ -1113,6 +1199,107 @@ class MultiCoverageRequest(BaseModel):
     h_ut_m: float | None = Field(None, gt=0)
 
 
+# ---- site inventory interchange (CSV) --------------------------------
+# A cluster study is unusable at real scale if the only way in is clicking
+# sites onto a map one at a time: an operator's estate arrives as a CSV export
+# from their OSS, and an evaluation that starts with retyping 200 coordinates
+# does not continue. Same column names in and out, so a round trip is lossless.
+_SITE_CSV_COLUMNS = ("name", "lat", "lon", "antenna_azimuth_deg",
+                     "downtilt_deg", *_SITE_RADIO_FIELDS,
+                     "antenna_beamwidth_deg")
+
+
+@router.post("/sites/parse-csv")
+async def parse_sites_csv(file: UploadFile = File(...)) -> dict:
+    """Parse a site-inventory CSV into the `sites` array a cluster study takes.
+
+    Tolerant on input, strict about saying what it did: unknown columns are
+    ignored, blank cells inherit, and every rejected row is reported with its
+    line number and reason rather than being dropped in silence.
+    """
+    import csv as _csv
+    import io as _io
+
+    raw = await file.read()
+    if len(raw) > 2_000_000:
+        raise HTTPException(413, "Site CSV exceeds the 2 MB limit")
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        raise HTTPException(422, "Site CSV must be UTF-8 encoded")
+
+    reader = _csv.DictReader(_io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(422, "Site CSV has no header row")
+    header = {(h or "").strip().lower(): (h or "") for h in reader.fieldnames}
+    if "lat" not in header or "lon" not in header:
+        raise HTTPException(
+            422, "Site CSV needs at least 'lat' and 'lon' columns; found: "
+                 + ", ".join(reader.fieldnames))
+
+    sites: list[dict] = []
+    skipped: list[dict] = []
+    for i, row in enumerate(reader, start=2):        # row 1 is the header
+        def cell(col: str) -> str:
+            return (row.get(header.get(col, ""), "") or "").strip()
+
+        entry: dict = {}
+        try:
+            entry["lat"] = float(cell("lat"))
+            entry["lon"] = float(cell("lon"))
+        except ValueError:
+            skipped.append({"line": i, "reason": "lat/lon is not a number"})
+            continue
+        if not (-90 <= entry["lat"] <= 90 and -180 <= entry["lon"] <= 180):
+            skipped.append({"line": i, "reason": "lat/lon out of range"})
+            continue
+        if cell("name"):
+            entry["name"] = cell("name")[:80]
+        bad = False
+        for col in ("antenna_azimuth_deg", "downtilt_deg",
+                    "antenna_beamwidth_deg", *_SITE_RADIO_FIELDS):
+            v = cell(col)
+            if v:
+                try:
+                    entry[col] = float(v)
+                except ValueError:
+                    skipped.append({"line": i,
+                                    "reason": f"{col} is not a number: {v!r}"})
+                    bad = True
+                    break
+        if bad:
+            continue
+        try:
+            sites.append(SiteIn(**entry).model_dump())
+        except Exception as exc:      # pydantic validation, e.g. bad azimuth
+            skipped.append({"line": i, "reason": str(exc).splitlines()[0][:120]})
+        if len(sites) >= 24:
+            skipped.append({"line": i,
+                            "reason": "cluster studies accept at most 24 sites"})
+            break
+
+    return {"sites": sites, "count": len(sites), "skipped": skipped,
+            "columns": list(_SITE_CSV_COLUMNS)}
+
+
+@router.post("/sites/export-csv")
+def export_sites_csv(sites: list[SiteIn]) -> Response:
+    """The inverse of parse-csv, so an estate can round-trip through a
+    spreadsheet without losing the per-site radio parameters."""
+    import csv as _csv
+    import io as _io
+
+    buf = _io.StringIO()
+    w = _csv.writer(buf, lineterminator="\n")
+    w.writerow(_SITE_CSV_COLUMNS)
+    for s in sites:
+        w.writerow(["" if getattr(s, c, None) is None else getattr(s, c)
+                    for c in _SITE_CSV_COLUMNS])
+    return Response(
+        content=buf.getvalue(), media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="sites.csv"'})
+
+
 @router.post("/coverage/multi")
 def simulate_multi_coverage(req: MultiCoverageRequest,
                             user: dict | None = Depends(current_user)) -> dict:
@@ -1153,11 +1340,14 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
     try:
         with jobs.sim_slot():
             for s in req.sites:
+                st = site_tech(tech, s)
                 polar = engine.compute_polar(
-                    s.lat, s.lon, dict(tech), radius_m=radius_m,
+                    s.lat, s.lon, st, radius_m=radius_m,
                     n_radials=req.n_radials, n_steps=req.n_steps,
                     antenna_azimuth_deg=s.antenna_azimuth_deg,
-                    antenna_beamwidth_deg=req.antenna_beamwidth_deg,
+                    antenna_beamwidth_deg=(s.antenna_beamwidth_deg
+                                           if s.antenna_beamwidth_deg is not None
+                                           else req.antenna_beamwidth_deg),
                     downtilt_deg=s.downtilt_deg,
                     vertical_beamwidth_deg=req.vertical_beamwidth_deg,
                     antenna_pattern=pattern,
@@ -1169,7 +1359,8 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
                     clutter_heights_fn=clutter_fn)
                 warnings.extend(w for w in polar["warnings"] if w not in warnings)
                 computed.append({"lat": s.lat, "lon": s.lon, "name": s.name,
-                                 "radius_m": radius_m, "polar": polar})
+                                 "radius_m": radius_m, "polar": polar,
+                                 "resolved": site_echo(s, st)})
     except jobs.SimBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
     except Exception as exc:
@@ -1221,7 +1412,11 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
         "legend": [{"label": s["name"], "color": s["color"],
                     "margin_db": 0} for s in site_stats],
         "stats": {
-            "sites": site_stats,
+            # Each site's stats carry the parameters it ACTUALLY ran on, so a
+            # per-site override is auditable rather than indistinguishable
+            # from one that was silently ignored.
+            "sites": [{**st, "resolved": c.get("resolved")}
+                      for st, c in zip(site_stats, computed)],
             "served_area_fraction": served_frac,
             "radius_m": radius_m,
             "tx_elevation_m": computed[0]["polar"]["tx_elev"],

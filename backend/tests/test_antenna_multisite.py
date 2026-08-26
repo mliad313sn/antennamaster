@@ -166,3 +166,106 @@ def test_dem_disk_cache_eviction(tmp_path):
     remaining = len(list(tmp_path.glob("*/*/*.png")))
     assert removed == 30 - remaining
     assert remaining * 10_240 <= 0.1 * 1024 * 1024 + 10_240
+
+
+# ------------------------------------------- per-transmitter radio parameters
+def test_cluster_sites_can_differ_in_every_radio_parameter(client):
+    """A cluster study must be able to describe the customer's actual network.
+
+    Regression: /coverage/multi cloned ONE technology dict across every site
+    (`dict(tech)` in each loop), and SiteIn carried only lat/lon/name/azimuth/
+    downtilt. A real estate - an 800 MHz macro layer, a 3.5 GHz capacity layer,
+    a 400 MHz PMR overlay, each with its own power and mast height - was
+    therefore inexpressible, and the composite described a network that does
+    not exist. Six committee personas independently called this a blocker.
+    """
+    body = {"technology": "gsm900", "radius_km": 4, "n_radials": 36,
+            "n_steps": 20, "raster_px": 160, "sites": [
+                {"lat": 47.00, "lon": 15.00, "name": "Macro 800",
+                 "freq_mhz": 806, "tx_power_dbm": 46, "h_bs_m": 30},
+                {"lat": 47.03, "lon": 15.03, "name": "Small cell n78",
+                 "freq_mhz": 3500, "tx_power_dbm": 33, "h_bs_m": 12},
+            ]}
+    r = client.post("/api/rf/coverage/multi", json=body)
+    assert r.status_code == 200, r.text
+    sites = r.json()["stats"]["sites"]
+    assert len(sites) == 2
+
+    # The response says what each transmitter actually ran on, so an override
+    # cannot be confused with one that was silently ignored.
+    macro = next(s["resolved"] for s in sites if s["name"] == "Macro 800")
+    small = next(s["resolved"] for s in sites if s["name"] == "Small cell n78")
+    assert (macro["freq_mhz"], macro["tx_power_dbm"], macro["h_bs_m"]) == (806, 46, 30)
+    assert (small["freq_mhz"], small["tx_power_dbm"], small["h_bs_m"]) == (3500, 33, 12)
+
+    # And the physics used them: 806 MHz at 46 dBm from 30 m reaches much
+    # further than 3.5 GHz at 33 dBm from 12 m, so it serves most of the disc.
+    share = {s["name"]: s["best_server_share"] for s in sites}
+    assert share["Macro 800"] > share["Small cell n78"]
+
+
+def test_cluster_without_per_site_parameters_is_unchanged(client):
+    """Backward compatibility: a caller sending only lat/lon/name gets exactly
+    the preset it always did, on every site."""
+    body = {"technology": "gsm900", "radius_km": 4, "n_radials": 36,
+            "n_steps": 20, "raster_px": 160, "sites": [
+                {"lat": 47.0, "lon": 15.0, "name": "A"},
+                {"lat": 47.02, "lon": 15.02, "name": "B"},
+            ]}
+    r = client.post("/api/rf/coverage/multi", json=body)
+    assert r.status_code == 200, r.text
+    preset = r.json()["technology"]
+    for s in r.json()["stats"]["sites"]:
+        assert s["resolved"]["freq_mhz"] == preset["freq_mhz"]
+        assert s["resolved"]["tx_power_dbm"] == preset["tx_power_dbm"]
+
+
+# --------------------------------------------------- site inventory as CSV
+def test_site_csv_round_trips_and_explains_every_rejection(client):
+    """An operator's estate arrives as a CSV from their OSS. Clicking 200
+    sites onto a map one at a time is not an onboarding path, and a row
+    dropped in silence is worse than one refused out loud."""
+    csv = (b"name,lat,lon,freq_mhz,tx_power_dbm,h_bs_m,antenna_azimuth_deg\n"
+           b"Macro A,47.0,15.0,806,46,30,120\n"
+           b"Small B,47.03,15.03,3500,33,12,\n"
+           b"Broken,not-a-number,15.0,,,,\n"
+           b"Off world,999,15.0,,,,\n"
+           b"Bad power,47.1,15.1,900,oops,,\n")
+    r = client.post("/api/rf/sites/parse-csv",
+                    files={"file": ("sites.csv", csv, "text/csv")})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["count"] == 2
+    assert body["sites"][0]["name"] == "Macro A"
+    assert body["sites"][0]["freq_mhz"] == 806
+    assert body["sites"][0]["antenna_azimuth_deg"] == 120
+    # A blank cell inherits rather than becoming zero.
+    assert body["sites"][1]["antenna_azimuth_deg"] is None
+
+    # Every bad row is reported with its line number and a reason.
+    reasons = {k["line"]: k["reason"] for k in body["skipped"]}
+    assert set(reasons) == {4, 5, 6}
+    assert "lat/lon" in reasons[4]
+    assert "out of range" in reasons[5]
+    assert "tx_power_dbm" in reasons[6]
+
+    # Round trip through the exporter is lossless.
+    exported = client.post("/api/rf/sites/export-csv", json=body["sites"])
+    assert exported.status_code == 200
+    assert exported.headers["content-type"].startswith("text/csv")
+    again = client.post("/api/rf/sites/parse-csv",
+                        files={"file": ("s.csv", exported.content, "text/csv")})
+    assert again.json()["sites"] == body["sites"]
+
+    # The parsed sites drop straight into a cluster study.
+    study = client.post("/api/rf/coverage/multi", json={
+        "technology": "gsm900", "radius_km": 4, "n_radials": 36,
+        "n_steps": 20, "raster_px": 128, "sites": body["sites"]})
+    assert study.status_code == 200, study.text
+
+
+def test_site_csv_refuses_a_file_without_coordinates(client):
+    r = client.post("/api/rf/sites/parse-csv", files={
+        "file": ("x.csv", b"site,band\nA,800\n", "text/csv")})
+    assert r.status_code == 422
+    assert "lat" in r.json()["detail"]

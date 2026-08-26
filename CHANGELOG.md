@@ -28,6 +28,28 @@ while the running server was probed empirically for behaviour and defects.
   was a bare `<div onClick>`: not focusable, not announced, unusable without a
   pointer. It is now a proper `radiogroup` with `aria-checked` and Enter/Space.
 
+### Added — a cluster study can finally describe a real network
+
+- **Per-transmitter radio parameters.** `/coverage/multi` (and the frequency
+  plan, capacity map and Monte-Carlo endpoints) cloned **one** technology dict
+  across every site, and a site carried only lat/lon/name/azimuth/downtilt. A
+  real estate — an 800 MHz macro layer, a 3.5 GHz capacity layer, a 400 MHz PMR
+  overlay, each with its own power, mast height and antenna — was therefore
+  inexpressible, and the composite described a network that does not exist.
+  **Six committee personas independently called this a blocker**, more than any
+  other finding. Each site may now set `freq_mhz`, `tx_power_dbm`,
+  `tx_gain_dbi`, `rx_gain_dbi`, `losses_db`, `rx_sensitivity_dbm`, `h_bs_m`,
+  `h_ut_m` and `antenna_beamwidth_deg`; anything omitted inherits the
+  request-level value and then the preset, so an existing caller is unaffected.
+  The response echoes what each transmitter *actually* ran on, so an override
+  can never be confused with one that was silently ignored.
+- **Site inventory as CSV.** `POST /api/rf/sites/parse-csv` turns an OSS export
+  into the `sites` array a study takes, and `POST /api/rf/sites/export-csv` is
+  its lossless inverse. Unknown columns are ignored and blank cells inherit,
+  but every rejected row is reported with its line number and reason rather
+  than dropped in silence. Clicking 200 coordinates onto a map one at a time
+  was not an onboarding path.
+
 ### Added — coverage as data, not just as a picture
 
 - **`GET /api/rf/coverage/{id}.tif?band=rx_power|margin`** returns a
