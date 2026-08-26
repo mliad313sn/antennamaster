@@ -48,6 +48,136 @@ LEGEND_STEPS = [
 ]
 
 
+def diffraction_loss_grid(elev: np.ndarray, dist: np.ndarray, *, e_tx: float,
+                          h_ut: float, lam: float, k: float,
+                          progress_cb=None) -> np.ndarray:
+    """Deygout diffraction loss from the TX to every step of every radial.
+
+    ``elev`` is (n_radials, n_steps) of k-curved ground/clutter heights along
+    each ray; the return is the same shape, in dB.
+
+    Vectorized equivalent of :func:`app.services.rf.models.deygout_loss_db`
+    applied to each TX -> step sub-path: the principal (strongest) edge plus
+    one secondary edge on each side of it.  Kept as a module-level function so
+    it can be measured directly against the scalar reference - the single-edge
+    kernel this replaced was 15-30 dB optimistic in multi-ridge terrain and
+    nothing caught it.
+    """
+    n_radials, n_steps = elev.shape
+    d = np.asarray(dist, dtype=np.float64)
+    d_i = d[:, None]                                        # target step i
+    d_j = d[None, :]                                        # edge candidate j
+    seg_valid = d_j < d_i                                    # only edges before i
+    d2 = np.where(seg_valid, d_i - d_j, 1.0)
+    bulge = d_j * d2 / (2.0 * k * EARTH_RADIUS_M)
+    sqrt_term = np.sqrt(2.0 * np.maximum(d_i, 1.0)
+                        / (lam * np.maximum(d_j, 1.0) * d2))
+
+    diff_loss = np.zeros((n_radials, n_steps))
+    # Chunked 3D broadcasting in float32: this block is memory-bandwidth
+    # bound (~n_radials x S^2 element traffic), so halving the element
+    # size nearly halves wall time; dB-level results are insensitive to
+    # float32 rounding.  Chunk size caps temps at ~2 x C x S^2 x 4 bytes.
+    elev32 = elev.astype(np.float32)
+    safe_di = np.maximum(d_i, 1.0)          # row 0 has no edges anyway
+    ratio32 = np.where(seg_valid, d_j / safe_di, 0.0).astype(np.float32)
+    bulge32 = np.where(seg_valid, bulge, 0.0).astype(np.float32)
+    sqrt32 = np.where(seg_valid, sqrt_term, 0.0).astype(np.float32)
+    neg_inf_mask = np.where(seg_valid, np.float32(0.0), np.float32(-np.inf))
+    right_geom = _RightGeom(d)
+    chunk = max(1, min(24, int(96e6 / max(n_steps * n_steps * 4, 1))))
+    for c0 in range(0, n_radials, chunk):
+        c1 = min(c0 + chunk, n_radials)
+        e_rx = elev32[c0:c1] + np.float32(h_ut)             # (C, S)
+        # v of edge j on the TX->step-i sub-path, all radials in chunk:
+        # (e_j + bulge - los_ij) * sqrt_term, -inf outside valid edges.
+        h_obs = (elev32[c0:c1, None, :] + bulge32
+                 - np.float32(e_tx)
+                 - (e_rx[:, :, None] - np.float32(e_tx)) * ratio32)
+        h_obs *= sqrt32
+        h_obs += neg_inf_mask
+        v1 = h_obs.max(axis=2)                          # (C, S) principal edge
+        j1 = h_obs.argmax(axis=2)                       # (C, S)
+        # Left sub-path TX->principal edge: its strongest edge is already in
+        # hand, because h_obs[c, a, :] is the profile TX->a, so v1[c, a] IS
+        # that sub-path's principal edge.  Gather it - no second pass needed.
+        v_left = np.take_along_axis(v1, j1, axis=1)
+        v_right = _right_subpath_v(elev32[c0:c1], e_rx, j1, d, lam, k,
+                                   geom=right_geom)
+        diff_loss[c0:c1] = _deygout_from_edges(v1, v_left, v_right)
+        if progress_cb is not None:
+            # Diffraction dominates runtime; report 10%..95% across it.
+            progress_cb(0.10 + 0.85 * c1 / n_radials)
+    return diff_loss
+
+
+def _right_subpath_v(elev_c: np.ndarray, e_rx: np.ndarray, j1: np.ndarray,
+                     dist: np.ndarray, lam: float, k: float,
+                     geom: "_RightGeom | None" = None) -> np.ndarray:
+    """Strongest diffraction edge on each principal-edge -> receiver sub-path.
+
+    Deygout's right recursion, evaluated for every (radial, step) at once.
+    The sub-path runs from the top of the principal edge ``j1`` to the
+    receiver at step ``i``; unlike the TX-anchored pass this geometry is not
+    already computed, because its origin moves with ``j1``.
+
+    Returns ``v`` (the Fresnel-Kirchhoff parameter) of that edge, or -inf
+    where the sub-path is too short to contain one.  ``geom`` carries the
+    radial-independent terms so a sweep computes them once, not per chunk.
+    """
+    g = geom if geom is not None else _RightGeom(dist)
+    d_a = g.d[j1][:, :, None]                          # (C, S, 1) sub-path origin
+    e_a = np.take_along_axis(elev_c, j1, axis=1)[:, :, None]
+
+    # Distances along the sub-path. Clamped rather than masked: the invalid
+    # entries are overwritten with -inf at the end, and clamping avoids three
+    # more full-size temporaries in the hottest loop in the engine.
+    d1 = g.d_j - d_a                                   # origin -> candidate
+    span = g.d_i - d_a                                 # origin -> receiver
+    ok = (d1 > 0.0) & g.j_before_i & (span > 0.0)
+    np.maximum(d1, np.float32(1.0), out=d1)
+    np.maximum(span, np.float32(1.0), out=span)
+
+    # v = (edge + bulge - line_of_sight) * sqrt(2 * span / (lam * d1 * d2))
+    v = d1 * g.d2 * np.float32(1.0 / (2.0 * k * EARTH_RADIUS_M))   # bulge
+    v += elev_c[:, None, :]
+    v -= e_a
+    v -= (e_rx[:, :, None] - e_a) * (d1 / span)
+    v *= np.sqrt(np.float32(2.0) * span
+                 / (np.float32(lam) * d1 * g.d2))
+    return np.where(ok, v, np.float32(-np.inf)).max(axis=2)
+
+
+class _RightGeom:
+    """Radial-independent geometry for the right sub-path pass."""
+
+    __slots__ = ("d", "d_i", "d_j", "d2", "j_before_i")
+
+    def __init__(self, dist: np.ndarray):
+        self.d = np.asarray(dist, dtype=np.float32)
+        self.d_i = self.d[None, :, None]               # (1, S, 1) receiver
+        self.d_j = self.d[None, None, :]               # (1, 1, S) candidate
+        d2 = self.d_i - self.d_j                       # candidate -> receiver
+        self.j_before_i = d2 > 0.0
+        self.d2 = np.maximum(d2, np.float32(1.0))
+
+
+def _deygout_from_edges(v1: np.ndarray, v_left: np.ndarray,
+                        v_right: np.ndarray) -> np.ndarray:
+    """Sum the principal edge and its two secondaries, Deygout-style.
+
+    Mirrors ``models.deygout_loss_db``: an edge below the -0.78 grazing
+    threshold contributes nothing, and the sub-paths are only evaluated around
+    a genuinely obstructing principal edge (v > 0) - recursing on marginal
+    grazing edges piles up spurious loss.
+    """
+    loss = ke_loss_array(v1)
+    obstructing = v1 > 0.0
+    loss = loss + np.where(obstructing, ke_loss_array(v_left), 0.0)
+    loss = loss + np.where(obstructing, ke_loss_array(v_right), 0.0)
+    return loss
+
+
 @dataclass
 class CoverageResult:
     coverage_id: str
@@ -117,44 +247,12 @@ class CoverageEngine:
         tx_elev = float(self.fusion.fused_elevations(
             np.array([lat]), np.array([lon]), grid, georef)[0][0])
 
-        # ---- 3) per-ray diffraction: strongest knife edge up to each step -
-        # v_ij for candidate edge j on the sub-path TX -> step i, evaluated on
-        # the k-curved profile.  Vectorized per ray as (S, S) broadcasts.
+        # ---- 3) per-ray diffraction: Deygout multi-edge up to each step --
         lam = C_LIGHT / (freq * 1e6)
-        d = dist                                                # (S,)
-        d_i = d[:, None]                                        # target step i
-        d_j = d[None, :]                                        # edge candidate j
-        seg_valid = d_j < d_i                                    # only edges before i
-        d2 = np.where(seg_valid, d_i - d_j, 1.0)
-        bulge = d_j * d2 / (2.0 * k * EARTH_RADIUS_M)
-        sqrt_term = np.sqrt(2.0 * d_i / (lam * np.maximum(d_j, 1.0) * d2))
-
         e_tx = tx_elev + h_bs
-        diff_loss = np.zeros((n_radials, n_steps))
-        # Chunked 3D broadcasting in float32: this block is memory-bandwidth
-        # bound (~n_radials x S^2 element traffic), so halving the element
-        # size nearly halves wall time; dB-level results are insensitive to
-        # float32 rounding.  Chunk size caps temps at ~2 x C x S^2 x 4 bytes.
-        elev32 = elev.astype(np.float32)
-        ratio32 = np.where(seg_valid, d_j / d_i, 0.0).astype(np.float32)
-        bulge32 = np.where(seg_valid, bulge, 0.0).astype(np.float32)
-        sqrt32 = np.where(seg_valid, sqrt_term, 0.0).astype(np.float32)
-        neg_inf_mask = np.where(seg_valid, np.float32(0.0), np.float32(-np.inf))
-        chunk = max(1, min(24, int(96e6 / max(n_steps * n_steps * 4, 1))))
-        for c0 in range(0, n_radials, chunk):
-            c1 = min(c0 + chunk, n_radials)
-            e_rx = elev32[c0:c1] + np.float32(h_ut)             # (C, S)
-            # v of edge j on the TX->step-i sub-path, all radials in chunk:
-            # (e_j + bulge - los_ij) * sqrt_term, -inf outside valid edges.
-            h_obs = (elev32[c0:c1, None, :] + bulge32
-                     - np.float32(e_tx)
-                     - (e_rx[:, :, None] - np.float32(e_tx)) * ratio32)
-            h_obs *= sqrt32
-            h_obs += neg_inf_mask
-            diff_loss[c0:c1] = ke_loss_array(h_obs.max(axis=2))
-            if progress_cb is not None:
-                # Diffraction dominates runtime; report 10%..95% across it.
-                progress_cb(0.10 + 0.85 * c1 / n_radials)
+        diff_loss = diffraction_loss_grid(
+            elev, dist, e_tx=e_tx, h_ut=h_ut, lam=lam, k=k,
+            progress_cb=progress_cb)
 
         # ---- 4) empirical path loss + link budget -------------------------
         pl, warnings = path_loss_db(tech["model"], dist_g.ravel(), freq,

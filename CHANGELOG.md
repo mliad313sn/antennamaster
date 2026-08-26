@@ -28,6 +28,21 @@ while the running server was probed empirically for behaviour and defects.
   loop — place a site, run a study, watch progress, read a point — against a
   real backend and a real map, plus sidebar rearrangement surviving a reload.
 
+### Changed
+- **Area coverage now diffracts with Deygout multi-edge, like the profile and
+  ITM paths already did.** The coverage kernel took only the strongest single
+  knife edge on each TX→step sub-path while the README advertised Deygout.
+  Measured against the scalar reference on synthetic terrain that was ~15 dB
+  optimistic over one ridge and ~30 dB over three — in exactly the multi-ridge
+  terrain a coverage study exists to characterise — and every derived product
+  inherited it (best-server, SINR, throughput, site search, batch CPE
+  qualification, two-way talk-back, served-area fraction). The kernel now takes
+  the principal edge plus one secondary per sub-path and agrees exactly with
+  the reference up to two obstructing edges. **Served-area figures will drop
+  for obstructed sites; the old numbers were optimistic.** The heaviest
+  benchmark got faster and leaner in the process (5.3 s → 3.9 s, 176 → 103 MB)
+  by hoisting the radial-independent geometry out of the chunk loop.
+
 ### Accessibility
 - **102 form controls had no accessible name.** Across the planner, indoor
   studio, DXF wizard, auth panel and dashboards, `<label>Text</label>` sat as a

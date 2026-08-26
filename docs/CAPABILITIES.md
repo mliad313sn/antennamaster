@@ -60,7 +60,11 @@ worker (`ensure_ready`).
 All floor-bounded by FSPL; out-of-validity inputs clamped with API warnings.
 **Terrain diffraction on top of any model:** Deygout multi-knife-edge (≤3
 edges, ITU-R P.526 loss, k-curved fused profile, grazing-edge recursion
-guard); vectorized single-strongest-edge per step in area coverage.
+guard); the **same Deygout construction is vectorized per step in area
+coverage** — principal edge plus one secondary on each sub-path — pinned to
+the scalar reference by `tests/test_coverage_diffraction.py` (exact agreement
+up to two obstructing edges). Area coverage previously used only the strongest
+single edge, which measured 15–30 dB optimistic in multi-ridge terrain.
 
 **Indoor/underground models:** ITU-R P.1238 (office/residential/commercial,
 floor penetration), COST-231 multi-wall (12-material library, dB/crossing
