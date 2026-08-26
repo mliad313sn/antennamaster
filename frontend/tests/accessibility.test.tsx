@@ -92,7 +92,10 @@ describe('error surfaces are announced', () => {
         if (entry.isDirectory()) { walk(full); continue; }
         if (!entry.name.endsWith('.tsx')) continue;
         const src = fs.readFileSync(full, 'utf8');
-        for (const m of src.matchAll(/className="error-box"(.{0,60})/g)) {
+        const re = /className="error-box"(.{0,60})/g;
+        let m: RegExpExecArray | null;
+        // eslint-disable-next-line no-cond-assign
+        while ((m = re.exec(src)) !== null) {
           if (!m[1].includes('role=')) offenders.push(`${full}: ${m[0].slice(0, 60)}`);
         }
       }

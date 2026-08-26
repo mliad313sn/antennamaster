@@ -9,6 +9,23 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Fixed — French was advertised but not delivered
+
+- **Four of the five routes shipped in English only.** `DashNav` offers every
+  user an EN/FR switch, and the locale files were at full parity — but
+  `/field`, `/dashboard`, `/pitch`, `AuthPanel`, `MapView` and `ProfileChart`
+  contained *zero* `t()` calls between them, so a French field technician who
+  switched language still got an English product on their own page. (The
+  committee reported the strings as "already there and simply unwired"; in
+  fact no `auth`/`field`/`dashboard`/`pitch` section existed in *either*
+  language, so they had to be written.) `AuthPanel` — the gate to every
+  account — and `/field`, the field technician's own route, are now fully
+  translated, with guards keeping the two locales key-for-key identical,
+  free of empty strings, and consistent in their `{{interpolation}}` tokens.
+- **Plan cards could not be chosen by keyboard.** The registration tier picker
+  was a bare `<div onClick>`: not focusable, not announced, unusable without a
+  pointer. It is now a proper `radiogroup` with `aria-checked` and Enter/Space.
+
 ### Fixed — accessibility (screen reader and keyboard)
 
 - **Nothing was ever announced.** The entire frontend contained one live

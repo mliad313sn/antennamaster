@@ -7,6 +7,7 @@
  */
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import DashNav from '@/components/DashNav';
 
 interface Spot {
@@ -26,6 +27,7 @@ const QUICK_PRESETS = [
 ];
 
 export default function Field() {
+  const { t } = useTranslation();
   const [spot, setSpot] = useState<Spot | null>(null);
   const [watching, setWatching] = useState(false);
   const watchId = useRef<number | null>(null);
@@ -56,7 +58,7 @@ export default function Field() {
   }, []);
 
   async function locate(follow = false) {
-    if (!navigator.geolocation) { setError('No GPS available on this device'); return; }
+    if (!navigator.geolocation) { setError(t('field.noGps')); return; }
     setError(null);
     const handle = async (pos: GeolocationPosition) => {
       const { latitude, longitude, accuracy } = pos.coords;
@@ -109,41 +111,40 @@ export default function Field() {
       <DashNav active="field" />
       <main id="main" className="dash-main tactical">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <h1 style={{ margin: 0 }}>Tactical view</h1>
+          <h1 style={{ margin: 0 }}>{t('field.title')}</h1>
           <span className={`conn-pill ${online ? 'on' : 'off'}`}>
-            {online ? '● Online' : '○ Offline — cached'}
+            {online ? t('field.online') : t('field.offline')}
           </span>
         </div>
-        <p className="hint">High-contrast on-site mode. Your GPS position becomes
-          the RX end of the link — pick a preset and validate before you climb.
-          {!online && ' Cached tiles and your last results remain available.'}</p>
+        <p className="hint">{t('field.intro')}
+          {!online && t('field.offlineNote')}</p>
 
         <div className="row">
           <button className="primary tactical-btn" onClick={() => locate(false)}>
-            📍 GPS spot check
+            📍 {t('field.spotCheck')}
           </button>
           <button className="tactical-btn"
             onClick={() => (watching ? stopFollowing() : locate(true))}>
-            {watching ? '⏹ Stop following' : '👣 Follow me'}
+            {watching ? `⏹ ${t('field.stopFollowing')}` : `👣 ${t('field.followMe')}`}
           </button>
         </div>
 
         {spot && (
           <section className="panel tactical-readout">
             <div className="kpi-row">
-              <div className="kpi"><div className="kpi-v">{spot.lat.toFixed(5)}</div><div className="kpi-k">latitude</div></div>
-              <div className="kpi"><div className="kpi-v">{spot.lon.toFixed(5)}</div><div className="kpi-k">longitude</div></div>
-              <div className="kpi"><div className="kpi-v">{spot.elevation_m !== undefined ? `${spot.elevation_m.toFixed(0)} m` : '—'}</div><div className="kpi-k">ground ASL</div></div>
-              <div className="kpi"><div className="kpi-v">{spot.accuracy_m ? `±${spot.accuracy_m.toFixed(0)} m` : '—'}</div><div className="kpi-k">GPS accuracy</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.lat.toFixed(5)}</div><div className="kpi-k">{t('field.latitude')}</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.lon.toFixed(5)}</div><div className="kpi-k">{t('field.longitude')}</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.elevation_m !== undefined ? `${spot.elevation_m.toFixed(0)} m` : '—'}</div><div className="kpi-k">{t('field.groundAsl')}</div></div>
+              <div className="kpi"><div className="kpi-v">{spot.accuracy_m ? `±${spot.accuracy_m.toFixed(0)} m` : '—'}</div><div className="kpi-k">{t('field.gpsAccuracy')}</div></div>
             </div>
             <button className="primary tactical-btn" style={{ width: '100%' }}
               onClick={() => openPlannerHere()}>
-              Use as RX in the planner →
+              {t('field.useAsRx')}
             </button>
           </section>
         )}
 
-        <h3 style={{ marginTop: 16 }}>Quick presets</h3>
+        <h3 style={{ marginTop: 16 }}>{t('field.quickPresets')}</h3>
         <div className="tactical-grid">
           {QUICK_PRESETS.map((p) => (
             <button key={p.key} className="tactical-btn"
@@ -155,8 +156,7 @@ export default function Field() {
 
         {error && <div className="error-box" role="alert">{error}</div>}
         <p className="hint" style={{ marginTop: 14 }}>
-          Full studies live in the <Link href="/">planner</Link>; underground
-          checks in the indoor studio there.
+          {t('field.plannerNote')} <Link href="/">{t('field.plannerLink')}</Link>
         </p>
       </main>
     </div>
