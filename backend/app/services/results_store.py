@@ -73,7 +73,15 @@ def save_field(kind: str, result_id: str, **arrays) -> None:
     """
     import numpy as np
     _, meta_path = _paths(result_id, kind)
-    np.savez_compressed(meta_path.with_suffix(".npz"), **arrays)
+    # float32 halves the sidecar: these are dB and metre quantities reported
+    # to 0.1, so ~7 significant digits is far more than the physics carries,
+    # and at the 200-result retention cap the difference is hundreds of MB on
+    # the data volume (which also holds the 2 GB DEM cache).
+    small = {k: (v.astype(np.float32)
+                 if getattr(v, "dtype", None) is not None
+                 and v.dtype.kind == "f" else v)
+             for k, v in arrays.items()}
+    np.savez_compressed(meta_path.with_suffix(".npz"), **small)
 
 
 def load_field(kind: str, result_id: str):
