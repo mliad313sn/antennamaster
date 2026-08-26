@@ -9,6 +9,41 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Fixed — trust and safety (committee round 2)
+
+- **EMF exposure was under-reported, on the document that carries a signature.**
+  Three FCC OET-65 errors, all in the unsafe direction: the ground-reflection
+  factor was applied as ×1.6 to *power density* when 1.6 is the *field*
+  factor (S ∝ E², so the correct power factor is ×2.56 — every exclusion zone
+  printed **21 % too small**); the occupational MPE used the uncontrolled
+  tier's 1.34 MHz breakpoint with an 1800/f² numerator instead of OET-65
+  Table 1's 3.0 MHz / 900/f², making the controlled limit **2× too permissive**
+  (4.5× at 2 MHz). The dossier defaults to `ground_reflection=True`, so this
+  landed in real output. Anchored to every row of OET-65 Table 1 in tests.
+- **A report could print a coverage figure supplied by its own reader.**
+  `report.pdf` took `served_area_fraction` and `max_rx_power_dbm` from the
+  HTTP request body and printed them beside a map rendered from the stored
+  raster — so a client could claim 99 % coverage over a map showing far less.
+  Both fields are removed and now rejected (422); the engine's own statistics
+  are persisted with the raster and read back for rendering. A figure the
+  engine did not produce is omitted rather than defaulted to `0`.
+- **The ITU accuracy gate could not fail.** The CI step piped `pytest` into
+  `tee` under GitHub's default `bash -e` shell (no `pipefail`), so the step
+  took *tee's* exit status: a genuinely failing accuracy test reported green,
+  and the job could only ever fail on a skip. It now runs under `shell: bash`
+  (`-eo pipefail`) and covers all three validation suites instead of one.
+- **One bad row destroyed an entire batch.** A receiver co-located with the
+  transmitter — the tower itself or a duplicate, present in almost every
+  pasted subscriber list — divided by zero in the Deygout helper and
+  serialised a non-finite float, returning **500 for the whole request**.
+  Degenerate geometry now yields `served: null` with a note explaining why,
+  every derived figure nulled (never a finite-but-meaningless "margin
+  100 dB"), and the good rows are unaffected. CSV output is properly quoted.
+- **Stored XSS in the Live Ops dashboard.** Telemetry asset names were
+  interpolated into a Leaflet `DivIcon`, which assigns to `innerHTML`, so an
+  ingested name like `"><img src=x onerror=…>` executed in every open
+  dashboard. Escaped at the sink.
+
 ### Added
 - **Queued coverage studies with live progress.** A full-resolution sweep was
   measured at ~26 s; the planner ran it synchronously behind a static

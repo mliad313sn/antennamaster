@@ -63,10 +63,19 @@ jobs:
                       "git+https://github.com/eeveetza/Py452" \
                       "git+https://github.com/eeveetza/Py2001"
           python -m tools.fetch_itu_maps
-      - name: Validation suite must RUN, not skip
+      - name: Validation suite must RUN, not skip, and must PASS
         working-directory: backend
+        # `shell: bash` is required, not cosmetic: the GitHub default is
+        # `bash -e {0}` WITHOUT pipefail, so `pytest | tee` exits with tee's
+        # status (always 0) and a genuinely FAILING accuracy test would have
+        # been reported green.  `shell: bash` runs with -eo pipefail, so the
+        # pytest exit code now propagates through the pipe.
+        shell: bash
         run: |
-          python -m pytest tests/test_itm_exact.py -q -rs \
+          python -m pytest -q -rs \
+            tests/test_itm_exact.py \
+            tests/test_itu_validation.py \
+            tests/test_precision_benchmark.py \
             | tee /tmp/itu.log
           if grep -q "skipped" /tmp/itu.log; then
             echo "::error::ITU validation tests skipped - the reference"\

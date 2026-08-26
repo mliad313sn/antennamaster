@@ -171,6 +171,42 @@ def test_pdf_report(client):
     assert b"/Image" in r.content             # embedded profile chart
 
 
+def test_report_figures_come_from_the_engine_not_the_request(client):
+    """A signed deliverable must never print a number the caller supplied.
+
+    Regression: report.pdf used to take served_area_fraction and
+    max_rx_power_dbm straight off the request body and print them beside a
+    map rendered from the stored raster, so a client could claim 99% coverage
+    on a map showing far less.  The fields are now rejected outright and the
+    figures are read from the stored study.
+    """
+    # 1) The fabrication vector is closed: the removed fields are refused.
+    bad = client.post("/api/saas/report.pdf", json={
+        "title": "Fabricated", "technology": "gsm900",
+        "served_area_fraction": 0.99, "max_rx_power_dbm": -10.0})
+    assert bad.status_code == 422, "caller-supplied statistics must be rejected"
+
+    # 2) A real coverage run stores the engine's own figures...
+    cov = client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "gsm900", "radius_km": 4,
+        "n_radials": 36, "n_steps": 20})
+    assert cov.status_code == 200
+    body = cov.json()
+    cid = body["coverage_id"]
+    engine_served = body["stats"]["served_area_fraction"]
+
+    from app.services import results_store
+    stored = results_store.load("coverage", cid)
+    assert stored is not None
+    assert stored[1]["stats"]["served_area_fraction"] == pytest.approx(engine_served)
+
+    # 3) ...and the PDF renders from that stored record.
+    r = client.post("/api/saas/report.pdf", json={
+        "title": "Honest", "technology": "gsm900", "coverage_id": cid})
+    assert r.status_code == 200
+    assert r.content[:5] == b"%PDF-"
+
+
 def test_audit_log_manager_only(client):
     hdrs_f, _ = _register(client, f"e{time.time_ns()}@x.io", role="field")
     assert client.get("/api/auth/audit", headers=hdrs_f).status_code == 403

@@ -8,7 +8,8 @@ import app.services.terrain.fusion as fusion_mod
 from app.main import app
 from app.services.rf.calibration import (apply_correction, calibrate_drive_test,
                                          calibrate_model)
-from app.services.rf.compliance import (assess_exposure, compliance_distance_m,
+from app.services.rf.compliance import (REFLECT_GROUND, assess_exposure,
+                                        compliance_distance_m,
                                         fcc_mpe_w_m2, icnirp_limit_w_m2,
                                         power_density_w_m2)
 from app.services.rf.itm import aknfe, itm_point_to_point, qerfi, terrain_dh_m
@@ -35,6 +36,53 @@ def test_icnirp_and_fcc_limits_by_band():
     # FCC uncontrolled: 2 W/m^2 in 30-300 MHz, 10 W/m^2 above 1.5 GHz.
     assert fcc_mpe_w_m2(150.0) == pytest.approx(2.0)
     assert fcc_mpe_w_m2(2000.0) == pytest.approx(10.0)
+
+
+def test_fcc_mpe_matches_oet65_table1_exactly():
+    """Anchor every OET-65 Table 1 row (mW/cm^2 x10 = W/m^2).
+
+    Regression guard: the controlled tier previously used the UNCONTROLLED
+    1.34 MHz breakpoint and a 1800/f^2 numerator, making the occupational
+    limit 2x too permissive over 3-30 MHz (and 4.5x at 2 MHz) -- which
+    under-reports the exposure ratio, the unsafe direction.
+    """
+    # --- Occupational / controlled -------------------------------------
+    assert fcc_mpe_w_m2(1.0, occupational=True) == pytest.approx(1000.0)    # 100
+    assert fcc_mpe_w_m2(2.0, occupational=True) == pytest.approx(1000.0)    # 100
+    assert fcc_mpe_w_m2(10.0, occupational=True) == pytest.approx(90.0)     # 900/f^2
+    assert fcc_mpe_w_m2(30.0 - 1e-9, occupational=True) == pytest.approx(10.0, rel=1e-6)
+    assert fcc_mpe_w_m2(100.0, occupational=True) == pytest.approx(10.0)    # 1.0
+    assert fcc_mpe_w_m2(900.0, occupational=True) == pytest.approx(30.0)    # f/300
+    assert fcc_mpe_w_m2(3500.0, occupational=True) == pytest.approx(50.0)   # 5.0
+    # The 900/f^2 curve must meet the 100 mW/cm^2 plateau exactly at 3 MHz.
+    assert fcc_mpe_w_m2(3.0, occupational=True) == pytest.approx(1000.0, rel=1e-9)
+    # --- General public / uncontrolled ---------------------------------
+    assert fcc_mpe_w_m2(1.0) == pytest.approx(1000.0)                       # 100
+    assert fcc_mpe_w_m2(10.0) == pytest.approx(18.0)                        # 180/f^2
+    assert fcc_mpe_w_m2(900.0) == pytest.approx(6.0)                        # f/1500
+    # Occupational is never stricter than public.
+    for f in (1.0, 5.0, 27.0, 150.0, 900.0, 2400.0, 5800.0):
+        assert fcc_mpe_w_m2(f, occupational=True) >= fcc_mpe_w_m2(f)
+
+
+def test_ground_reflection_is_2point56_in_power_density():
+    """OET-65 ground reflection is x1.6 in FIELD, hence x1.6^2 = x2.56 in
+    power density.  Applying 1.6 to S under-estimates exposure by 1.6x and
+    shrinks every exclusion zone by sqrt(1.6) = 1.26x."""
+    plain = power_density_w_m2(50.0, 10.0)
+    refl = power_density_w_m2(50.0, 10.0, reflection_factor=REFLECT_GROUND)
+    assert REFLECT_GROUND == pytest.approx(1.6 ** 2)
+    assert refl == pytest.approx(2.56 * plain, rel=1e-9)
+    # Exact on the unrounded kernel: the zone grows by sqrt(2.56) = 1.6.
+    d_plain = compliance_distance_m(50.0, 2.0)
+    d_refl = compliance_distance_m(50.0, 2.0, reflection_factor=REFLECT_GROUND)
+    assert d_refl == pytest.approx(1.6 * d_plain, rel=1e-12)
+    # And the assessment path must actually apply it (API rounds to 0.01 m).
+    base = assess_exposure(900.0, 43.0, 15.0, standard="fcc")
+    refl_a = assess_exposure(900.0, 43.0, 15.0, standard="fcc",
+                             ground_reflection=True)
+    assert (refl_a["public_compliance_distance_m"]
+            == pytest.approx(1.6 * base["public_compliance_distance_m"], abs=0.02))
 
 
 def test_power_density_inverse_square_and_distance():

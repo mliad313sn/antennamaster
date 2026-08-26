@@ -22,13 +22,31 @@ type Asset = {
 };
 type Ev = { seq: number; type: string; asset_id: string; name: string; at: number; correlation?: string };
 
+/** Escape text destined for an HTML string sink.
+ *
+ *  Leaflet's DivIcon assigns `html` straight to innerHTML, so an asset name is
+ *  attacker-controlled markup unless escaped: telemetry is ingested over the
+ *  network, and a name like `"><img src=x onerror=...>` would execute in every
+ *  open Live Ops dashboard the moment the next frame arrived (stored XSS).
+ *  Everything else in this file renders through React, which escapes for us. */
+function escapeHtml(s: string): string {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function assetIcon(a: Asset): L.DivIcon {
   const cls = !a.transmitting ? 'down' : a.in_dead_zone ? 'dead' : 'ok';
   return L.divIcon({
     className: '', iconSize: [18, 18], iconAnchor: [9, 9],
-    html: `<div class="asset-dot ${cls}" title="${a.name}"></div>`,
+    html: `<div class="asset-dot ${cls}" title="${escapeHtml(a.name)}"></div>`,
   });
 }
+
+export { escapeHtml as __escapeHtmlForTest };
 
 export default function LiveOps() {
   const { t } = useTranslation();

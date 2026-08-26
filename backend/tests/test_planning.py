@@ -125,6 +125,54 @@ def test_batch_api_json_and_csv(client):
     assert client.post("/api/rf/batch", json=too_many).status_code == 422
 
 
+def test_batch_survives_degenerate_geometry(client):
+    """One un-evaluable receiver must not destroy the whole batch.
+
+    Regression: a receiver co-located with the TX produced a zero-length path,
+    which divided by zero in the Deygout helper and then serialised a
+    non-finite float -- returning 500 for the entire request and losing every
+    good row with it.  A pasted subscriber list contains the tower itself or a
+    duplicate row constantly, so this was the first thing a real user hit.
+    """
+    body = {"lat": 47.0, "lon": 15.0, "technology": "lora868",
+            "receivers": [{"lat": 47.0, "lon": 15.0, "name": "the tower"},
+                          {"lat": 47.0, "lon": 15.0, "name": "duplicate"},
+                          {"lat": 47.0, "lon": 15.02, "name": "good, with comma"}]}
+    resp = client.post("/api/rf/batch", json=body)
+    assert resp.status_code == 200, resp.text
+    rows = resp.json()["receivers"]
+    assert len(rows) == 3
+
+    degenerate = rows[0]
+    # Neither served nor unserved - unknown, and it says why.
+    assert degenerate["served"] is None
+    assert "co-located" in (degenerate["note"] or "")
+    # No derived figure is reported for a path that could not be evaluated:
+    # a finite-but-meaningless "margin 100 dB" is exactly the misreading the
+    # note exists to prevent.
+    for field in ("rx_power_dbm", "margin_db", "path_loss_db",
+                  "diffraction_loss_db", "fresnel_clearance_ratio"):
+        assert degenerate[field] is None, f"{field} should not be reported"
+
+    # The good row is unaffected and still fully evaluated.
+    good = rows[2]
+    assert good["served"] in (True, False)
+    assert good["margin_db"] is not None
+    assert good["note"] is None
+
+    # CSV stays well-formed: the note is quoted (it contains commas), a null
+    # renders as an empty cell rather than the literal "None".
+    csv_resp = client.post("/api/rf/batch?format=csv", json=body)
+    assert csv_resp.status_code == 200
+    import csv as _csv
+    import io as _io
+    parsed = list(_csv.reader(_io.StringIO(csv_resp.text)))
+    assert parsed[0][-1] == "note"
+    assert all(len(r) == len(parsed[0]) for r in parsed if r), "ragged CSV"
+    assert "None" not in parsed[1]
+    assert parsed[1][parsed[0].index("served")] == ""
+
+
 def test_optimize_heights_api(client):
     resp = client.get("/api/terrain/optimize-heights", params={
         "lat1": 47.0, "lon1": 14.95, "lat2": 47.0, "lon2": 15.05,

@@ -214,10 +214,14 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
 
     # Disk-backed so any worker can serve the PNG and restarts lose nothing.
+    # `stats` is persisted so every downstream artifact (PDF, exports) can read
+    # the figures the ENGINE produced instead of trusting a caller-supplied
+    # number -- a rendered document must never be able to disagree with its map.
     results_store.save("coverage", result.coverage_id, result.png,
                        {"bounds": result.bounds,
                         "tx_lat": req.lat, "tx_lon": req.lon,
-                        "radius_m": req.radius_km * 1000.0})
+                        "radius_m": req.radius_km * 1000.0,
+                        "stats": result.stats})
     # Numeric field sidecar so /at can report the level behind any pixel.
     if result.polar is not None:
         results_store.save_field(
@@ -819,6 +823,48 @@ class BatchRequest(BaseModel):
     h_ut_m: float | None = Field(None, gt=0)
 
 
+def _sanitize_receiver_row(row: dict) -> dict:
+    """Keep one un-evaluable receiver from taking down an entire batch.
+
+    A pasted subscriber list routinely contains the tower itself, a duplicate
+    row, or a CPE at the mast.  A zero-length path has no free-space loss
+    (20*log10(0)) and no line to diffract over, so the link budget comes back
+    non-finite -- which used to raise straight through the endpoint and 500
+    the whole request, losing the 199 good rows with it.  Such a row is now
+    reported with null figures, ``served`` null (neither served nor unserved:
+    unknown) and a note saying why, so the operator can see and fix the input.
+    """
+    import math
+    bad = [k for k, v in row.items()
+           if isinstance(v, float) and not math.isfinite(v)]
+    if not bad:
+        row.setdefault("note", None)
+        return row
+    # Null every DERIVED figure, not just the non-finite ones: a link budget
+    # built on a degenerate geometry is meaningless even where it happens to
+    # come out finite, and printing "margin 100.0 dB" next to "not evaluable"
+    # invites exactly the misreading this row is meant to prevent.  Identity
+    # and geometry (name, lat, lon, distance) are kept so the operator can
+    # find the offending input.
+    derived = ("rx_power_dbm", "margin_db", "path_loss_db",
+               "diffraction_loss_db", "environment_loss_db",
+               "fresnel_clearance_ratio", "los_clear")
+    out = {k: (None if (k in derived
+                        or (isinstance(v, float) and not math.isfinite(v)))
+               else v)
+           for k, v in row.items()}
+    dist = row.get("distance_m")
+    if isinstance(dist, float) and math.isfinite(dist) and dist < 1.0:
+        why = ("receiver is co-located with the transmitter "
+               "(zero-length path); move it or drop the row")
+    else:
+        why = ("path could not be evaluated at this geometry "
+               f"(non-finite: {', '.join(sorted(bad))})")
+    out["served"] = None
+    out["note"] = f"Not evaluable: {why}."
+    return out
+
+
 @router.post("/batch")
 def batch_receivers(req: BatchRequest, format: str = "json",
                     user: dict | None = Depends(current_user)) -> Response:
@@ -860,8 +906,9 @@ def batch_receivers(req: BatchRequest, format: str = "json",
                     k=req.k_factor, foliage_depth_m=req.foliage_depth_m,
                     rain_rate_mm_h=req.rain_rate_mm_h,
                     clutter_pct=req.clutter_pct, grid=grid, georef=georef)
-                rows.append({"name": r.name or f"RX {i + 1}",
-                             "lat": r.lat, "lon": r.lon, **res})
+                rows.append(_sanitize_receiver_row(
+                    {"name": r.name or f"RX {i + 1}",
+                     "lat": r.lat, "lon": r.lon, **res}))
     except jobs.SimBusyError as exc:
         raise HTTPException(429, str(exc)) from exc
     except Exception as exc:
@@ -872,10 +919,17 @@ def batch_receivers(req: BatchRequest, format: str = "json",
         header = ["name", "lat", "lon", "distance_m", "rx_power_dbm",
                   "margin_db", "served", "los_clear",
                   "fresnel_clearance_ratio", "path_loss_db",
-                  "diffraction_loss_db", "environment_loss_db"]
-        lines = [",".join(header)]
+                  "diffraction_loss_db", "environment_loss_db", "note"]
+        import csv as _csv
+        import io as _io
+        # Quote properly: names and the explanatory note contain commas, and a
+        # None renders as an empty cell rather than the literal text "None".
+        buf = _io.StringIO()
+        w = _csv.writer(buf, lineterminator="\n")
+        w.writerow(header)
         for r in rows:
-            lines.append(",".join(str(r[h]) for h in header))
+            w.writerow(["" if r.get(h) is None else r.get(h) for h in header])
+        lines = [buf.getvalue().rstrip("\n")]
         return Response(
             content="\n".join(lines) + "\n", media_type="text/csv",
             headers={"Content-Disposition":
@@ -1080,7 +1134,15 @@ def simulate_multi_coverage(req: MultiCoverageRequest,
         computed, raster_px=req.raster_px, noise_dbm=noise_dbm)
     import uuid as _uuid
     result_id = _uuid.uuid4().hex[:12]
-    results_store.save("coverage", result_id, png, {"bounds": bounds})
+    # Persist the engine's own figures (see the single-site save above).
+    results_store.save("coverage", result_id, png, {
+        "bounds": bounds,
+        "stats": {
+            "served_area_fraction": served_frac,
+            "max_rx_power_dbm": max((s["max_rx_power_dbm"] for s in site_stats),
+                                    default=None),
+            "sites": len(site_stats),
+        }})
 
     sinr_out = None
     if sinr is not None:

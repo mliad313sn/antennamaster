@@ -230,6 +230,13 @@ def _v_params(d: np.ndarray, e: np.ndarray, i0: int, i1: int, lam: float) -> np.
     relative to the straight line joining profile samples i0 and i1."""
     dseg = d[i0 + 1:i1] - d[i0]
     total = d[i1] - d[i0]
+    if not total > 0.0:
+        # Degenerate sub-path (co-located endpoints, or duplicate samples):
+        # there is no line-of-sight line to measure obstruction against, and
+        # physically a zero-length path diffracts over nothing.  Return v =
+        # -inf so no edge is ever selected (ke_loss is 0 below -0.78) instead
+        # of dividing by zero and poisoning the whole profile with NaN.
+        return np.full(dseg.shape, -np.inf)
     los = e[i0] + (e[i1] - e[i0]) * dseg / total
     h = e[i0 + 1:i1] - los
     d1 = np.maximum(dseg, 1.0)

@@ -59,6 +59,11 @@ def bom_csv(technology: str = Query("custom"),
 
 # ------------------------------------------------------------ PDF reports
 class ReportRequest(BaseModel):
+    # Reject unknown keys so a client still sending the removed
+    # served_area_fraction / max_rx_power_dbm gets a loud 422 instead of
+    # silently having them ignored.
+    model_config = {"extra": "forbid"}
+
     title: str = Field("RF Coverage Study", max_length=140)
     # Point-to-point section (optional):
     lat1: float | None = Field(None, ge=-90, le=90)
@@ -73,10 +78,12 @@ class ReportRequest(BaseModel):
     rain_rate_mm_h: float = 0.0
     clutter_pct: float = Field(0.0, ge=0, le=99.9)
     surface: bool = False
-    # Coverage section (optional): a previously computed raster.
+    # Coverage section (optional): a previously computed raster.  The figures
+    # printed for it are read from the STORED study, never from this request --
+    # a signed document whose headline number came from the client is a
+    # fabrication vector, so the old served_area_fraction / max_rx_power_dbm
+    # fields were removed rather than deprecated (extra fields are rejected).
     coverage_id: str | None = None
-    served_area_fraction: float | None = Field(None, ge=0, le=1)
-    max_rx_power_dbm: float | None = Field(None, ge=-200, le=100)
     # Equipment section (optional):
     include_costs: bool = True
     sites: int = Field(1, ge=1, le=500)
@@ -115,8 +122,14 @@ def report_pdf(req: ReportRequest,
         if hit is None:
             raise HTTPException(404, "Coverage result expired or unknown")
         coverage_png = hit[0]
-        coverage_stats = {"served_area_fraction": req.served_area_fraction,
-                          "max_rx_power_dbm": req.max_rx_power_dbm or 0.0}
+        # Read the figures the engine computed and stored alongside the raster.
+        # Older results predate the stored stats; print nothing rather than
+        # inventing a number.
+        stored = (hit[1] or {}).get("stats") or {}
+        coverage_stats = {
+            "served_area_fraction": stored.get("served_area_fraction"),
+            "max_rx_power_dbm": stored.get("max_rx_power_dbm"),
+        }
 
     costs = estimate(req.technology or "custom", req.sites) \
         if req.include_costs else None

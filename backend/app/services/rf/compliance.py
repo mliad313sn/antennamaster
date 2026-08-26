@@ -14,9 +14,16 @@ Far-field power density of an antenna of EIRP ``P`` at distance ``r``::
 
     S = P / (4*pi*r^2)     [W/m^2]
 
-(a ground-reflection factor of up to x2.56 in field, i.e. x1.6 in power, is
-offered for a worst-case reflective environment per FCC OET-65).  The
-compliance distance inverts this for the limit S_lim::
+A ground-reflection factor is offered for a worst-case reflective environment
+per FCC OET-65.  Reflection adds in *field amplitude* by up to x1.6; power
+density goes as the square of the field, so S is scaled by 1.6^2 = **x2.56**
+(OET-65 Eq. 6 writes the prediction with ground reflection as
+S = 2.56 * EIRP / (4*pi*R^2)).  ``REFLECT_GROUND`` below is therefore the
+power-density factor 2.56, not 1.6 -- applying 1.6 to a power density would
+under-estimate exposure by 1.6x and shrink every exclusion zone by sqrt(1.6)
+= 1.26x, which is the unsafe direction on a document that carries a signature.
+
+The compliance distance inverts this for the limit S_lim::
 
     r_lim = sqrt(P * reflect / (4*pi*S_lim))
 
@@ -26,6 +33,10 @@ Both standards' limits are frequency-dependent and split into general-public
 from __future__ import annotations
 
 import numpy as np
+
+# FCC OET-65 worst-case ground reflection: field amplitude x1.6, and power
+# density goes as field^2, so S is scaled by 1.6^2.  See the module docstring.
+REFLECT_GROUND = 2.56
 
 
 def icnirp_limit_w_m2(freq_mhz: float, occupational: bool = False) -> float:
@@ -53,10 +64,15 @@ def fcc_mpe_w_m2(freq_mhz: float, occupational: bool = False) -> float:
     """FCC OET-65 MPE limit converted to W/m^2 (1 mW/cm^2 = 10 W/m^2)."""
     f = freq_mhz
     if occupational:  # controlled
-        if f < 1.34:
-            return 1000.0
+        # OET-65 Table 1 (controlled): 0.3-3.0 MHz flat 100 mW/cm^2, then
+        # 900/f^2 over 3-30 MHz.  The 1.34 MHz breakpoint and the 180/f^2
+        # numerator belong to the UNCONTROLLED tier below -- using them here
+        # (or a 1800 numerator) makes the occupational limit too permissive
+        # and under-reports the exposure ratio.
+        if f < 3.0:
+            return 1000.0                   # 100 mW/cm^2
         if f < 30.0:
-            return (1800.0 / f ** 2) * 10.0
+            return (900.0 / f ** 2) * 10.0
         if f < 300.0:
             return 10.0                     # 1.0 mW/cm^2
         if f < 1500.0:
@@ -103,7 +119,8 @@ def assess_exposure(freq_mhz: float, tx_power_dbm: float,
     whether that distance is compliant and its exposure ratio (%% of limit).
     """
     eirp_dbm = tx_power_dbm + antenna_gain_dbi - losses_db
-    reflect = 1.6 if ground_reflection else 1.0     # OET-65 worst-case power x1.6
+    # x2.56 in POWER DENSITY (= 1.6^2, the 1.6 being field amplitude).
+    reflect = REFLECT_GROUND if ground_reflection else 1.0
     limit_fn = fcc_mpe_w_m2 if standard.lower() == "fcc" else icnirp_limit_w_m2
     pub = limit_fn(freq_mhz, occupational=False)
     occ = limit_fn(freq_mhz, occupational=True)

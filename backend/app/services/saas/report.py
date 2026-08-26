@@ -157,13 +157,18 @@ def build_report(*, title: str, org_name: str, logo_png: bytes | None,
         flow.append(RLImage(io.BytesIO(coverage_png), width=w,
                             height=w * ih / iw))
         if coverage_stats:
+            # Print only figures the engine actually produced.  A missing value
+            # is omitted -- never defaulted to 0, which would render as a real
+            # measurement ("Peak RX 0.0 dBm") on a signed document.
             served = coverage_stats.get("served_area_fraction")
-            flow.append(Paragraph(
-                f"Served area: {served * 100:.0f}% · peak RX "
-                f"{coverage_stats.get('max_rx_power_dbm', 0):.1f} dBm"
-                if served is not None else
-                f"Peak RX {coverage_stats.get('max_rx_power_dbm', 0):.1f} dBm",
-                body))
+            peak = coverage_stats.get("max_rx_power_dbm")
+            parts = []
+            if served is not None:
+                parts.append(f"Served area: {served * 100:.0f}%")
+            if peak is not None:
+                parts.append(f"peak RX {peak:.1f} dBm")
+            if parts:
+                flow.append(Paragraph(" · ".join(parts), body))
 
     # ------------------------------------------------- equipment & budget
     if costs:
