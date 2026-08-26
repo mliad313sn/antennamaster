@@ -49,6 +49,17 @@ export default function Tour({ run, onFinish }: TourProps) {
     setSteps(s);
   }, [t]);
 
+  // react-joyride renders into a portal it appends to <body>. Unmounting the
+  // component when the tour ends can leave that portal behind, and its
+  // full-screen `.react-joyride__overlay` keeps swallowing every pointer
+  // event - so a first-time visitor who skipped the tour was left unable to
+  // click the map at all. Sweep it once the tour is no longer running.
+  // (Found by the browser test, which named the intercepting element.)
+  useEffect(() => {
+    if (run) return;
+    document.getElementById('react-joyride-portal')?.remove();
+  }, [run]);
+
   function handle(data: CallBackProps) {
     const finished = data.status === 'finished' || data.status === 'skipped';
     if (finished) {

@@ -1,0 +1,201 @@
+name: CI
+
+# Every gate the project already had, actually enforced. Before this the
+# suites existed but nothing ran them on a commit, so a red Playwright suite
+# and ten silently-skipped ITU validation tests could sit unnoticed.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '20'
+
+jobs:
+  backend:
+    name: Backend tests + benchmark gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Tests
+        working-directory: backend
+        run: python -m pytest -q
+      - name: Benchmark gates (wall clock + peak memory)
+        working-directory: backend
+        run: python -m benchmarks.bench
+
+  itu-reference-engines:
+    name: ITU-R reference engines (P.1812 / P.452 / P.2001)
+    runs-on: ubuntu-latest
+    # The official ITU codes are an optional install, so their validation
+    # tests skip when absent - which meant ten of them skipped silently and
+    # nobody noticed. This job installs them and FAILS if they still skip, so
+    # "validated against the published suites" stays a fact.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+      - name: Install the ITU-R reference engines and digital maps
+        working-directory: backend
+        run: |
+          pip install "git+https://github.com/eeveetza/Py1812" \
+                      "git+https://github.com/eeveetza/Py452" \
+                      "git+https://github.com/eeveetza/Py2001"
+          python -m tools.fetch_itu_maps
+      - name: Validation suite must RUN, not skip
+        working-directory: backend
+        run: |
+          python -m pytest tests/test_itm_exact.py -q -rs \
+            | tee /tmp/itu.log
+          if grep -q "skipped" /tmp/itu.log; then
+            echo "::error::ITU validation tests skipped - the reference"\
+                 "engines did not install, so the accuracy claims are unproven."
+            grep -i skipped /tmp/itu.log
+            exit 1
+          fi
+
+  frontend:
+    name: Frontend types, unit tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit -p tsconfig.json
+      - name: Unit tests
+        working-directory: frontend
+        run: npx vitest run
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: |
+            frontend/.next
+            !frontend/.next/cache
+          retention-days: 1
+
+  e2e:
+    name: Browser end-to-end (real stack)
+    runs-on: ubuntu-latest
+    needs: [frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          cd frontend && npm ci
+      - uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: frontend/.next
+      - name: Install Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run the suite
+        working-directory: frontend
+        env:
+          CI: 'true'
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend/test-results
+          retention-days: 7
+
+  launch-paths:
+    name: Documented launch paths serve the app
+    runs-on: ubuntu-latest
+    # ./start.sh used to bind :8000/:3000 while the frontend proxied /api to
+    # :8010 and the banner advertised :3010 - three different answers, so the
+    # documented first-run path was completely dead and no test noticed.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: |
+          pip install -r backend/requirements.txt
+          cd frontend && npm ci && npm run build
+      - name: ./start.sh serves the API through the port it prints
+        run: |
+          ./start.sh &
+          for _ in $(seq 1 90); do
+            if curl -fsS http://localhost:3010/api/health >/dev/null 2>&1; then
+              READY=1; break
+            fi
+            sleep 2
+          done
+          test "${READY:-0}" = "1" || { echo "::error::start.sh never served /api"; exit 1; }
+          COUNT=$(curl -fsS http://localhost:3010/api/rf/technologies | python -c 'import json,sys; print(len(json.load(sys.stdin)["technologies"]))')
+          echo "technology presets through the web app: $COUNT"
+          test "$COUNT" -ge 20 || { echo "::error::the API proxy is not wired"; exit 1; }
+
+  docker:
+    name: docker compose stack becomes healthy
+    runs-on: ubuntu-latest
+    # The compose healthchecks once probed the host-published ports from
+    # inside the containers, so the backend never became healthy and the
+    # frontend - which waits on service_healthy - never started at all.
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start
+        run: docker compose up -d --build --wait --wait-timeout 600
+      - name: Both services report healthy
+        run: |
+          docker compose ps
+          curl -fsS http://localhost:3010/ >/dev/null
+          curl -fsS http://localhost:8010/api/health >/dev/null
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

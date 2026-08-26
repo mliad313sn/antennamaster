@@ -55,8 +55,21 @@ test.describe('the core planning loop', () => {
       // --- click the map to read the predicted level at that point
       await expect(page.getByText(/Click anywhere on the coverage/i)).toBeVisible();
       const map = page.locator('.leaflet-container');
+      await expect(map).toBeVisible();
       const box = (await map.boundingBox())!;
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+      // Offset from centre: the TX pin sits exactly there and would swallow
+      // the click. ~60 px is roughly 3 km at the default zoom, so the point
+      // stays inside the 8 km study radius. Clicking through the locator (not
+      // raw mouse coordinates) waits for actionability and names whatever
+      // overlay intercepts the click if one ever does.
+      const reading = page.waitForResponse(
+        (r) => /\/api\/rf\/coverage\/[^/]+\/at\?/.test(r.url()),
+        { timeout: 30000 });
+      await map.click({ position: { x: box.width / 2 + 60,
+                                    y: box.height / 2 - 40 } });
+      // Wait for the point query itself, so the assertion below is about
+      // rendering rather than about how fast the network happened to be.
+      expect((await reading).status()).toBe(200);
 
       const popup = page.locator('.leaflet-popup-content');
       await expect(popup).toBeVisible({ timeout: 20000 });
