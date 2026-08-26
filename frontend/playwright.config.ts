@@ -46,7 +46,10 @@ export default defineConfig({
       command: `python -m uvicorn app.main:app --host 127.0.0.1 --port ${API_PORT}`,
       cwd: '../backend',
       url: `http://127.0.0.1:${API_PORT}/api/health`,
-      reuseExistingServer: !process.env.CI,
+      // Never reuse: a server left over from an earlier build happily
+      // serves stale HTML whose chunk hashes no longer exist, which shows up
+      // as a ChunkLoadError and a blank page - i.e. as a phantom app bug.
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
@@ -54,7 +57,7 @@ export default defineConfig({
       // output: 'standalone' and cannot serve the client chunks).
       command: 'npm start',
       url: `http://127.0.0.1:${PORT}`,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
       timeout: 180_000,
       env: { PORT: String(PORT) },
     },

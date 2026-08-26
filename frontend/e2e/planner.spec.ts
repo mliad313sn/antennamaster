@@ -12,6 +12,24 @@
  */
 import { expect, test } from '@playwright/test';
 
+/**
+ * Dismiss the first-run guided tour and prove it really let go.
+ *
+ * Its overlay covers the whole page while open, so anything that races the
+ * dismissal fails later in a confusing place - a click that simply never
+ * reaches the map. `locator.isVisible()` resolves immediately (its timeout
+ * option is a no-op), so the previous `if (await skip.isVisible(...))` was a
+ * coin flip: when the tour had not rendered yet the skip was silently
+ * skipped and the tour stayed open on step 1.
+ */
+async function dismissTour(page: import('@playwright/test').Page) {
+  const skip = page.getByRole('button', { name: /^Skip$/ });
+  await skip.waitFor({ state: 'visible', timeout: 20000 });
+  await skip.click();
+  // The tour must release the page, not just hide its tooltip.
+  await expect(page.locator('.react-joyride__overlay')).toHaveCount(0);
+}
+
 test.describe('the core planning loop', () => {
   test.beforeEach(async ({ page }) => {
     // Playwright gives every test a fresh browser context, so localStorage
@@ -23,11 +41,7 @@ test.describe('the core planning loop', () => {
 
   test('place a transmitter, run a coverage study, read a point off the map',
     async ({ page }) => {
-      // The guided tour auto-runs for first-time visitors and covers the UI.
-      const skip = page.getByRole('button', { name: /skip/i });
-      if (await skip.isVisible({ timeout: 8000 }).catch(() => false)) {
-        await skip.click();
-      }
+      await dismissTour(page);
 
       // --- place the site by typing exact coordinates (no map maths needed)
       await page.getByLabel('TX lat').fill('47.0');
@@ -81,10 +95,7 @@ test.describe('the core planning loop', () => {
 
   test('the sidebar can be rearranged and the layout survives a reload',
     async ({ page }) => {
-      const skip = page.getByRole('button', { name: /skip/i });
-      if (await skip.isVisible({ timeout: 8000 }).catch(() => false)) {
-        await skip.click();
-      }
+      await dismissTour(page);
 
       const panelIds = () => page.locator('[data-panel-id]')
         .evaluateAll((els) => els.map((e) => e.getAttribute('data-panel-id')));
