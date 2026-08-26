@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import io
 import threading
+import time
 from collections import OrderedDict
 from pathlib import Path
 
@@ -54,6 +55,9 @@ class TerrariumTileStore:
         self._mem_cap = 2000
         self._downloads = 0
         self._lock = threading.Lock()
+        # Circuit-breaker state for the remote tile source (see below).
+        self._fail_count = 0
+        self._last_fail = 0.0
         self._client = httpx.Client(timeout=30.0, follow_redirects=True)
 
     # ------------------------------------------------------------------ tiles
@@ -65,8 +69,19 @@ class TerrariumTileStore:
         path = self._tile_path(z, x, y)
         if path.exists():
             return path.read_bytes()
-        resp = self._client.get(self.url_template.format(z=z, x=x, y=y))
-        resp.raise_for_status()
+        # Fail fast while the source is known-bad.  One study can need
+        # hundreds of uncached tiles (a sweep near the poles spans many
+        # longitudes); at a 30 s per-tile timeout, serially retrying a dead
+        # DEM host would pin a worker slot for many minutes on a request that
+        # cannot succeed.  Better to give up promptly and say why.
+        self._raise_if_source_down()
+        try:
+            resp = self._client.get(self.url_template.format(z=z, x=x, y=y))
+            resp.raise_for_status()
+        except Exception:
+            self._note_fetch_failure()
+            raise
+        self._note_fetch_success()
         path.parent.mkdir(parents=True, exist_ok=True)
         # Write via a temp file so a crashed download never poisons the cache.
         tmp = path.with_suffix(".part")
@@ -81,6 +96,36 @@ class TerrariumTileStore:
         if sweep:
             self.evict_disk_cache()
         return resp.content
+
+    # ------------------------------------------------- source circuit breaker
+    # Consecutive failures before the source is treated as down, and how long
+    # to stay open before probing it again.
+    _FAIL_THRESHOLD = 3
+    _COOLDOWN_S = 30.0
+
+    class SourceUnavailable(RuntimeError):
+        """The elevation source is failing; fail fast instead of hanging."""
+
+    def _note_fetch_failure(self) -> None:
+        with self._lock:
+            self._fail_count += 1
+            self._last_fail = time.monotonic()
+
+    def _note_fetch_success(self) -> None:
+        with self._lock:
+            self._fail_count = 0
+
+    def _raise_if_source_down(self) -> None:
+        with self._lock:
+            tripped = self._fail_count >= self._FAIL_THRESHOLD
+            since = time.monotonic() - self._last_fail
+            if tripped and since < self._COOLDOWN_S:
+                raise self.SourceUnavailable(
+                    "Elevation data source is unreachable "
+                    f"({self._fail_count} consecutive failures). Cached areas "
+                    "still work; retry shortly.")
+            if tripped:
+                self._fail_count = 0        # cooldown elapsed - probe again
 
     def evict_disk_cache(self, budget_mb: int = DEM_CACHE_BUDGET_MB) -> int:
         """Delete oldest tiles (by mtime) until the cache fits the budget.

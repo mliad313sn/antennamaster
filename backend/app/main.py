@@ -7,7 +7,11 @@ from __future__ import annotations
 
 import logging
 
+import math
+
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 
@@ -102,6 +106,36 @@ app.add_middleware(
 # High-sample profile responses are ~330 KB of JSON; gzip cuts them ~8x.
 # (PNG responses are already compressed and skip this by content check.)
 app.add_middleware(GZipMiddleware, minimum_size=8192)
+
+
+def _json_safe(value):
+    """Recursively replace non-finite floats so a payload can be serialized.
+
+    NaN/Infinity are accepted by Python's JSON parser but are not valid JSON
+    to emit, so echoing one back raises "Out of range float values are not
+    JSON compliant".
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)                       # "nan" / "inf" / "-inf"
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(request, exc: RequestValidationError):
+    """Return 422 for an invalid body even when the offending value is NaN.
+
+    FastAPI's default handler echoes the rejected input back inside the error
+    detail. When that input is NaN or Infinity - which json.loads happily
+    accepts on the way in - serializing the *error* raises, turning a clean
+    422 into a 500 with a stack trace. Scrub the payload first so bad input
+    is always reported as bad input.
+    """
+    return JSONResponse(status_code=422,
+                        content={"detail": _json_safe(exc.errors())})
 
 
 def _client_ip(request) -> str | None:
