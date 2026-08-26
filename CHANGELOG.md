@@ -4,6 +4,51 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## Unreleased
+
+Driven by a deep review: an expert-and-user committee assessed the product
+while the running server was probed empirically for behaviour and defects.
+
+### Added
+- **Queued coverage studies with live progress.** A full-resolution sweep was
+  measured at ~26 s; the planner ran it synchronously behind a static
+  "Simulating…" label. Studies now run as background jobs with a real
+  percentage and progress bar, reusing job infrastructure that already existed
+  but was wired only to the pitch page. Falls back to the synchronous endpoint
+  on an older backend.
+- **Stop a running simulation.** Cooperative cancellation (checked in the
+  sweep's own progress callback), so a run started with the wrong parameters
+  no longer has to be waited out while holding a worker slot.
+- **Read the signal at any point on the map.** Click a coverage layer to get
+  received power, margin, grade and distance/bearing at that spot. The value
+  is looked up from the field that painted the raster with identical indexing,
+  so the number can never disagree with the colour — pinned by a test that
+  samples the PNG and the query together.
+- **Browser-level end-to-end tests** (Playwright) covering the real planning
+  loop — place a site, run a study, watch progress, read a point — against a
+  real backend and a real map, plus sidebar rearrangement surviving a reload.
+
+### Accessibility
+- **102 form controls had no accessible name.** Across the planner, indoor
+  studio, DXF wizard, auth panel and dashboards, `<label>Text</label>` sat as a
+  *sibling* of its input with no `htmlFor` — so screen readers announced those
+  controls unnamed (WCAG 1.3.1 / 4.1.2) and clicking a label did not focus its
+  field. Every one is now associated via `useId`-derived `htmlFor`/`id` pairs,
+  which is purely additive and leaves layout untouched. Found by writing a
+  browser test: Playwright's label-based locator could not find the technology
+  selector, exactly as a screen reader user could not.
+
+### Fixed
+- **NaN in a numeric field returned 500 instead of 422.** Python's JSON parser
+  accepts NaN/Infinity but they cannot be serialized back out, so FastAPI's
+  default handler raised while rendering the validation error it was echoing.
+- **An unreachable elevation source could pin a worker for minutes.** Each
+  uncached tile waited out a 30 s timeout serially; a study near the poles
+  needs many. A circuit breaker now fails fast for 30 s after three
+  consecutive failures, then probes again. Cached areas keep working.
+- Backend error text no longer leaks API instructions into the GUI ("retry
+  shortly or use POST /api/saas/coverage/async" reached the user's error box).
+
 ## 1.1.1
 
 ### Fixed

@@ -9,7 +9,7 @@
  * 2. Tunnel link: Emslie waveguide model — RX power vs distance chart.
  * 3. Through-the-earth: VLF induction link through conductive ground.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '@/lib/useDialog';
 import {
@@ -29,6 +29,7 @@ import type {
 type Tab = 'plan' | 'das' | 'floors' | 'tunnel' | 'feeder' | 'tte';
 
 export default function IndoorStudio({ onClose }: { onClose: () => void }) {
+  const _uid = useId();
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('plan');
   const dialogRef = useDialog(onClose);
@@ -64,6 +65,7 @@ export default function IndoorStudio({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------- plan tab
 function PlanStudy() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [upload, setUpload] = useState<UploadResponse | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -160,8 +162,8 @@ function PlanStudy() {
             <div style={{ maxHeight: 220, overflowY: 'auto' }}>
               {upload.layers.filter((l) => l.entity_count > 0).map((l) => (
                 <div key={l.name} style={{ marginBottom: 6 }}>
-                  <label>{l.name} ({l.entity_count})</label>
-                  <select value={layerMats[l.name] ?? 'none'}
+                  <label htmlFor={`${_uid}-0`}>{l.name} ({l.entity_count})</label>
+                  <select id={`${_uid}-0`} value={layerMats[l.name] ?? 'none'}
                     onChange={(e) => {
                       const next = { ...layerMats, [l.name]: e.target.value };
                       setLayerMats(next);
@@ -177,8 +179,8 @@ function PlanStudy() {
             </div>
             <div className="row" style={{ marginTop: 8 }}>
               <div>
-                <label>{t('indoor.units')}</label>
-                <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
+                <label htmlFor={`${_uid}-1`}>{t('indoor.units')}</label>
+                <select id={`${_uid}-1`} value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
                   <option value={1}>{t('indoor.meters')}</option>
                   <option value={0.3048}>{t('indoor.feet')}</option>
                   <option value={0.01}>{t('indoor.centimeters')}</option>
@@ -186,34 +188,34 @@ function PlanStudy() {
                 </select>
               </div>
               <div>
-                <label>{t('indoor.freqMhz')}</label>
-                <input type="number" value={freqMhz}
+                <label htmlFor={`${_uid}-2`}>{t('indoor.freqMhz')}</label>
+                <input id={`${_uid}-2`} type="number" value={freqMhz}
                   onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('indoor.floorsCrossed')}</label>
-                <input type="number" min={0} max={30} value={floors}
+                <label htmlFor={`${_uid}-3`}>{t('indoor.floorsCrossed')}</label>
+                <input id={`${_uid}-3`} type="number" min={0} max={30} value={floors}
                   title={t('indoor.floorsTitle')}
                   onChange={(e) => setFloors(Math.max(0, parseInt(e.target.value) || 0))} />
               </div>
               <div>
-                <label>{t('indoor.floorLoss')}</label>
-                <input type="number" min={0} max={40} step={0.1} value={floorLoss}
+                <label htmlFor={`${_uid}-4`}>{t('indoor.floorLoss')}</label>
+                <input id={`${_uid}-4`} type="number" min={0} max={40} step={0.1} value={floorLoss}
                   title={t('indoor.floorLossTitle')}
                   onChange={(e) => setFloorLoss(parseFloat(e.target.value) || 18.3)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('indoor.txPower')}</label>
-                <input type="number" value={txPower}
+                <label htmlFor={`${_uid}-5`}>{t('indoor.txPower')}</label>
+                <input id={`${_uid}-5`} type="number" value={txPower}
                   onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} />
               </div>
               <div>
-                <label>{t('indoor.sensitivity')}</label>
-                <input type="number" value={sensitivity}
+                <label htmlFor={`${_uid}-6`}>{t('indoor.sensitivity')}</label>
+                <input id={`${_uid}-6`} type="number" value={sensitivity}
                   onChange={(e) => setSensitivity(parseFloat(e.target.value) || -82)} />
               </div>
             </div>
@@ -292,6 +294,7 @@ function PlanStudy() {
 
 // -------------------------------------------------------------- tunnel tab
 function TunnelStudy() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [presets, setPresets] = useState<UndergroundPresets | null>(null);
   const [freq, setFreq] = useState(450);
@@ -322,23 +325,23 @@ function TunnelStudy() {
     <div>
       <p className="hint">{t('indoor.tunnelIntro')}</p>
       <div className="row">
-        <div><label>{t('indoor.frequencyMhz')}</label><input type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
-        <div><label>{t('indoor.widthM')}</label><input type="number" value={width} onChange={(e) => setWidth(parseFloat(e.target.value) || 4)} /></div>
-        <div><label>{t('indoor.heightM')}</label><input type="number" value={height} onChange={(e) => setHeight(parseFloat(e.target.value) || 3)} /></div>
-        <div><label>{t('indoor.lengthM')}</label><input type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 3000)} /></div>
+        <div><label htmlFor={`${_uid}-7`}>{t('indoor.frequencyMhz')}</label><input id={`${_uid}-7`} type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
+        <div><label htmlFor={`${_uid}-8`}>{t('indoor.widthM')}</label><input id={`${_uid}-8`} type="number" value={width} onChange={(e) => setWidth(parseFloat(e.target.value) || 4)} /></div>
+        <div><label htmlFor={`${_uid}-9`}>{t('indoor.heightM')}</label><input id={`${_uid}-9`} type="number" value={height} onChange={(e) => setHeight(parseFloat(e.target.value) || 3)} /></div>
+        <div><label htmlFor={`${_uid}-10`}>{t('indoor.lengthM')}</label><input id={`${_uid}-10`} type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 3000)} /></div>
       </div>
       <div className="row">
         <div>
-          <label>{t('indoor.wallMaterial')}</label>
-          <select value={wall} onChange={(e) => setWall(e.target.value)}>
+          <label htmlFor={`${_uid}-11`}>{t('indoor.wallMaterial')}</label>
+          <select id={`${_uid}-11`} value={wall} onChange={(e) => setWall(e.target.value)}>
             {(presets?.tunnel_walls ?? []).map((w) => (
               <option key={w.key} value={w.key}>{w.label} (εr {w.eps_r})</option>
             ))}
           </select>
         </div>
-        <div><label>{t('indoor.txPower')}</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 37)} /></div>
-        <div><label>{t('indoor.txGain')}</label><input type="number" value={txGain} onChange={(e) => setTxGain(parseFloat(e.target.value) || 6)} /></div>
-        <div><label>{t('indoor.sensitivity')}</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -110)} /></div>
+        <div><label htmlFor={`${_uid}-12`}>{t('indoor.txPower')}</label><input id={`${_uid}-12`} type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 37)} /></div>
+        <div><label htmlFor={`${_uid}-13`}>{t('indoor.txGain')}</label><input id={`${_uid}-13`} type="number" value={txGain} onChange={(e) => setTxGain(parseFloat(e.target.value) || 6)} /></div>
+        <div><label htmlFor={`${_uid}-14`}>{t('indoor.sensitivity')}</label><input id={`${_uid}-14`} type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -110)} /></div>
       </div>
       <button className="primary" disabled={busy} onClick={run}>
         {busy ? t('indoor.computing') : t('indoor.computeTunnel')}
@@ -385,6 +388,7 @@ function TunnelStudy() {
  * amplifier spacing and reports served length / worst gap.
  */
 function FeederStudy() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [cables, setCables] = useState<Equipment[]>([]);
   const [cableId, setCableId] = useState('');
@@ -438,8 +442,8 @@ function FeederStudy() {
       <p className="hint">{t('indoor.feederIntro')}</p>
       <div className="row">
         <div>
-          <label>{t('indoor.feederCable')}</label>
-          <select value={cableId} onChange={(e) => {
+          <label htmlFor={`${_uid}-15`}>{t('indoor.feederCable')}</label>
+          <select id={`${_uid}-15`} value={cableId} onChange={(e) => {
             setCableId(e.target.value); setPointIdx(0);
             applyPoint(cables.find((c) => c.id === e.target.value) ?? null, 0);
           }}>
@@ -451,8 +455,8 @@ function FeederStudy() {
         </div>
         {cable && (
           <div>
-            <label>{t('indoor.feederBand')}</label>
-            <select value={pointIdx} onChange={(e) => {
+            <label htmlFor={`${_uid}-16`}>{t('indoor.feederBand')}</label>
+            <select id={`${_uid}-16`} value={pointIdx} onChange={(e) => {
               const i = parseInt(e.target.value, 10);
               setPointIdx(i); applyPoint(cable, i);
             }}>
@@ -469,17 +473,17 @@ function FeederStudy() {
         <p className="hint">⚠ {t('indoor.feederConfidence')}</p>
       )}
       <div className="row">
-        <div><label>{t('indoor.frequencyMhz')}</label><input type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
-        <div><label>{t('indoor.feederAtten')}</label><input type="number" step="0.01" value={atten} onChange={(e) => setAtten(parseFloat(e.target.value) || 2)} /></div>
-        <div><label>{t('indoor.feederCoupling')}</label><input type="number" value={coupling} onChange={(e) => setCoupling(parseFloat(e.target.value) || 65)} /></div>
-        <div><label>{t('indoor.lengthM')}</label><input type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 2000)} /></div>
+        <div><label htmlFor={`${_uid}-17`}>{t('indoor.frequencyMhz')}</label><input id={`${_uid}-17`} type="number" value={freq} onChange={(e) => setFreq(parseFloat(e.target.value) || 450)} /></div>
+        <div><label htmlFor={`${_uid}-18`}>{t('indoor.feederAtten')}</label><input id={`${_uid}-18`} type="number" step="0.01" value={atten} onChange={(e) => setAtten(parseFloat(e.target.value) || 2)} /></div>
+        <div><label htmlFor={`${_uid}-19`}>{t('indoor.feederCoupling')}</label><input id={`${_uid}-19`} type="number" value={coupling} onChange={(e) => setCoupling(parseFloat(e.target.value) || 65)} /></div>
+        <div><label htmlFor={`${_uid}-20`}>{t('indoor.lengthM')}</label><input id={`${_uid}-20`} type="number" value={length} onChange={(e) => setLength(parseFloat(e.target.value) || 2000)} /></div>
       </div>
       <div className="row">
-        <div><label>{t('indoor.feederLateral')}</label><input type="number" value={lateral} onChange={(e) => setLateral(parseFloat(e.target.value) || 2)} /></div>
-        <div><label>{t('indoor.txPower')}</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} /></div>
-        <div><label>{t('indoor.sensitivity')}</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -95)} /></div>
-        <div><label>{t('indoor.feederMargin')}</label><input type="number" value={margin} onChange={(e) => setMargin(parseFloat(e.target.value) || 0)} /></div>
-        <div><label>{t('indoor.feederAmpGain')}</label><input type="number" value={ampGain} onChange={(e) => setAmpGain(parseFloat(e.target.value) || 0)} /></div>
+        <div><label htmlFor={`${_uid}-21`}>{t('indoor.feederLateral')}</label><input id={`${_uid}-21`} type="number" value={lateral} onChange={(e) => setLateral(parseFloat(e.target.value) || 2)} /></div>
+        <div><label htmlFor={`${_uid}-22`}>{t('indoor.txPower')}</label><input id={`${_uid}-22`} type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} /></div>
+        <div><label htmlFor={`${_uid}-23`}>{t('indoor.sensitivity')}</label><input id={`${_uid}-23`} type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -95)} /></div>
+        <div><label htmlFor={`${_uid}-24`}>{t('indoor.feederMargin')}</label><input id={`${_uid}-24`} type="number" value={margin} onChange={(e) => setMargin(parseFloat(e.target.value) || 0)} /></div>
+        <div><label htmlFor={`${_uid}-25`}>{t('indoor.feederAmpGain')}</label><input id={`${_uid}-25`} type="number" value={ampGain} onChange={(e) => setAmpGain(parseFloat(e.target.value) || 0)} /></div>
       </div>
       <button className="primary" disabled={busy} onClick={run}>
         {busy ? t('indoor.computing') : t('indoor.computeFeeder')}
@@ -522,6 +526,7 @@ function FeederStudy() {
 
 // ----------------------------------------------------------------- TTE tab
 function TteStudy() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [presets, setPresets] = useState<UndergroundPresets | null>(null);
   const [freqHz, setFreqHz] = useState(5000);
@@ -549,11 +554,11 @@ function TteStudy() {
     <div>
       <p className="hint">{t('indoor.tteIntro')}</p>
       <div className="row">
-        <div><label>{t('indoor.frequencyHz')}</label><input type="number" value={freqHz} onChange={(e) => setFreqHz(parseFloat(e.target.value) || 5000)} /></div>
-        <div><label>{t('indoor.depthM')}</label><input type="number" value={depth} onChange={(e) => setDepth(parseFloat(e.target.value) || 100)} /></div>
+        <div><label htmlFor={`${_uid}-26`}>{t('indoor.frequencyHz')}</label><input id={`${_uid}-26`} type="number" value={freqHz} onChange={(e) => setFreqHz(parseFloat(e.target.value) || 5000)} /></div>
+        <div><label htmlFor={`${_uid}-27`}>{t('indoor.depthM')}</label><input id={`${_uid}-27`} type="number" value={depth} onChange={(e) => setDepth(parseFloat(e.target.value) || 100)} /></div>
         <div>
-          <label>{t('indoor.ground')}</label>
-          <select value={earth} onChange={(e) => setEarth(e.target.value)}>
+          <label htmlFor={`${_uid}-28`}>{t('indoor.ground')}</label>
+          <select id={`${_uid}-28`} value={earth} onChange={(e) => setEarth(e.target.value)}>
             {(presets?.earth ?? []).map((g) => (
               <option key={g.key} value={g.key}>{g.label} ({g.sigma} S/m)</option>
             ))}
@@ -561,8 +566,8 @@ function TteStudy() {
         </div>
       </div>
       <div className="row">
-        <div><label>{t('indoor.txPower')}</label><input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 30)} /></div>
-        <div><label>{t('indoor.sensitivity')}</label><input type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -130)} /></div>
+        <div><label htmlFor={`${_uid}-29`}>{t('indoor.txPower')}</label><input id={`${_uid}-29`} type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 30)} /></div>
+        <div><label htmlFor={`${_uid}-30`}>{t('indoor.sensitivity')}</label><input id={`${_uid}-30`} type="number" value={sensitivity} onChange={(e) => setSensitivity(parseFloat(e.target.value) || -130)} /></div>
       </div>
       <button className="primary" disabled={busy} onClick={run}>
         {busy ? t('indoor.computing') : t('indoor.computeTte')}
@@ -590,6 +595,7 @@ function TteStudy() {
 type DasAntenna = { x: number; y: number; gain: number; cableLen: number; tapDb: number };
 
 function DasStudy() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [upload, setUpload] = useState<UploadResponse | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -701,37 +707,37 @@ function DasStudy() {
           <div style={{ width: 280, flexShrink: 0 }}>
             <div className="row">
               <div>
-                <label>{t('indoor.dasTopology')}</label>
-                <select value={topology} onChange={(e) => { setTopology(e.target.value as 'star' | 'cascade'); setResult(null); }}>
+                <label htmlFor={`${_uid}-31`}>{t('indoor.dasTopology')}</label>
+                <select id={`${_uid}-31`} value={topology} onChange={(e) => { setTopology(e.target.value as 'star' | 'cascade'); setResult(null); }}>
                   <option value="star">{t('indoor.dasStar')}</option>
                   <option value="cascade">{t('indoor.dasCascade')}</option>
                 </select>
               </div>
               <div>
-                <label>{t('indoor.freqMhz')}</label>
-                <input type="number" value={freqMhz} onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
+                <label htmlFor={`${_uid}-32`}>{t('indoor.freqMhz')}</label>
+                <input id={`${_uid}-32`} type="number" value={freqMhz} onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('indoor.dasSource')}</label>
-                <input type="number" value={srcPower} onChange={(e) => setSrcPower(parseFloat(e.target.value) || 30)} />
+                <label htmlFor={`${_uid}-33`}>{t('indoor.dasSource')}</label>
+                <input id={`${_uid}-33`} type="number" value={srcPower} onChange={(e) => setSrcPower(parseFloat(e.target.value) || 30)} />
               </div>
               <div>
-                <label>{t('indoor.dasTrunk')}</label>
-                <input type="number" min={0} value={trunkLen} onChange={(e) => setTrunkLen(Math.max(0, parseFloat(e.target.value) || 0))} />
+                <label htmlFor={`${_uid}-34`}>{t('indoor.dasTrunk')}</label>
+                <input id={`${_uid}-34`} type="number" min={0} value={trunkLen} onChange={(e) => setTrunkLen(Math.max(0, parseFloat(e.target.value) || 0))} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('indoor.dasCableLoss')}</label>
-                <input type="number" min={0} step={0.1} value={cableLoss}
+                <label htmlFor={`${_uid}-35`}>{t('indoor.dasCableLoss')}</label>
+                <input id={`${_uid}-35`} type="number" min={0} step={0.1} value={cableLoss}
                   title="Coax attenuation in dB per 100 m at the design frequency (LMR-400 ≈ 10 dB/100 m at 2.4 GHz, 1/2″ superflex ≈ 7)"
                   onChange={(e) => setCableLoss(Math.max(0, parseFloat(e.target.value) || 0))} />
               </div>
               <div>
-                <label>{t('indoor.units')}</label>
-                <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
+                <label htmlFor={`${_uid}-36`}>{t('indoor.units')}</label>
+                <select id={`${_uid}-36`} value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
                   <option value={1}>{t('indoor.meters')}</option>
                   <option value={0.3048}>{t('indoor.feet')}</option>
                   <option value={0.01}>{t('indoor.centimeters')}</option>
@@ -753,19 +759,19 @@ function DasStudy() {
                   </div>
                   <div className="row">
                     <div>
-                      <label>{t('indoor.dasGain')}</label>
-                      <input type="number" step={0.5} value={a.gain}
+                      <label htmlFor={`${_uid}-37`}>{t('indoor.dasGain')}</label>
+                      <input id={`${_uid}-37`} type="number" step={0.5} value={a.gain}
                         onChange={(e) => { const v = parseFloat(e.target.value) || 0; setAntennas((p) => p.map((x, j) => j === i ? { ...x, gain: v } : x)); setResult(null); }} />
                     </div>
                     <div>
-                      <label>{t('indoor.dasCable')}</label>
-                      <input type="number" min={0} value={a.cableLen}
+                      <label htmlFor={`${_uid}-38`}>{t('indoor.dasCable')}</label>
+                      <input id={`${_uid}-38`} type="number" min={0} value={a.cableLen}
                         onChange={(e) => { const v = Math.max(0, parseFloat(e.target.value) || 0); setAntennas((p) => p.map((x, j) => j === i ? { ...x, cableLen: v } : x)); setResult(null); }} />
                     </div>
                     {topology === 'cascade' && i < antennas.length - 1 && (
                       <div>
-                        <label>{t('indoor.dasTap')}</label>
-                        <input type="number" min={1} value={a.tapDb}
+                        <label htmlFor={`${_uid}-39`}>{t('indoor.dasTap')}</label>
+                        <input id={`${_uid}-39`} type="number" min={1} value={a.tapDb}
                           onChange={(e) => { const v = Math.max(1, parseFloat(e.target.value) || 1); setAntennas((p) => p.map((x, j) => j === i ? { ...x, tapDb: v } : x)); setResult(null); }} />
                       </div>
                     )}
@@ -825,6 +831,7 @@ type FloorEntry = { level: number; dxfId: string; name: string;
                     layerMats: Record<string, string> };
 
 function FloorsStudy() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [materials, setMaterials] = useState<Material[]>([]);
   const [floors, setFloors] = useState<FloorEntry[]>([]);
@@ -922,8 +929,8 @@ function FloorsStudy() {
       <p className="hint">{t('indoor.floorsIntro')}</p>
       <div className="row" style={{ alignItems: 'flex-end' }}>
         <div>
-          <label>{t('indoor.floorsAdd')}</label>
-          <input type="file" accept=".dxf"
+          <label htmlFor={`${_uid}-40`}>{t('indoor.floorsAdd')}</label>
+          <input id={`${_uid}-40`} type="file" accept=".dxf"
             onChange={(e) => { if (e.target.files?.[0]) { addFloorFile(e.target.files[0]); e.target.value = ''; } }} />
         </div>
         {floors.length > 0 && (
@@ -949,23 +956,23 @@ function FloorsStudy() {
             </div>
             <div className="row" style={{ marginTop: 6 }}>
               <div>
-                <label>{t('indoor.freqMhz')}</label>
-                <input type="number" value={freqMhz} onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
+                <label htmlFor={`${_uid}-41`}>{t('indoor.freqMhz')}</label>
+                <input id={`${_uid}-41`} type="number" value={freqMhz} onChange={(e) => setFreqMhz(parseFloat(e.target.value) || 2442)} />
               </div>
               <div>
-                <label>{t('indoor.txPower')}</label>
-                <input type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} />
+                <label htmlFor={`${_uid}-42`}>{t('indoor.txPower')}</label>
+                <input id={`${_uid}-42`} type="number" value={txPower} onChange={(e) => setTxPower(parseFloat(e.target.value) || 20)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('indoor.floorLoss')}</label>
-                <input type="number" min={0} max={40} step={0.1} value={floorLoss}
+                <label htmlFor={`${_uid}-43`}>{t('indoor.floorLoss')}</label>
+                <input id={`${_uid}-43`} type="number" min={0} max={40} step={0.1} value={floorLoss}
                   onChange={(e) => setFloorLoss(parseFloat(e.target.value) || 18.3)} />
               </div>
               <div>
-                <label>{t('indoor.units')}</label>
-                <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
+                <label htmlFor={`${_uid}-44`}>{t('indoor.units')}</label>
+                <select id={`${_uid}-44`} value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
                   <option value={1}>{t('indoor.meters')}</option>
                   <option value={0.3048}>{t('indoor.feet')}</option>
                   <option value={0.01}>{t('indoor.centimeters')}</option>

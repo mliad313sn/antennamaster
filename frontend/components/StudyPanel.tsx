@@ -7,7 +7,7 @@
  * the TX site.  Shows the coverage legend and the point-to-point link budget
  * of the current profile.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, frequencyPlan,
@@ -52,6 +52,7 @@ export interface StudyPanelProps {
 }
 
 export default function StudyPanel(props: StudyPanelProps) {
+  const _uid = useId();
   const { t } = useTranslation();
   const [techs, setTechs] = useState<Technology[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -327,8 +328,8 @@ export default function StudyPanel(props: StudyPanelProps) {
           all of which stay editable below. */}
       {equipment.length > 0 && (
         <div style={{ marginBottom: 8 }}>
-          <label>{t('study.equipment')}<Help term="gain" /></label>
-          <select value={equipmentId} onChange={(e) => applyEquipment(e.target.value)}>
+          <label htmlFor={`${_uid}-0`}>{t('study.equipment')}<Help term="gain" /></label>
+          <select id={`${_uid}-0`} value={equipmentId} onChange={(e) => applyEquipment(e.target.value)}>
             <option value="">{t('study.equipmentNone')}</option>
             {equipGroups.map(([cat, list]) => (
               <optgroup key={cat} label={cat}>
@@ -346,8 +347,8 @@ export default function StudyPanel(props: StudyPanelProps) {
         </div>
       )}
 
-      <label>{t('study.technology')}</label>
-      <select
+      <label htmlFor={`${_uid}-1`}>{t('study.technology')}</label>
+      <select id={`${_uid}-1`}
         value={props.technology ?? ''}
         onChange={(e) => {
           props.onTechnologyChange(e.target.value || null);
@@ -370,8 +371,8 @@ export default function StudyPanel(props: StudyPanelProps) {
         <>
           <div className="row" style={{ marginTop: 8 }}>
             <div>
-              <label>{t('study.model')}</label>
-              <select
+              <label htmlFor={`${_uid}-2`}>{t('study.model')}</label>
+              <select id={`${_uid}-2`}
                 value={props.model ?? selectedTech.model}
                 onChange={(e) => props.onModelChange(e.target.value)}
               >
@@ -383,8 +384,8 @@ export default function StudyPanel(props: StudyPanelProps) {
           </div>
           {activeModel && activeModel.environments.length > 0 && (
             <div>
-              <label>{t('study.environment')}</label>
-              <select
+              <label htmlFor={`${_uid}-3`}>{t('study.environment')}</label>
+              <select id={`${_uid}-3`}
                 value={props.environment ?? selectedTech.environment}
                 onChange={(e) => props.onEnvironmentChange(e.target.value)}
               >
@@ -442,13 +443,13 @@ export default function StudyPanel(props: StudyPanelProps) {
           <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
             <div className="row">
               <div>
-                <label>{t('study.radius')}</label>
-                <input type="number" min={1} max={150} value={radiusKm}
+                <label htmlFor={`${_uid}-4`}>{t('study.radius')}</label>
+                <input id={`${_uid}-4`} type="number" min={1} max={150} value={radiusKm}
                   onChange={(e) => setRadiusKm(parseFloat(e.target.value) || 1)} />
               </div>
               <div>
-                <label style={{ marginBottom: 6 }}>{t('study.antenna')}</label>
-                <select value={sector ? 'sector' : 'omni'}
+                <label htmlFor={`${_uid}-5`} style={{ marginBottom: 6 }}>{t('study.antenna')}</label>
+                <select id={`${_uid}-5`} value={sector ? 'sector' : 'omni'}
                   onChange={(e) => setSector(e.target.value === 'sector')}>
                   <option value="omni">{t('study.omni')}</option>
                   <option value="sector">{t('study.sector')}</option>
@@ -458,13 +459,13 @@ export default function StudyPanel(props: StudyPanelProps) {
             {(sector || antennaId) && (
               <div className="row">
                 <div>
-                  <label>{t('study.azimuth')}</label>
-                  <input type="number" min={0} max={359} value={azimuth}
+                  <label htmlFor={`${_uid}-6`}>{t('study.azimuth')}</label>
+                  <input id={`${_uid}-6`} type="number" min={0} max={359} value={azimuth}
                     onChange={(e) => setAzimuth(parseFloat(e.target.value) || 0)} />
                 </div>
                 <div>
-                  <label>{t('study.beamwidth')}</label>
-                  <input type="number" min={10} max={360} value={beamwidth}
+                  <label htmlFor={`${_uid}-7`}>{t('study.beamwidth')}</label>
+                  <input id={`${_uid}-7`} type="number" min={10} max={360} value={beamwidth}
                     onChange={(e) => setBeamwidth(parseFloat(e.target.value) || 65)} />
                 </div>
               </div>
@@ -472,8 +473,8 @@ export default function StudyPanel(props: StudyPanelProps) {
             {/* Measured antenna pattern (MSI Planet). Overrides the
                 parametric sector when selected. */}
             <div>
-              <label>{t('study.pattern')}</label>
-              <select value={antennaId ?? ''} onChange={(e) => setAntennaId(e.target.value || null)}>
+              <label htmlFor={`${_uid}-8`}>{t('study.pattern')}</label>
+              <select id={`${_uid}-8`} value={antennaId ?? ''} onChange={(e) => setAntennaId(e.target.value || null)}>
                 <option value="">{t('study.parametric')}</option>
                 {antennas.map((a) => (
                   <option key={a.antenna_id} value={a.antenna_id}>
@@ -487,35 +488,35 @@ export default function StudyPanel(props: StudyPanelProps) {
             </div>
             <div className="row">
               <div>
-                <label>{t('study.downtilt')}<Help term="downtilt" /></label>
-                <input type="number" min={-10} max={20} value={downtilt}
+                <label htmlFor={`${_uid}-9`}>{t('study.downtilt')}<Help term="downtilt" /></label>
+                <input id={`${_uid}-9`} type="number" min={-10} max={20} value={downtilt}
                   onChange={(e) => setDowntilt(parseFloat(e.target.value) || 0)} />
               </div>
               <div>
-                <label>{t('study.fadeMargin')}<Help term="fade_margin" /></label>
-                <input type="number" min={0} max={30} value={shadowMargin}
+                <label htmlFor={`${_uid}-10`}>{t('study.fadeMargin')}<Help term="fade_margin" /></label>
+                <input id={`${_uid}-10`} type="number" min={0} max={30} value={shadowMargin}
                   title="Log-normal shadowing margin: ~5.5 dB ≈ 90% area, ~8 dB ≈ 95%"
                   onChange={(e) => setShadowMargin(parseFloat(e.target.value) || 0)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('study.foliageDepth')}</label>
-                <input type="number" min={0} max={400} value={props.foliageDepth}
+                <label htmlFor={`${_uid}-11`}>{t('study.foliageDepth')}</label>
+                <input id={`${_uid}-11`} type="number" min={0} max={400} value={props.foliageDepth}
                   title="Weissberger vegetation model — dense in-leaf trees at the receiver"
                   onChange={(e) => props.onFoliageChange(parseFloat(e.target.value) || 0)} />
               </div>
               <div>
-                <label>{t('study.rainRate')}</label>
-                <input type="number" min={0} max={150} value={props.rainRate}
+                <label htmlFor={`${_uid}-12`}>{t('study.rainRate')}</label>
+                <input id={`${_uid}-12`} type="number" min={0} max={150} value={props.rainRate}
                   title="ITU-R P.838 rain attenuation — matters above ~10 GHz (PtP links)"
                   onChange={(e) => props.onRainChange(parseFloat(e.target.value) || 0)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('study.clutterPct')}<Help term="clutter" /></label>
-                <input type="number" min={0} max={99.9} value={props.clutterPct}
+                <label htmlFor={`${_uid}-13`}>{t('study.clutterPct')}<Help term="clutter" /></label>
+                <input id={`${_uid}-13`} type="number" min={0} max={99.9} value={props.clutterPct}
                   title="ITU-R P.2108 statistical urban clutter — 0 = off, 50 = median, 90 = conservative planning"
                   onChange={(e) => props.onClutterChange(parseFloat(e.target.value) || 0)} />
               </div>
@@ -547,31 +548,31 @@ export default function StudyPanel(props: StudyPanelProps) {
               <>
                 <div className="row">
                   <div>
-                    <label>{t('study.txPower')}</label>
-                    <input type="number" placeholder={String(selectedTech.tx_power_dbm)}
+                    <label htmlFor={`${_uid}-14`}>{t('study.txPower')}</label>
+                    <input id={`${_uid}-14`} type="number" placeholder={String(selectedTech.tx_power_dbm)}
                       value={ovrPower} onChange={(e) => setOvrPower(e.target.value)} />
                   </div>
                   <div>
-                    <label>{t('study.txGain')}</label>
-                    <input type="number" placeholder={String(selectedTech.tx_gain_dbi)}
+                    <label htmlFor={`${_uid}-15`}>{t('study.txGain')}</label>
+                    <input id={`${_uid}-15`} type="number" placeholder={String(selectedTech.tx_gain_dbi)}
                       value={ovrTxGain} onChange={(e) => setOvrTxGain(e.target.value)} />
                   </div>
                 </div>
                 <div className="row">
                   <div>
-                    <label>{t('study.rxGain')}</label>
-                    <input type="number" placeholder={String(selectedTech.rx_gain_dbi)}
+                    <label htmlFor={`${_uid}-16`}>{t('study.rxGain')}</label>
+                    <input id={`${_uid}-16`} type="number" placeholder={String(selectedTech.rx_gain_dbi)}
                       value={ovrRxGain} onChange={(e) => setOvrRxGain(e.target.value)} />
                   </div>
                   <div>
-                    <label>{t('study.losses')}</label>
-                    <input type="number" placeholder={String(selectedTech.losses_db)}
+                    <label htmlFor={`${_uid}-17`}>{t('study.losses')}</label>
+                    <input id={`${_uid}-17`} type="number" placeholder={String(selectedTech.losses_db)}
                       value={ovrLosses} onChange={(e) => setOvrLosses(e.target.value)} />
                   </div>
                 </div>
                 <div>
-                  <label>{t('study.rxSensitivity')}</label>
-                  <input type="number" placeholder={String(selectedTech.rx_sensitivity_dbm)}
+                  <label htmlFor={`${_uid}-18`}>{t('study.rxSensitivity')}</label>
+                  <input id={`${_uid}-18`} type="number" placeholder={String(selectedTech.rx_sensitivity_dbm)}
                     value={ovrSens} onChange={(e) => setOvrSens(e.target.value)} />
                 </div>
               </>
@@ -634,8 +635,8 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <>
                   <div className="row" style={{ marginTop: 4, alignItems: 'flex-end' }}>
                     <div>
-                      <label>{t('study.planChannels')}</label>
-                      <input type="number" min={2} max={12} value={planChannels}
+                      <label htmlFor={`${_uid}-19`}>{t('study.planChannels')}</label>
+                      <input id={`${_uid}-19`} type="number" min={2} max={12} value={planChannels}
                         onChange={(e) => setPlanChannels(Math.min(12, Math.max(2, parseInt(e.target.value) || 3)))} />
                     </div>
                     <button style={{ flex: 1 }} disabled={planBusy}
@@ -673,13 +674,13 @@ export default function StudyPanel(props: StudyPanelProps) {
                   {/* -------------- capacity / throughput map ------------- */}
                   <div className="row" style={{ marginTop: 4, alignItems: 'flex-end' }}>
                     <div>
-                      <label>{t('study.usersPerCell')}</label>
-                      <input type="number" min={0} value={usersPerCell}
+                      <label htmlFor={`${_uid}-20`}>{t('study.usersPerCell')}</label>
+                      <input id={`${_uid}-20`} type="number" min={0} value={usersPerCell}
                         onChange={(e) => setUsersPerCell(e.target.value)} />
                     </div>
                     <div>
-                      <label>{t('study.mbpsPerUser')}</label>
-                      <input type="number" min={0} step={0.1} value={mbpsPerUser}
+                      <label htmlFor={`${_uid}-21`}>{t('study.mbpsPerUser')}</label>
+                      <input id={`${_uid}-21`} type="number" min={0} step={0.1} value={mbpsPerUser}
                         onChange={(e) => setMbpsPerUser(e.target.value)} />
                     </div>
                     <button style={{ flex: 1 }} disabled={tpBusy}

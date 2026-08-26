@@ -38,6 +38,24 @@ VENV_PY="$ROOT/backend/.venv/bin/python"
 [[ -d frontend/node_modules ]] || die "frontend/node_modules missing. Run ${BLD}./install.sh${RST}."
 [[ -d frontend/.next ]] || die "Frontend not built. Run ${BLD}./install.sh${RST}."
 
+# ---- the API proxy target is baked into the build, not read at runtime ---
+# Next resolves next.config.mjs rewrites at BUILD time into
+# routes-manifest.json, so exporting BACKEND_PORT here cannot move the proxy.
+# Without this check the app starts looking perfectly healthy while every API
+# call from the browser 500s - the worst possible failure mode.
+MANIFEST="frontend/.next/routes-manifest.json"
+if [[ -f "$MANIFEST" ]]; then
+  BAKED_PORT="$(grep -o 'http://[^"]*/api/:path\*' "$MANIFEST" | head -1 \
+    | sed -E 's#.*:([0-9]+)/api.*#\1#')"
+  if [[ -n "$BAKED_PORT" && "$BAKED_PORT" != "$BACKEND_PORT" ]]; then
+    die "The web app was built to reach the backend on port ${BLD}${BAKED_PORT}${RST}, but BACKEND_PORT is ${BLD}${BACKEND_PORT}${RST}.
+The API proxy target is fixed when the frontend is built, so it cannot be changed here.
+Rebuild against the port you want:
+  ${BLD}cd frontend && BACKEND_URL=http://localhost:${BACKEND_PORT} npm run build${RST}
+or launch with ${BLD}BACKEND_PORT=${BAKED_PORT}${RST}."
+  fi
+fi
+
 # ---- port-in-use guard ---------------------------------------------------
 port_busy() { { command -v lsof >/dev/null 2>&1 && lsof -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; } \
   || { command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$1 "; }; }

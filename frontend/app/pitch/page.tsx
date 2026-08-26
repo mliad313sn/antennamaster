@@ -6,7 +6,7 @@
  * the branded executive PDF in one click.
  */
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import {
   awaitJob, downloadReportPdf, fetchCosts, startAsyncCoverage,
   type CostEstimate,
@@ -32,6 +32,7 @@ const empty = (label: string): Scenario => ({
 });
 
 export default function Pitch() {
+  const _uid = useId();
   const [lat, setLat] = useState('47.05');
   const [lon, setLon] = useState('15.45');
   const [a, setA] = useState<Scenario>(empty('Option A'));
@@ -99,20 +100,20 @@ export default function Pitch() {
                 costs: CostEstimate | null) => (
     <section className="panel" style={{ flex: 1, minWidth: 0 }}>
       <h3>{sc.label}</h3>
-      <label>Technology</label>
-      <select value={sc.technology}
+      <label htmlFor={`${_uid}-0`}>Technology</label>
+      <select id={`${_uid}-0`} value={sc.technology}
         onChange={(e) => set({ ...sc, technology: e.target.value, result: null })}>
         {techs.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
       </select>
       <div className="row" style={{ marginTop: 6 }}>
         <div>
-          <label>Radius (km)</label>
-          <input type="number" min={1} max={50} value={sc.radiusKm}
+          <label htmlFor={`${_uid}-1`}>Radius (km)</label>
+          <input id={`${_uid}-1`} type="number" min={1} max={50} value={sc.radiusKm}
             onChange={(e) => set({ ...sc, radiusKm: parseFloat(e.target.value) || 6 })} />
         </div>
         <div>
-          <label>Downtilt (°)</label>
-          <input type="number" min={0} max={15} value={sc.downtilt}
+          <label htmlFor={`${_uid}-2`}>Downtilt (°)</label>
+          <input id={`${_uid}-2`} type="number" min={0} max={15} value={sc.downtilt}
             onChange={(e) => set({ ...sc, downtilt: parseFloat(e.target.value) || 0 })} />
         </div>
       </div>
@@ -160,18 +161,18 @@ export default function Pitch() {
           simulation progress, budget and payback — then export the branded PDF.
           Deep-dive edits belong in the <Link href="/">planner</Link>.</p>
         <div className="row" style={{ maxWidth: 560 }}>
-          <div><label>Site latitude</label>
-            <input value={lat} onChange={(e) => setLat(e.target.value)} /></div>
-          <div><label>Site longitude</label>
-            <input value={lon} onChange={(e) => setLon(e.target.value)} /></div>
-          <div><label>Sites</label>
-            <input type="number" min={1} max={100} value={sites}
+          <div><label htmlFor={`${_uid}-3`}>Site latitude</label>
+            <input id={`${_uid}-3`} value={lat} onChange={(e) => setLat(e.target.value)} /></div>
+          <div><label htmlFor={`${_uid}-4`}>Site longitude</label>
+            <input id={`${_uid}-4`} value={lon} onChange={(e) => setLon(e.target.value)} /></div>
+          <div><label htmlFor={`${_uid}-5`}>Sites</label>
+            <input id={`${_uid}-5`} type="number" min={1} max={100} value={sites}
               onChange={(e) => {
                 const v = parseInt(e.target.value, 10);
                 if (Number.isFinite(v) && v >= 1) setSites(v);
               }} /></div>
-          <div><label>Revenue $/mo (fleet)</label>
-            <input type="number" value={revenuePerMonth}
+          <div><label htmlFor={`${_uid}-6`}>Revenue $/mo (fleet)</label>
+            <input id={`${_uid}-6`} type="number" value={revenuePerMonth}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
                 if (Number.isFinite(v)) setRevenuePerMonth(v);

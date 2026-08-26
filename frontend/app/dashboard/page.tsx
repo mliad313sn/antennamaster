@@ -6,7 +6,7 @@
  * management and the OT/IT compliance (audit) log.
  */
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import DashNav from '@/components/DashNav';
 import {
   deleteProject, duplicateProject, fetchAudit, fetchCosts, fetchMe,
@@ -15,6 +15,7 @@ import {
 } from '@/lib/saas';
 
 export default function Dashboard() {
+  const _uid = useId();
   // undefined = still loading, null = signed out, User = signed in.
   const [user, setUser] = useState<User | null | undefined>(undefined);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -118,8 +119,8 @@ export default function Dashboard() {
             <h3>Deployment budget estimator</h3>
             <div className="row">
               <div>
-                <label>Technology</label>
-                <select value={costTech} onChange={(e) => setCostTech(e.target.value)}>
+                <label htmlFor={`${_uid}-0`}>Technology</label>
+                <select id={`${_uid}-0`} value={costTech} onChange={(e) => setCostTech(e.target.value)}>
                   <option value="private_lte_b48">Private LTE (CBRS)</option>
                   <option value="private_nr_n77">Private 5G n77</option>
                   <option value="wifi5800">Wi-Fi PtMP</option>
@@ -130,8 +131,8 @@ export default function Dashboard() {
                 </select>
               </div>
               <div>
-                <label>Sites</label>
-                <input type="number" min={1} max={500} value={costSites}
+                <label htmlFor={`${_uid}-1`}>Sites</label>
+                <input id={`${_uid}-1`} type="number" min={1} max={500} value={costSites}
                   onChange={(e) => {
                     const v = parseInt(e.target.value, 10);
                     if (Number.isFinite(v) && v >= 1) setCostSites(v);
@@ -172,8 +173,8 @@ export default function Dashboard() {
                 </button>
               ))}
             </div>
-            <label style={{ marginTop: 8 }}>White-label logo (PDF reports, Enterprise)</label>
-            <input type="file" accept="image/png,image/jpeg"
+            <label htmlFor={`${_uid}-2`} style={{ marginTop: 8 }}>White-label logo (PDF reports, Enterprise)</label>
+            <input id={`${_uid}-2`} type="file" accept="image/png,image/jpeg"
               onChange={async (e) => {
                 const f = e.target.files?.[0];
                 if (!f) return;

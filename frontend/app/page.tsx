@@ -14,7 +14,7 @@
  */
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import AdvancedStudies from '@/components/AdvancedStudies';
 import AuthPanel from '@/components/AuthPanel';
@@ -52,6 +52,7 @@ function num(s: string, fallback: number): number {
 }
 
 export default function Home() {
+  const _uid = useId();
   const { t } = useTranslation();
   const [tx, setTx] = useState<LatLng | null>(null);
   const [rx, setRx] = useState<LatLng | null>(null);
@@ -245,6 +246,21 @@ export default function Home() {
   }, [restored, tx, rx, txHeight, rxHeight, freqMhz, technology, model,
       environment, customTileUrl, foliageDepth, rainRate, clutterPct,
       surfaceOn, worldcoverOn, calibration, georef]);
+
+  /**
+   * A finished study turns the map into an inspection surface.
+   *
+   * `placing` stays armed until BOTH endpoints are placed by clicking, so a
+   * user who typed coordinates — or who only ever wanted a coverage study and
+   * never an RX — was left with the map still in "place a marker" mode. Their
+   * clicks moved the transmitter (discarding the study) instead of reading the
+   * signal, and the click-to-inspect hint never appeared. Disarm once a result
+   * lands; the Place TX / Place RX buttons re-arm it explicitly.
+   */
+  const handleCoverage = useCallback((c: CoverageResponse | null) => {
+    setCoverage(c);
+    if (c) setPlacing(null);
+  }, []);
 
   // --------------------------------------------------------- placement
   const handlePlace = useCallback((p: LatLng) => {
@@ -468,28 +484,28 @@ export default function Home() {
             {/* Exact coordinates: type or paste from a site database / GPS. */}
             <div className="row">
               <div>
-                <label>{t('planner.txLat')}</label>
-                <input type="number" step="0.00001" value={coordDraft.txLat}
+                <label htmlFor={`${_uid}-0`}>{t('planner.txLat')}</label>
+                <input id={`${_uid}-0`} type="number" step="0.00001" value={coordDraft.txLat}
                   aria-label={t('planner.txLat')}
                   onChange={(e) => editCoord('txLat', e.target.value)} />
               </div>
               <div>
-                <label>{t('planner.txLon')}</label>
-                <input type="number" step="0.00001" value={coordDraft.txLng}
+                <label htmlFor={`${_uid}-1`}>{t('planner.txLon')}</label>
+                <input id={`${_uid}-1`} type="number" step="0.00001" value={coordDraft.txLng}
                   aria-label={t('planner.txLon')}
                   onChange={(e) => editCoord('txLng', e.target.value)} />
               </div>
             </div>
             <div className="row">
               <div>
-                <label>{t('planner.rxLat')}</label>
-                <input type="number" step="0.00001" value={coordDraft.rxLat}
+                <label htmlFor={`${_uid}-2`}>{t('planner.rxLat')}</label>
+                <input id={`${_uid}-2`} type="number" step="0.00001" value={coordDraft.rxLat}
                   aria-label={t('planner.rxLat')}
                   onChange={(e) => editCoord('rxLat', e.target.value)} />
               </div>
               <div>
-                <label>{t('planner.rxLon')}</label>
-                <input type="number" step="0.00001" value={coordDraft.rxLng}
+                <label htmlFor={`${_uid}-3`}>{t('planner.rxLon')}</label>
+                <input id={`${_uid}-3`} type="number" step="0.00001" value={coordDraft.rxLng}
                   aria-label={t('planner.rxLon')}
                   onChange={(e) => editCoord('rxLng', e.target.value)} />
               </div>
@@ -502,19 +518,19 @@ export default function Home() {
             )}
             <div className="row" style={{ marginTop: 8 }}>
               <div>
-                <label>{t('planner.txHeight')}</label>
-                <input type="number" min={0} value={txHeight}
+                <label htmlFor={`${_uid}-4`}>{t('planner.txHeight')}</label>
+                <input id={`${_uid}-4`} type="number" min={0} value={txHeight}
                   onChange={(e) => setTxHeight(e.target.value)} />
               </div>
               <div>
-                <label>{t('planner.rxHeight')}</label>
-                <input type="number" min={0} value={rxHeight}
+                <label htmlFor={`${_uid}-5`}>{t('planner.rxHeight')}</label>
+                <input id={`${_uid}-5`} type="number" min={0} value={rxHeight}
                   onChange={(e) => setRxHeight(e.target.value)} />
               </div>
             </div>
             <div data-tour="glossary">
-              <label>{t('planner.frequency')}<Help term="fspl" /></label>
-              <input type="number" min={1} value={freqMhz}
+              <label htmlFor={`${_uid}-6`}>{t('planner.frequency')}<Help term="fspl" /></label>
+              <input id={`${_uid}-6`} type="number" min={1} value={freqMhz}
                 onChange={(e) => setFreqMhz(e.target.value)} />
             </div>
           </div>
@@ -579,7 +595,7 @@ export default function Home() {
             calibration={calibration} onCalibrationChange={setCalibration}
             surfaceAvailable={surfaceAvailable}
             study={profile?.study ?? null}
-            coverage={coverage} onCoverage={setCoverage}
+            coverage={coverage} onCoverage={handleCoverage}
           />
           ) },
           { id: 'batch', label: t('batch.title'), node: (
@@ -685,8 +701,8 @@ export default function Home() {
           { id: 'mapProvider', label: 'Map provider', node: (
           <div className="panel">
             <h3>Map provider</h3>
-            <label>Custom XYZ tile URL (optional)</label>
-            <input
+            <label htmlFor={`${_uid}-7`}>Custom XYZ tile URL (optional)</label>
+            <input id={`${_uid}-7`}
               placeholder="https://tiles.example.com/{z}/{x}/{y}.png"
               value={customTileUrl}
               onChange={(e) => setCustomTileUrl(e.target.value)}

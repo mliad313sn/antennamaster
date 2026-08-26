@@ -8,7 +8,7 @@
  * On success the parent receives the GeorefResponse (footprint, overlay,
  * validation) and renders it on the map.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '@/lib/useDialog';
 import { georeference, uploadDxf } from '@/lib/api';
@@ -24,6 +24,7 @@ export interface DxfWizardProps {
 }
 
 export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) {
+  const _uid = useId();
   const { t } = useTranslation();
   const STEPS = [t('dxf.stepUpload'), t('dxf.stepLayers'), t('dxf.stepGeoref')];
   const [step, setStep] = useState(0);
@@ -224,8 +225,8 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
               {mode === 'known_crs' && (
                 <div>
                   <p className="hint">{t('dxf.knownCrsHint')}</p>
-                  <label>{t('dxf.crsLabel')}</label>
-                  <input value={crs} onChange={(e) => setCrs(e.target.value)} placeholder="EPSG:32633" />
+                  <label htmlFor={`${_uid}-0`}>{t('dxf.crsLabel')}</label>
+                  <input id={`${_uid}-0`} value={crs} onChange={(e) => setCrs(e.target.value)} placeholder="EPSG:32633" />
                 </div>
               )}
 
@@ -234,10 +235,10 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                   <p className="hint">{t('dxf.cpHint')}</p>
                   {cps.map((cp, i) => (
                     <div key={i} className="cp-grid">
-                      <div><label>{t('dxf.dxfX')}</label><input value={cp.dxf_x} onChange={(e) => setCp(i, 'dxf_x', e.target.value)} /></div>
-                      <div><label>{t('dxf.dxfY')}</label><input value={cp.dxf_y} onChange={(e) => setCp(i, 'dxf_y', e.target.value)} /></div>
-                      <div><label>{t('dxf.lat')}</label><input value={cp.lat} onChange={(e) => setCp(i, 'lat', e.target.value)} /></div>
-                      <div><label>{t('dxf.lon')}</label><input value={cp.lon} onChange={(e) => setCp(i, 'lon', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-1`}>{t('dxf.dxfX')}</label><input id={`${_uid}-1`} value={cp.dxf_x} onChange={(e) => setCp(i, 'dxf_x', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-2`}>{t('dxf.dxfY')}</label><input id={`${_uid}-2`} value={cp.dxf_y} onChange={(e) => setCp(i, 'dxf_y', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-3`}>{t('dxf.lat')}</label><input id={`${_uid}-3`} value={cp.lat} onChange={(e) => setCp(i, 'lat', e.target.value)} /></div>
+                      <div><label htmlFor={`${_uid}-4`}>{t('dxf.lon')}</label><input id={`${_uid}-4`} value={cp.lon} onChange={(e) => setCp(i, 'lon', e.target.value)} /></div>
                       <button
                         disabled={cps.length <= 2}
                         onClick={() => setCps((prev) => prev.filter((_, j) => j !== i))}
@@ -256,23 +257,23 @@ export default function DxfWizard({ onClose, onGeoreferenced }: DxfWizardProps) 
                 <div>
                   <p className="hint">{t('dxf.originHint')}</p>
                   <div className="row">
-                    <div><label>{t('dxf.originLat')}</label><input value={originLat} onChange={(e) => setOriginLat(e.target.value)} /></div>
-                    <div><label>{t('dxf.originLon')}</label><input value={originLon} onChange={(e) => setOriginLon(e.target.value)} /></div>
+                    <div><label htmlFor={`${_uid}-5`}>{t('dxf.originLat')}</label><input id={`${_uid}-5`} value={originLat} onChange={(e) => setOriginLat(e.target.value)} /></div>
+                    <div><label htmlFor={`${_uid}-6`}>{t('dxf.originLon')}</label><input id={`${_uid}-6`} value={originLon} onChange={(e) => setOriginLon(e.target.value)} /></div>
                   </div>
                   <div className="row">
-                    <div><label>{t('dxf.dxfXOrigin')}</label><input value={originX} onChange={(e) => setOriginX(e.target.value)} /></div>
-                    <div><label>{t('dxf.dxfYOrigin')}</label><input value={originY} onChange={(e) => setOriginY(e.target.value)} /></div>
+                    <div><label htmlFor={`${_uid}-7`}>{t('dxf.dxfXOrigin')}</label><input id={`${_uid}-7`} value={originX} onChange={(e) => setOriginX(e.target.value)} /></div>
+                    <div><label htmlFor={`${_uid}-8`}>{t('dxf.dxfYOrigin')}</label><input id={`${_uid}-8`} value={originY} onChange={(e) => setOriginY(e.target.value)} /></div>
                   </div>
                   <div className="row">
-                    <div><label>{t('dxf.bearing')}</label><input value={bearing} onChange={(e) => setBearing(e.target.value)} /></div>
+                    <div><label htmlFor={`${_uid}-9`}>{t('dxf.bearing')}</label><input id={`${_uid}-9`} value={bearing} onChange={(e) => setBearing(e.target.value)} /></div>
                   </div>
                 </div>
               )}
 
               <div className="row" style={{ marginTop: 10 }}>
                 <div>
-                  <label>{t('dxf.drawingUnits')}</label>
-                  <select value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
+                  <label htmlFor={`${_uid}-10`}>{t('dxf.drawingUnits')}</label>
+                  <select id={`${_uid}-10`} value={unitScale} onChange={(e) => setUnitScale(parseFloat(e.target.value))}>
                     <option value={1}>{t('dxf.meters')}</option>
                     <option value={0.3048}>{t('dxf.feet')}</option>
                     <option value={0.9144}>{t('dxf.yards')}</option>

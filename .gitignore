@@ -28,3 +28,7 @@ backend/.coverage
 antennamaster-offline.tar
 backend/.venv/
 packaging/windows/stage/
+
+# Playwright browser-test artifacts
+frontend/test-results/
+frontend/playwright-report/

@@ -122,6 +122,20 @@ Override ports with `BACKEND_PORT` / `FRONTEND_PORT`, and the bind address with
 `HOST_BIND` (default `0.0.0.0`, i.e. reachable on the LAN — set to `127.0.0.1`
 to keep it local-only).
 
+> **Changing `BACKEND_PORT` needs a frontend rebuild.** Next.js resolves the
+> `/api/*` proxy target when the web app is **built**, not when it starts, so
+> the port is baked into `frontend/.next`. `launch.sh` compares the baked value
+> against `BACKEND_PORT` and refuses to start on a mismatch — otherwise the app
+> would look healthy while every API call failed. To move the backend:
+>
+> ```bash
+> cd frontend && BACKEND_URL=http://localhost:9000 npm run build
+> BACKEND_PORT=9000 ./launch.sh
+> ```
+>
+> (Docker already does this correctly — compose passes `BACKEND_URL` as a
+> build arg.)
+
 ---
 
 ## Offline / air-gapped deployment

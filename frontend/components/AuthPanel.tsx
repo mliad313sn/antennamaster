@@ -1,7 +1,7 @@
 'use client';
 
 /** Login / registration modal with role selection and plan matrix. */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { useDialog } from '@/lib/useDialog';
 import {
   fetchTiers, login, register, setTier, type TierInfo, type User,
@@ -11,6 +11,7 @@ export default function AuthPanel({ onClose, onUser }: {
   onClose: () => void;
   onUser: (u: User) => void;
 }) {
+  const _uid = useId();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -55,24 +56,24 @@ export default function AuthPanel({ onClose, onUser }: {
           </div>
           <div className="row">
             <div>
-              <label>Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <label htmlFor={`${_uid}-0`}>Email</label>
+              <input id={`${_uid}-0`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div>
-              <label>Password (min 8 chars)</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <label htmlFor={`${_uid}-1`}>Password (min 8 chars)</label>
+              <input id={`${_uid}-1`} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
           </div>
           {mode === 'register' && (
             <>
               <div className="row">
                 <div>
-                  <label>Your name</label>
-                  <input value={name} onChange={(e) => setName(e.target.value)} />
+                  <label htmlFor={`${_uid}-2`}>Your name</label>
+                  <input id={`${_uid}-2`} value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div>
-                  <label>Organization</label>
-                  <input value={org} onChange={(e) => setOrg(e.target.value)} />
+                  <label htmlFor={`${_uid}-3`}>Organization</label>
+                  <input id={`${_uid}-3`} value={org} onChange={(e) => setOrg(e.target.value)} />
                 </div>
               </div>
               <label>I work as…</label>
