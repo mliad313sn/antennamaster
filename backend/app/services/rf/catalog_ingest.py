@@ -30,6 +30,8 @@ the bundled sources are local JSON.
 """
 from __future__ import annotations
 
+import math
+
 import asyncio
 import json
 from pathlib import Path
@@ -88,6 +90,44 @@ def _band_label(bands: list) -> str:
     return ", ".join(parts)
 
 
+
+# A high-gain antenna is directional by construction: an omni cannot focus
+# 27 dBi. When a record carries no measured beamwidth we derive one from the
+# gain rather than defaulting to 360 deg, which used to paint a point-to-point
+# dish as a full-circle donut claiming coverage over a whole township.
+#
+# G(dBi) = 10 log10(29000 / (theta_h * theta_v)); for a symmetric aperture
+# that inverts to theta = sqrt(29000 / 10^(G/10)). 27 dBi -> 7.6 deg,
+# 24.5 -> 10.1, 16 -> 27 - all within a degree or two of the real datasheets.
+_OMNI_GAIN_CEILING_DBI = 15.0
+
+
+def beamwidth_for(spatial: dict, gain_dbi: float | None) -> tuple[float, str]:
+    """(beamwidth_deg, source) - never silently claims omni for a dish."""
+    measured = (spatial or {}).get("h_beamwidth_deg")
+    if measured:
+        return float(measured), "datasheet"
+    if gain_dbi is not None and float(gain_dbi) > _OMNI_GAIN_CEILING_DBI:
+        theta = math.sqrt(29000.0 / (10.0 ** (float(gain_dbi) / 10.0)))
+        return round(max(theta, 3.0), 1), "inferred_from_gain"
+    return 360.0, "assumed_omni"
+
+
+def confidence_for(declared: str, has_sens: bool, bw_source: str) -> str:
+    """Never claim 'datasheet' for a spec this catalog invented.
+
+    Two things count as invented: a sensitivity inherited from the class
+    default (how -70 dBm ended up on LTU radios whose real figure is near
+    -96), and a beamwidth derived from gain. An omni assumed for a low-gain
+    device is NOT invented - it is the physically-sound default for that
+    class, and downgrading it would just make the label meaningless.
+    """
+    if declared == "datasheet" and (not has_sens
+                                    or bw_source == "inferred_from_gain"):
+        return "inferred"
+    return declared
+
+
 def normalize(rec: dict) -> dict | None:
     """Rich source record → a flat, selector-ready profile (nested kept too)."""
     cls = rec.get("equipment_class")
@@ -100,6 +140,7 @@ def normalize(rec: dict) -> dict | None:
     p_pow, p_sens = _CLASS_FALLBACK.get(cls, (30.0, -100.0))
 
     gain = rf.get("gain_dbi")
+    beamwidth, bw_source = beamwidth_for(spatial, gain)
     out = {
         "id": rec["id"],
         "vendor": rec.get("manufacturer", "Unknown"),
@@ -113,8 +154,11 @@ def normalize(rec: dict) -> dict | None:
         "freq_mhz": _band_midpoint(bands),
         "tx_power_dbm": float(rf.get("max_tx_power_dbm", p_pow)),
         "rx_sensitivity_dbm": float(rf.get("rx_sensitivity_dbm", p_sens)),
+        "sensitivity_source": ("datasheet" if rf.get("rx_sensitivity_dbm")
+                               is not None else "class_default"),
         "antenna_gain_dbi": float(gain if gain is not None else 0.0),
-        "beamwidth_deg": float(spatial.get("h_beamwidth_deg") or 360.0),
+        "beamwidth_deg": beamwidth,
+        "beamwidth_source": bw_source,
         # Rich fields preserved for advanced callers / the physics engine.
         "frequency_bands_mhz": bands,
         "rf_specs": rf,
@@ -122,7 +166,14 @@ def normalize(rec: dict) -> dict | None:
         "environment_rating": rec.get("environment_rating", {}),
         "region_of_origin": rec.get("region_of_origin", "Unknown"),
         "provenance": rec.get("provenance", "unspecified"),
-        "spec_confidence": rec.get("spec_confidence", "class_reference"),
+        # A record is only "datasheet" if the fields the study actually uses
+        # came from one. Inheriting a class-default sensitivity or inferring a
+        # beamwidth and still claiming "datasheet" is how -70 dBm ended up on
+        # LTU radios whose real sensitivity is near -96.
+        "spec_confidence": confidence_for(
+            rec.get("spec_confidence", "class_reference"),
+            rf.get("rx_sensitivity_dbm") is not None,
+            bw_source),
     }
     if rec.get("leaky_feeder_specs"):
         out["leaky_feeder_specs"] = rec["leaky_feeder_specs"]

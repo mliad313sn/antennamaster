@@ -146,3 +146,35 @@ def test_twoway_coverage_api(client):
     data = resp.json()
     assert 0.0 <= data["reliable_talkback_fraction"] <= 1.0
     assert data["reliable_talkback_fraction"] <= data["talk_out_area_fraction"] + 1e-6
+
+
+# --------------------------------------------------- target_daq in area study
+def test_area_talkback_honours_target_daq(fake_store):
+    """target_daq used to be accepted, echoed and ignored: the area study
+    pinned its anchors to DAQ 3.4, so a tender quoting "reliable at DAQ 4.5"
+    silently reported the 3.4 number for every grade."""
+    engine = CoverageEngine(TerrainFusionService(store=fake_store))
+    runs = {}
+    for daq in (3.0, 3.4, 4.0, 4.5):
+        runs[daq] = twoway_coverage(engine, dict(BASE), dict(PORT_5W),
+                                    47.0, 15.0, radius_m=12_000.0,
+                                    n_radials=48, n_steps=32, target_daq=daq)
+
+    fracs = [runs[d]["reliable_talkback_fraction"] for d in (3.0, 3.4, 4.0, 4.5)]
+    # A stricter audio grade can never be met over MORE area.
+    assert fracs == sorted(fracs, reverse=True), fracs
+    assert fracs[0] > fracs[-1], "the requested grade must change the answer"
+
+    # The anchors are reported and move by the published DAQ offsets.
+    assert (runs[4.5]["anchor_out_dbm"] - runs[3.4]["anchor_out_dbm"]
+            == pytest.approx(10.0, abs=0.05))
+    assert (runs[3.0]["anchor_in_dbm"] - runs[3.4]["anchor_in_dbm"]
+            == pytest.approx(-4.0, abs=0.05))
+
+
+def test_daq_offset_matches_the_published_grade_table():
+    from app.services.rf.twoway import daq_offset_db
+    assert daq_offset_db(3.4) == 0.0          # the reference anchor
+    assert daq_offset_db(4.0) == 6.0
+    assert daq_offset_db(4.5) == 10.0
+    assert daq_offset_db(3.0) == -4.0

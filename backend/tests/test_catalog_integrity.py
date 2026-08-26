@@ -14,7 +14,12 @@ import pytest
 import app.services.rf.hardware as hardware
 from app.services.rf.catalog_ingest import ingest_sources
 
-VALID_CONFIDENCE = {"datasheet", "published_typical", "class_reference"}
+# "inferred" marks a profile whose study-critical fields this catalog derived
+# rather than read off a datasheet (a beamwidth computed from gain, or a
+# sensitivity inherited from the class default). It exists so "datasheet" can
+# mean what it says.
+VALID_CONFIDENCE = {"datasheet", "published_typical", "class_reference",
+                    "inferred"}
 
 
 def _catalog():
@@ -111,10 +116,20 @@ def test_datasheet_claims_carry_a_source_url():
 
 
 def test_catalog_scale_and_confidence_mix():
-    """The catalog must stay majority-verified as it grows: at least half of
-    all entries carry datasheet-grade confidence, and at least 150 devices
-    total (the ingested-vendor baseline)."""
+    """Scale, plus an HONEST verified share.
+
+    This used to assert that half of all entries were datasheet-grade. That
+    passed only because entries inherited the class-default sensitivity and a
+    360 deg beamwidth while still calling themselves "datasheet". With those
+    fields labelled for what they are the true share is ~28%, and the floor
+    below is set from that measured reality. Raise it by ingesting real
+    datasheets - never by relaxing what "datasheet" means.
+    """
     entries = _catalog()
     assert len(entries) >= 150
     ds = sum(1 for e in entries if e.get("spec_confidence") == "datasheet")
-    assert ds / len(entries) >= 0.5
+    assert ds / len(entries) >= 0.25
+    # And the fully-unverified tail must not grow without bound.
+    unknown = sum(1 for e in entries
+                  if e.get("spec_confidence") == "class_reference")
+    assert unknown / len(entries) <= 0.35

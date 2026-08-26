@@ -107,6 +107,26 @@ def daq_grade(rx_dbm: float, sensitivity_dbm: float,
             "offset_db": round(float(offset), 1)}
 
 
+def daq_offset_db(target_daq: float) -> float:
+    """dB the DAQ-3.4 anchor must move to test a different target grade.
+
+    ``daq_grade`` classifies a level by its offset above the DAQ 3.4 anchor,
+    so a threshold test for any other grade is that same anchor shifted by the
+    grade's offset (+6 dB for DAQ 4.0, +10 for 4.5, -4 for 3.0). The
+    single-link path gets this right by grading and comparing; the area study
+    needs the shift explicitly because it thresholds a whole raster at once.
+    """
+    best = 0.0
+    for thr, grade, _label in DAQ_OFFSETS:
+        if abs(grade - target_daq) < 1e-9:
+            return float(thr)
+        # Fall back to the nearest defined grade at or below the request.
+        if grade <= target_daq:
+            best = float(thr)
+            break
+    return best
+
+
 def _penetration_db(portable: dict) -> float:
     """Total portable excess loss = body loss + penetration class."""
     body = float(portable.get("body_loss_db", DEFAULT_BODY_LOSS_DB))
@@ -251,8 +271,13 @@ def twoway_coverage(engine, base: dict, portable: dict,
     swap = float(portable["tx_power_dbm"]) - float(base["tx_power_dbm"])
     rx_in = rx_out + swap                                  # portable -> base
 
-    anchor_out = port_sens + faded_margin_db
-    anchor_in = base_sens + faded_margin_db
+    # Honour the requested grade. These anchors used to be pinned to DAQ 3.4
+    # while target_daq was accepted and echoed back untouched, so a tender
+    # report quoting "reliable talk-back at DAQ 4.5" returned the DAQ 3.4
+    # number - identical fractions for every grade the user asked for.
+    daq_shift = daq_offset_db(target_daq)
+    anchor_out = port_sens + faded_margin_db + daq_shift
+    anchor_in = base_sens + faded_margin_db + daq_shift
     ok_out = rx_out >= anchor_out
     ok_in = rx_in >= anchor_in
     reliable = ok_out & ok_in
@@ -273,6 +298,12 @@ def twoway_coverage(engine, base: dict, portable: dict,
         "reliable_limited_by_talk_out": round(
             frac(reliable) - limited_by_in, 4),
         "target_daq": target_daq,
+        # Report the levels every fraction above was thresholded against, so
+        # the number in a tender report is self-documenting rather than a
+        # bare percentage the reader has to trust.
+        "anchor_out_dbm": round(float(anchor_out), 1),
+        "anchor_in_dbm": round(float(anchor_in), 1),
+        "daq_offset_db": round(daq_shift, 1),
         "swap_db": round(swap, 1),
         "portable_excess_db": round(extra, 1),
         "warnings": polar["warnings"],

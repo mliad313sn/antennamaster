@@ -44,9 +44,43 @@ def _catalog() -> dict[str, dict]:
     if override.exists() and override.resolve() != _BUNDLED.resolve():
         for e in _load_file(override):
             by_id[e["id"]] = {**by_id.get(e["id"], {}), **e}
-    # Keep only well-formed entries.
-    return {k: v for k, v in by_id.items()
+    # Keep only well-formed entries, and never serve a fabricated spec.
+    return {k: _sanitize(v) for k, v in by_id.items()
             if all(f in v for f in REQUIRED)}
+
+
+def _sanitize(entry: dict) -> dict:
+    """Repair specs the catalog cannot honestly claim.
+
+    A catalog entry may reach us with beamwidth 360 while carrying 27 dBi of
+    gain - which no omni can do. Selecting it painted a point-to-point dish as
+    a full-circle donut, claiming coverage over a whole township, and the
+    entry still advertised spec_confidence "datasheet". Applied here rather
+    than only in the ingest script so an operator's own catalog dropped into
+    AM_DATA_DIR gets the same guarantee.
+    """
+    from .catalog_ingest import beamwidth_for, confidence_for
+
+    e = dict(entry)
+    gain = e.get("antenna_gain_dbi")
+    declared_bw = e.get("beamwidth_deg")
+    # Treat a 360 on a high-gain entry as "unstated", not as a measurement.
+    spatial = e.get("spatial_characteristics") or {}
+    stated = spatial.get("h_beamwidth_deg")
+    if not stated and declared_bw and float(declared_bw) < 360.0:
+        stated = declared_bw                      # a real per-entry beamwidth
+    bw, bw_source = beamwidth_for({"h_beamwidth_deg": stated}, gain)
+    e["beamwidth_deg"] = bw
+    e.setdefault("beamwidth_source", bw_source)
+
+    has_sens = bool((e.get("rf_specs") or {}).get("rx_sensitivity_dbm")) or \
+        e.get("sensitivity_source") == "datasheet"
+    e.setdefault("sensitivity_source",
+                 "datasheet" if has_sens else "class_default")
+    e["spec_confidence"] = confidence_for(
+        e.get("spec_confidence", "class_reference"),
+        e["sensitivity_source"] == "datasheet", bw_source)
+    return e
 
 
 def list_equipment() -> list[dict]:
