@@ -75,6 +75,9 @@ export default function Home() {
   const [showOverlay, setShowOverlay] = useState(true);
 
   const [technology, setTechnology] = useState<string | null>(null);
+  // The resolved Simple-mode scenario, handed to StudyPanel so it can apply
+  // the radius / sector / fade-margin the backend chose for it.
+  const [scenario, setScenario] = useState<ScenarioResolved | null>(null);
   const [model, setModel] = useState<string | null>(null);
   const [environment, setEnvironment] = useState<string | null>(null);
   const [foliageDepth, setFoliageDepth] = useState(0);
@@ -184,6 +187,13 @@ export default function Home() {
     setEnvironment(null);
     setTxHeight(String(s.tx_height_m));
     setRxHeight(String(s.rx_height_m));
+    // The backend resolves radius, sector and fade margin for each scenario
+    // too; dropping them meant the guided path silently ran at 0 dB shadow
+    // margin (a 50%-probability median) where the scenario intended a 90/95%
+    // design margin, and at the default radius rather than the scenario's.
+    // Those three live in StudyPanel's own state, so hand it the resolved
+    // scenario and let it apply them.
+    setScenario(s);
   }
 
   // Drop a stale coverage raster when the inputs that produced it change
@@ -594,6 +604,7 @@ export default function Home() {
             worldcoverOn={worldcoverOn} onWorldcoverChange={setWorldcoverOn}
             calibration={calibration} onCalibrationChange={setCalibration}
             surfaceAvailable={surfaceAvailable}
+            scenario={scenario}
             study={profile?.study ?? null}
             coverage={coverage} onCoverage={handleCoverage}
           />

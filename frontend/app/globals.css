@@ -288,8 +288,15 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .sortable-body.inert { pointer-events: none; user-select: none; }
 
 /* 2D / 3D view toggle + Cesium globe overlay */
+/* 2D/3D toggle. Every other map corner is taken: Leaflet's zoom control owns
+   top-left (y 10-70), .map-hint owns top-centre, and LayersControl owns
+   top-right. This sat at top-right with z-index 500 against Leaflet's
+   .leaflet-top { z-index: 1000 }, so the layers control covered the headline
+   3D feature completely and it could not be clicked at any width. Park it
+   below the zoom control -- whose height is fixed, unlike the layers control
+   which grows when expanded -- and lift it above the Leaflet control layer. */
 .view-toggle {
-  position: absolute; top: 10px; right: 10px; z-index: 500;
+  position: absolute; top: 80px; left: 10px; z-index: 1100;
   display: flex; gap: 0; border-radius: 8px; overflow: hidden;
   box-shadow: 0 1px 6px rgba(0,0,0,.4); background: var(--surface-1);
 }

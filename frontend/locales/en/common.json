@@ -77,6 +77,8 @@
     "model": "Propagation model",
     "environment": "Environment",
     "preset": "Preset",
+    "effective": "Effective",
+    "overridesActive": "{{count}} override(s) active — these replace the preset",
     "pathLoss": "Path loss ({{model}})",
     "diffraction": "Diffraction (Deygout)",
     "foliage": "Foliage (Weissberger)",

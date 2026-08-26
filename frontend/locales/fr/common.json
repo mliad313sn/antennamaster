@@ -77,6 +77,8 @@
     "model": "Modèle de propagation",
     "environment": "Environnement",
     "preset": "Préréglage",
+    "effective": "Effectif",
+    "overridesActive": "{{count}} valeur(s) forcée(s) — elles remplacent le préréglage",
     "pathLoss": "Affaiblissement ({{model}})",
     "diffraction": "Diffraction (Deygout)",
     "foliage": "Végétation (Weissberger)",

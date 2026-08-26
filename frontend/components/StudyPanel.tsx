@@ -18,7 +18,8 @@ import {
 } from '@/lib/api';
 import Help from '@/components/Help';
 import type {
-  AntennaInfo, CoverageResponse, Equipment, LatLng, ModelInfo, SiteEntry, StudyResult,
+  AntennaInfo, CoverageResponse, Equipment, LatLng, ModelInfo, ScenarioResolved,
+  SiteEntry, StudyResult,
   Technology,
 } from '@/lib/types';
 
@@ -46,6 +47,9 @@ export interface StudyPanelProps {
   calibration?: object | null;
   onCalibrationChange?: (c: object | null) => void;
   surfaceAvailable: boolean;
+  /** Resolved Simple-mode scenario: its radius / sector / fade-margin are
+   *  applied here, because those three live in this panel's own state. */
+  scenario?: ScenarioResolved | null;
   study: StudyResult | null;
   coverage: CoverageResponse | null;
   onCoverage: (c: CoverageResponse | null) => void;
@@ -127,6 +131,35 @@ export default function StudyPanel(props: StudyPanelProps) {
     fetchAntennas().then(setAntennas).catch(() => setAntennas([]));
     fetchEquipment().then((r) => setEquipment(r.equipment)).catch(() => setEquipment([]));
   }, []);
+
+  // Apply the resolved Simple-mode scenario's study settings.  radius, sector
+  // and fade margin live in this panel's state, so page.tsx cannot set them
+  // itself; before this they were simply discarded, and the guided path ran at
+  // the default radius with a 0 dB shadow margin -- a 50%-probability median
+  // presented to the user least equipped to notice it was optimistic.
+  useEffect(() => {
+    const s = props.scenario;
+    if (!s) return;
+    if (typeof s.radius_km === 'number' && s.radius_km > 0) setRadiusKm(s.radius_km);
+    if (typeof s.shadow_margin_db === 'number') setShadowMargin(s.shadow_margin_db);
+    setSector(Boolean(s.sector));
+  }, [props.scenario]);
+
+  /** Drop every link-budget / antenna override back to "use the preset".
+   *  Called when the technology changes, so a value left over from a previous
+   *  preset or a selected equipment profile can never silently override the
+   *  preset the panel is displaying. */
+  function clearOverrides() {
+    setOvrPower(''); setOvrTxGain(''); setOvrRxGain('');
+    setOvrLosses(''); setOvrSens('');
+    setAntennaId(null);
+    setSector(false); setAzimuth(0); setBeamwidth(65); setDowntilt(0);
+  }
+
+  /** Any override currently in force, so the UI can say so instead of
+   *  showing the preset's numbers as if they were what will run. */
+  const overrideCount = [ovrPower, ovrTxGain, ovrRxGain, ovrLosses, ovrSens]
+    .filter((v) => v.trim() !== '').length;
 
   // Equipment Selector: pick a real hardware profile and auto-fill the RF
   // parameters (technology, model, power, gain, sensitivity, beamwidth,
@@ -355,6 +388,14 @@ export default function StudyPanel(props: StudyPanelProps) {
           props.onModelChange(null);
           props.onEnvironmentChange(null);
           setEquipmentId(''); setFreqOverride(undefined);
+          // Clear everything the Equipment Selector or the site-budget panel
+          // wrote.  These used to survive a preset change while the "Preset"
+          // readout showed the NEW technology's figures, so picking a Wi-Fi AP
+          // and then switching to TETRA displayed 40 dBm / -103 dBm omni while
+          // actually running 23 dBm / -82 dBm inside a 65-degree sector -- a
+          // ~38 dB error with nothing on screen contradicting it, because the
+          // override fields are collapsed out of sight by default.
+          clearOverrides();
         }}
       >
         <option value="">{t('study.none')}</option>
@@ -395,11 +436,18 @@ export default function StudyPanel(props: StudyPanelProps) {
               </select>
             </div>
           )}
+          {/* Show what will ACTUALLY run.  Reading the preset's figures while
+              a collapsed override silently replaces them is how a study ends
+              up 38 dB out with nothing on screen to contradict it. */}
           <div className="stat-line" style={{ marginTop: 6 }}>
-            <span className="k">{t('study.preset')}</span>
-            <span className="v">
-              {selectedTech.freq_mhz.toLocaleString()} MHz ·
-              TX {selectedTech.tx_power_dbm} dBm · sens {selectedTech.rx_sensitivity_dbm} dBm
+            <span className="k">
+              {overrideCount > 0 ? t('study.effective') : t('study.preset')}
+            </span>
+            <span className="v" data-testid="effective-budget">
+              {(freqOverride ?? selectedTech.freq_mhz).toLocaleString()} MHz ·
+              TX {numOr(ovrPower) ?? selectedTech.tx_power_dbm} dBm ·
+              sens {numOr(ovrSens) ?? selectedTech.rx_sensitivity_dbm} dBm
+              {sector && ` · ${beamwidth}° @ ${azimuth}°`}
             </span>
           </div>
 
@@ -543,6 +591,14 @@ export default function StudyPanel(props: StudyPanelProps) {
             <button style={{ width: '100%', marginBottom: 6 }}
               onClick={() => setShowAdvanced((v) => !v)}>
               {showAdvanced ? '▾' : '▸'} {t('study.siteBudget')}
+              {/* A badge so an override hidden behind a collapsed section is
+                  still visible from the outside. */}
+              {overrideCount > 0 && (
+                <span className="arrange-badge" data-testid="override-count"
+                  title={t('study.overridesActive', { count: overrideCount })}>
+                  {overrideCount}
+                </span>
+              )}
             </button>
             {showAdvanced && (
               <>

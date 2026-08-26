@@ -9,6 +9,31 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.
 
+### Fixed — the panel showed one thing and ran another
+
+- **Equipment and link-budget overrides survived a technology change.**
+  Selecting the "Enterprise Wi-Fi AP" profile (23 dBm, −82 dBm, 65° sector)
+  and then switching the preset to TETRA 400 left the panel displaying
+  *40 dBm · −103 dBm · omni* while the study was dispatched at
+  *23 dBm · −82 dBm* inside a 65° wedge — a ~38 dB link-budget error, invisible
+  because the override fields are collapsed out of sight by default. Changing
+  the technology now clears every override, the readout is labelled
+  **Effective** (and shows the values that will actually run) whenever one is
+  in force, and a badge on the collapsed section counts them.
+- **The guided path ignored most of its own scenario.** `applyScenario` used
+  only the technology and the two antenna heights, discarding the `radius_km`,
+  `sector` and `shadow_margin_db` that `/api/rf/scenarios/{id}` resolves — so
+  Simple mode ran at the default radius with a **0 dB fade margin**, a
+  50 %-probability median, where the scenario intended a 90/95 % design margin.
+  Presented, of course, to the user least equipped to notice it was optimistic.
+  All three are now applied.
+- **The 3D toggle was unclickable at every width.** `.view-toggle` sat at
+  top-right with `z-index: 500` underneath Leaflet's layers control
+  (`.leaflet-top { z-index: 1000 }`), which covered the headline 3D feature
+  completely. Moved below the zoom control — whose height is fixed, unlike the
+  layers control that grows when expanded — and lifted above the Leaflet
+  control layer.
+
 ### Added — licensing
 
 - **AntennaMaster is now formally licensed under the GNU AGPL-3.0**
