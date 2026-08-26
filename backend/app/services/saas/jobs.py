@@ -33,6 +33,16 @@ class JobsBusyError(RuntimeError):
     """Raised when the concurrent-job cap is reached."""
 
 
+class JobCancelled(RuntimeError):
+    """Raised inside a worker thread when the user cancelled the job.
+
+    Cancellation is cooperative: the simulation reports progress from inside
+    its hot loop, and that same callback is where we check the flag. There is
+    no safe way to kill a thread mid-numpy, so this is the correct mechanism -
+    the job stops at the next progress tick and releases its slot.
+    """
+
+
 def create_job(kind: str, owner_id: int | None = None) -> str:
     job_id = uuid.uuid4().hex[:12]
     snapshot = {"id": job_id, "kind": kind, "status": "queued",
@@ -63,12 +73,37 @@ def set_progress(job_id: str, fraction: float) -> None:
             _jobs[job_id]["status"] = "running"
 
 
-def finish_job(job_id: str, result: dict | None, error: str | None = None) -> None:
+def cancel_job(job_id: str) -> bool:
+    """Ask a running job to stop. True if it was live and is now cancelling.
+
+    Returns False for an unknown or already-finished job, so the caller can
+    tell "too late" from "cancelling" without guessing.
+    """
+    with _lock:
+        job = _jobs.get(job_id)
+        if job is None or job["status"] in ("done", "failed", "cancelled"):
+            return False
+        job["cancel_requested"] = True
+        return True
+
+
+def raise_if_cancelled(job_id: str) -> None:
+    """Abort the current job if the user cancelled it. Called from the
+    simulation's progress callback, which runs inside its hot loop."""
+    with _lock:
+        job = _jobs.get(job_id)
+        if job is not None and job.get("cancel_requested"):
+            raise JobCancelled("Cancelled by the user")
+
+
+def finish_job(job_id: str, result: dict | None, error: str | None = None,
+               cancelled: bool = False) -> None:
     with _lock:
         if job_id not in _jobs:
             return
-        _jobs[job_id].update(status="failed" if error else "done",
-                             progress=1.0, result=result, error=error)
+        status = "cancelled" if cancelled else ("failed" if error else "done")
+        _jobs[job_id].update(status=status, progress=1.0, result=result,
+                             error=error)
         snapshot = dict(_jobs[job_id])
     # Disk sidecar: lets any worker answer the poll after completion.
     (JOBS_DIR / f"{job_id}.json").write_text(json.dumps(snapshot))
@@ -101,6 +136,10 @@ def run_in_thread(job_id: str, fn: Callable[..., dict], *args: Any,
         global _running
         try:
             finish_job(job_id, fn(*args, **kwargs))
+        except JobCancelled:
+            # A user-requested stop is a normal outcome, not a failure - it
+            # must not surface as a scary error in the UI.
+            finish_job(job_id, None, cancelled=True)
         except Exception as exc:  # noqa: BLE001 - job errors surface via status
             finish_job(job_id, None, error=str(exc))
         finally:

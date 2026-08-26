@@ -169,19 +169,30 @@ function coverageBody(params: CoverageParams): Record<string, unknown> {
  */
 export async function simulateCoverageTracked(
   params: CoverageParams, onProgress: (fraction: number) => void,
+  onStarted?: (cancel: () => void) => void,
 ): Promise<CoverageResponse> {
-  const { startAsyncCoverage, awaitJob } = await import('./saas');
+  const { startAsyncCoverage, awaitJob, cancelJob } = await import('./saas');
   let jobId: string;
   try {
     jobId = await startAsyncCoverage(coverageBody(params));
   } catch {
     return simulateCoverage(params);      // no job API - run it inline
   }
+  // Hand the caller a way to stop it; a full-resolution sweep is ~26 s and a
+  // run started with the wrong parameters should not have to be waited out.
+  onStarted?.(() => { void cancelJob(jobId).catch(() => {}); });
   const job = await awaitJob(jobId, onProgress);
+  if (job.status === 'cancelled') throw new CoverageCancelled();
   if (job.status === 'failed' || !job.result) {
     throw new Error(job.error || 'The coverage simulation failed.');
   }
   return job.result as unknown as CoverageResponse;
+}
+
+/** Thrown when the user stopped their own study — an expected outcome, so
+ *  callers should clear the busy state without showing an error. */
+export class CoverageCancelled extends Error {
+  constructor() { super('Simulation cancelled'); this.name = 'CoverageCancelled'; }
 }
 
 export interface CoveragePoint {

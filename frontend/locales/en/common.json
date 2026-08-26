@@ -112,6 +112,7 @@
     "rxSensitivity": "RX sensitivity (dBm)",
     "simulate": "Simulate coverage from TX",
     "simulating": "Simulating…",
+    "cancel": "Stop simulation",
     "placeTxFirst": "Place TX first",
     "addSite": "Add current TX as site ({{count}}/8)",
     "bestServer": "Best-server map ({{count}} sites)",

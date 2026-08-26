@@ -9,7 +9,7 @@
  */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { friendlyError, simulateCoverageTracked } from '@/lib/api';
+import { CoverageCancelled, friendlyError, simulateCoverageTracked } from '@/lib/api';
 
 describe('friendlyError', () => {
   it('rewrites the busy-worker 429 into advice a planner can act on', () => {
@@ -75,6 +75,42 @@ describe('simulateCoverageTracked', () => {
 
     await expect(simulateCoverageTracked(params, () => {}))
       .rejects.toThrow(/DEM tile unavailable/);
+  });
+
+  it('reports a user cancellation distinctly, not as a failure', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => ({
+      ok: true, status: 200,
+      json: async () => (String(url).includes('/coverage/async')
+        ? { job_id: 'j3' }
+        : { id: 'j3', status: 'cancelled', progress: 1, result: null, error: null }),
+    })) as unknown as typeof fetch);
+
+    // Stopping your own study must be distinguishable so the UI can stay
+    // quiet instead of showing a scary error box.
+    await expect(simulateCoverageTracked(params, () => {}))
+      .rejects.toBeInstanceOf(CoverageCancelled);
+  });
+
+  it('hands the caller a cancel handle once the job is queued', async () => {
+    const calls: { url: string; method?: string }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), method: init?.method });
+      return {
+        ok: true, status: 200,
+        json: async () => (String(url).includes('/coverage/async')
+          ? { job_id: 'j4' }
+          : { id: 'j4', status: 'cancelled', progress: 0.3, result: null, error: null }),
+      };
+    }) as unknown as typeof fetch);
+
+    let cancel: (() => void) | null = null;
+    await expect(simulateCoverageTracked(params, () => {}, (c) => { cancel = c; }))
+      .rejects.toBeInstanceOf(CoverageCancelled);
+    expect(cancel).toBeTypeOf('function');
+    cancel!();
+    await Promise.resolve();
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('/jobs/j4')))
+      .toBe(true);
   });
 
   it('falls back to the synchronous endpoint when the job API is absent', async () => {

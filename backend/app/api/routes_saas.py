@@ -147,9 +147,12 @@ def coverage_async(req: CoverageRequest,
     check_preset_allowed(user, req.technology)   # entitlements before queueing
     job_id = jobs.create_job("coverage", owner_id=user["id"] if user else None)
 
+    def _progress(fraction: float) -> None:
+        jobs.set_progress(job_id, fraction)
+        jobs.raise_if_cancelled(job_id)   # cooperative stop, checked in-loop
+
     def _run() -> dict:
-        return run_coverage(req, progress_cb=lambda f: jobs.set_progress(job_id, f),
-                            user=user)
+        return run_coverage(req, progress_cb=_progress, user=user)
 
     try:
         jobs.run_in_thread(job_id, _run)
@@ -172,3 +175,20 @@ def job_status(job_id: str,
     if owner is not None and (user is None or user["id"] != owner):
         raise HTTPException(404, "Unknown job")
     return {k: v for k, v in job.items() if k != "owner_id"}
+
+
+@router.delete("/jobs/{job_id}")
+def cancel_job(job_id: str,
+               user: dict | None = Depends(current_user)) -> dict:
+    """Stop a running simulation the user no longer wants.
+
+    A full-resolution sweep is ~26 s; without this, a run started with the
+    wrong parameters has to be waited out while holding a worker slot.
+    """
+    job = jobs.get_job(job_id)
+    if job is None:
+        raise HTTPException(404, "Unknown job")
+    owner = jobs.owner_of(job)
+    if owner is not None and (user is None or user["id"] != owner):
+        raise HTTPException(404, "Unknown job")   # same non-oracle as the poll
+    return {"job_id": job_id, "cancelling": jobs.cancel_job(job_id)}

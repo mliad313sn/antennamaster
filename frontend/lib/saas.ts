@@ -40,7 +40,7 @@ export interface CostEstimate {
 
 export interface Job {
   id: string;
-  status: 'queued' | 'running' | 'done' | 'failed';
+  status: 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
   progress: number;
   result: Record<string, unknown> | null;
   error: string | null;
@@ -175,13 +175,19 @@ export async function fetchJob(jobId: string): Promise<Job> {
   return call(`/api/saas/jobs/${jobId}`);
 }
 
+/** Ask the server to stop a running simulation. */
+export async function cancelJob(jobId: string): Promise<void> {
+  await call(`/api/saas/jobs/${jobId}`, { method: 'DELETE' });
+}
+
 /** Poll a job until terminal, reporting progress via callback. */
 export async function awaitJob(jobId: string,
   onProgress: (p: number) => void): Promise<Job> {
   for (;;) {
     const job = await fetchJob(jobId);
     onProgress(job.progress);
-    if (job.status === 'done' || job.status === 'failed') return job;
+    if (job.status === 'done' || job.status === 'failed'
+        || job.status === 'cancelled') return job;
     await new Promise((r) => setTimeout(r, 400));
   }
 }

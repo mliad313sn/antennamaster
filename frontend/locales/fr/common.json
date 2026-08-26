@@ -112,6 +112,7 @@
     "rxSensitivity": "Sensibilité réception (dBm)",
     "simulate": "Simuler la couverture depuis l'émetteur",
     "simulating": "Simulation…",
+    "cancel": "Arrêter la simulation",
     "placeTxFirst": "Placez d'abord l'émetteur",
     "addSite": "Ajouter l'émetteur comme site ({{count}}/8)",
     "bestServer": "Carte meilleur serveur ({{count}} sites)",

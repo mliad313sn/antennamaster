@@ -11,7 +11,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, frequencyPlan,
-  friendlyError, monteCarloTraffic, simulateCoverageTracked, simulateMultiCoverage,
+  CoverageCancelled, friendlyError, monteCarloTraffic, simulateCoverageTracked,
+  simulateMultiCoverage,
   throughputMap,
   uploadAntenna,
 } from '@/lib/api';
@@ -71,6 +72,8 @@ export default function StudyPanel(props: StudyPanelProps) {
   // 0..1 while a queued coverage study runs, so a 26 s full-resolution sweep
   // shows real progress instead of a frozen button.
   const [progress, setProgress] = useState(0);
+  // Set while a queued study is in flight so the user can stop it.
+  const [cancelRun, setCancelRun] = useState<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Measured antenna patterns (MSI Planet uploads).
@@ -291,15 +294,19 @@ export default function StudyPanel(props: StudyPanelProps) {
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
         rxSensitivityDbm: numOr(ovrSens),
-      }, setProgress);
+      }, setProgress, (cancel) => setCancelRun(() => cancel));
       setMultiRaw(null);
       setSinrView(false);
       props.onCoverage(resp);
     } catch (e) {
-      setError(friendlyError((e as Error).message));
+      // Stopping your own study is an expected outcome, not an error.
+      if (!(e instanceof CoverageCancelled)) {
+        setError(friendlyError((e as Error).message));
+      }
     } finally {
       setBusy(false);
       setProgress(0);
+      setCancelRun(null);
     }
   }
 
@@ -583,6 +590,12 @@ export default function StudyPanel(props: StudyPanelProps) {
                 aria-valuenow={Math.round(progress * 100)}>
                 <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
               </div>
+            )}
+            {busy && cancelRun && (
+              <button style={{ width: '100%', marginTop: 4 }}
+                onClick={() => { cancelRun(); setCancelRun(null); }}>
+                {t('study.cancel')}
+              </button>
             )}
             {/* ------------------- multi-site best-server study ---------- */}
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
