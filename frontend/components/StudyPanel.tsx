@@ -11,7 +11,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   fetchAntennas, fetchEquipment, fetchModels, fetchTechnologies, frequencyPlan,
-  monteCarloTraffic, simulateCoverage, simulateMultiCoverage, throughputMap,
+  friendlyError, monteCarloTraffic, simulateCoverageTracked, simulateMultiCoverage,
+  throughputMap,
   uploadAntenna,
 } from '@/lib/api';
 import Help from '@/components/Help';
@@ -67,6 +68,9 @@ export default function StudyPanel(props: StudyPanelProps) {
   const [ovrLosses, setOvrLosses] = useState('');
   const [ovrSens, setOvrSens] = useState('');
   const [busy, setBusy] = useState(false);
+  // 0..1 while a queued coverage study runs, so a 26 s full-resolution sweep
+  // shows real progress instead of a frozen button.
+  const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   // Measured antenna patterns (MSI Planet uploads).
@@ -145,7 +149,7 @@ export default function StudyPanel(props: StudyPanelProps) {
       const info = await uploadAntenna(file);
       setAntennas((prev) => [...prev, info]);
       setAntennaId(info.antenna_id);
-    } catch (e) { setError((e as Error).message); }
+    } catch (e) { setError(friendlyError((e as Error).message)); }
   }
 
   async function runMultiCoverage() {
@@ -166,7 +170,7 @@ export default function StudyPanel(props: StudyPanelProps) {
       setMultiRaw(resp);
       setSinrView(false);
       props.onCoverage(resp);
-    } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
+    } catch (e) { setError(friendlyError((e as Error).message)); } finally { setBusy(false); }
   }
 
   async function runThroughputMap() {
@@ -195,7 +199,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         props.onCoverage({ ...multiRaw, png_url: resp.png_url,
                            bounds: resp.bounds, legend: resp.legend });
       }
-    } catch (e) { setError((e as Error).message); } finally { setTpBusy(false); }
+    } catch (e) { setError(friendlyError((e as Error).message)); } finally { setTpBusy(false); }
   }
 
   const [mcRaw, setMcRaw] = useState<any | null>(null);
@@ -221,7 +225,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         tx_power_dbm: numOr(ovrPower), tx_gain_dbi: numOr(ovrTxGain),
       });
       setMcRaw(resp);
-    } catch (e) { setError((e as Error).message); } finally { setMcBusy(false); }
+    } catch (e) { setError(friendlyError((e as Error).message)); } finally { setMcBusy(false); }
   }
 
   async function runFrequencyPlan() {
@@ -240,7 +244,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         tx_power_dbm: numOr(ovrPower), tx_gain_dbi: numOr(ovrTxGain),
       });
       setFreqPlan(resp);
-    } catch (e) { setError((e as Error).message); } finally { setPlanBusy(false); }
+    } catch (e) { setError(friendlyError((e as Error).message)); } finally { setPlanBusy(false); }
   }
 
   const selectedTech = useMemo(
@@ -263,9 +267,10 @@ export default function StudyPanel(props: StudyPanelProps) {
   async function runCoverage() {
     if (!props.tx || !props.technology) return;
     setBusy(true);
+    setProgress(0);
     setError(null);
     try {
-      const resp = await simulateCoverage({
+      const resp = await simulateCoverageTracked({
         lat: props.tx.lat, lon: props.tx.lng,
         technology: props.technology, radiusKm,
         dxfId: props.dxfId,
@@ -286,14 +291,15 @@ export default function StudyPanel(props: StudyPanelProps) {
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
         rxSensitivityDbm: numOr(ovrSens),
-      });
+      }, setProgress);
       setMultiRaw(null);
       setSinrView(false);
       props.onCoverage(resp);
     } catch (e) {
-      setError((e as Error).message);
+      setError(friendlyError((e as Error).message));
     } finally {
       setBusy(false);
+      setProgress(0);
     }
   }
 
@@ -565,8 +571,19 @@ export default function StudyPanel(props: StudyPanelProps) {
             )}
             <button className="primary" style={{ width: '100%' }} data-tour="coverage"
               disabled={!props.tx || busy} onClick={runCoverage}>
-              {busy ? t('study.simulating') : props.tx ? t('study.simulate') : t('study.placeTxFirst')}
+              {busy
+                ? `${t('study.simulating')} ${(progress * 100).toFixed(0)}%`
+                : props.tx ? t('study.simulate') : t('study.placeTxFirst')}
             </button>
+            {busy && (
+              /* Live progress for the queued study: a full-resolution sweep is
+                 ~26 s of compute, which is far too long for a static label. */
+              <div className="progress" role="progressbar" aria-label={t('study.simulating')}
+                aria-valuemin={0} aria-valuemax={100}
+                aria-valuenow={Math.round(progress * 100)}>
+                <div className="progress-fill" style={{ width: `${progress * 100}%` }} />
+              </div>
+            )}
             {/* ------------------- multi-site best-server study ---------- */}
             <div style={{ borderTop: '1px solid var(--hairline)', marginTop: 8, paddingTop: 8 }}>
               <button style={{ width: '100%' }} disabled={!props.tx}

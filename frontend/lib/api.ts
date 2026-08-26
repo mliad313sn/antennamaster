@@ -6,6 +6,30 @@ import type {
   TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
 } from './types';
 
+/**
+ * Turn a backend diagnostic into advice a planner can act on.
+ *
+ * The API speaks to API clients — it answers an overloaded worker with
+ * "retry shortly or use POST /api/saas/coverage/async", which is useless
+ * inside a GUI that has no address bar. Anything we don't recognise is passed
+ * through untouched, so real errors are never masked.
+ */
+export function friendlyError(detail: string): string {
+  if (/simulations already running|too many|busy/i.test(detail)) {
+    return 'The server is busy with other simulations right now. '
+      + 'Wait a moment and run the study again — nothing was lost.';
+  }
+  if (/timed out|timeout|gateway/i.test(detail)) {
+    return 'The simulation took too long to answer. Try a smaller radius, or '
+      + 'fewer radials/steps, and run it again.';
+  }
+  if (/failed to fetch|networkerror|load failed/i.test(detail)) {
+    return 'Could not reach the simulation server. Check that it is running, '
+      + 'then try again.';
+  }
+  return detail;
+}
+
 async function jsonOrThrow<T>(resp: Response): Promise<T> {
   if (!resp.ok) {
     let detail = resp.statusText;
@@ -75,7 +99,7 @@ export async function fetchModels(): Promise<ModelInfo[]> {
   return body.models ?? [];
 }
 
-export async function simulateCoverage(params: {
+export interface CoverageParams {
   lat: number; lon: number; technology: string; radiusKm: number;
   dxfId: string | null;
   freqMhz?: number; model?: string | null; environment?: string | null;
@@ -90,11 +114,20 @@ export async function simulateCoverage(params: {
   // Real site link-budget overrides (the preset is only a starting point):
   txPowerDbm?: number; txGainDbi?: number; rxGainDbi?: number;
   lossesDb?: number; rxSensitivityDbm?: number;
-}): Promise<CoverageResponse> {
+}
+
+export async function simulateCoverage(params: CoverageParams): Promise<CoverageResponse> {
   return jsonOrThrow(await fetch('/api/rf/coverage', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+    body: JSON.stringify(coverageBody(params)),
+  }));
+}
+
+/** Request body shared by the synchronous and the queued coverage paths, so
+ *  the two can never drift apart. */
+function coverageBody(params: CoverageParams): Record<string, unknown> {
+  return {
       lat: params.lat, lon: params.lon,
       technology: params.technology, radius_km: params.radiusKm,
       dxf_id: params.dxfId ?? undefined,
@@ -118,8 +151,37 @@ export async function simulateCoverage(params: {
       rx_gain_dbi: params.rxGainDbi,
       losses_db: params.lossesDb,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
-    }),
-  }));
+  };
+}
+
+/**
+ * Run a coverage study as a queued background job, reporting live progress.
+ *
+ * A full-resolution sweep (720 radials x 400 steps) takes ~26 s of pure
+ * compute. Run synchronously that is a blocking request with no feedback,
+ * at risk of a reverse-proxy gateway timeout, and it is refused with a 429
+ * once six studies are already in flight on the worker. The queued path
+ * instead reports progress the whole way and waits its turn under load, so
+ * the UI stays honest and responsive at any resolution.
+ *
+ * `onProgress` receives 0..1. Falls back to the synchronous endpoint if the
+ * job API is unavailable (e.g. an older backend), so the button always works.
+ */
+export async function simulateCoverageTracked(
+  params: CoverageParams, onProgress: (fraction: number) => void,
+): Promise<CoverageResponse> {
+  const { startAsyncCoverage, awaitJob } = await import('./saas');
+  let jobId: string;
+  try {
+    jobId = await startAsyncCoverage(coverageBody(params));
+  } catch {
+    return simulateCoverage(params);      // no job API - run it inline
+  }
+  const job = await awaitJob(jobId, onProgress);
+  if (job.status === 'failed' || !job.result) {
+    throw new Error(job.error || 'The coverage simulation failed.');
+  }
+  return job.result as unknown as CoverageResponse;
 }
 
 /** Restore a georeferenced DXF's map state (footprint/overlay) by id —
