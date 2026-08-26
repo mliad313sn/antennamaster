@@ -30,12 +30,26 @@ export default defineConfig({
   },
   projects: [{
     name: 'chromium',
+    testIgnore: /mobile\.spec\.ts/,
     use: {
       ...devices['Desktop Chrome'],
       // Use a preinstalled Chromium when one is provided (CI images and
       // sandboxes ship one whose build number rarely matches the npm
       // package's expectation). Set E2E_CHROMIUM to override; unset falls
       // back to Playwright's own download.
+      launchOptions: process.env.E2E_CHROMIUM
+        ? { executablePath: process.env.E2E_CHROMIUM }
+        : {},
+    },
+  }, {
+    // The planner is meant for field technicians on phones and rugged
+    // tablets, and it was unusable there: the elevation profile sat at y=847
+    // on a 740px screen behind three nested scrollers with no reachable outer
+    // scroll. Only a real device viewport catches that, so it is now gated.
+    name: 'mobile',
+    testMatch: /mobile\.spec\.ts/,
+    use: {
+      ...devices['Pixel 5'],
       launchOptions: process.env.E2E_CHROMIUM
         ? { executablePath: process.env.E2E_CHROMIUM }
         : {},

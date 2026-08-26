@@ -587,18 +587,39 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 /* Responsive: below tablet width stack the sidebar above the map so the
    app stays usable on phones in the field. */
 @media (max-width: 800px) {
-  .app-main { flex-direction: column; overflow-y: auto; }
+  /* One scroller, not three.  The desktop layout pins .app-shell to the
+     viewport and gives .app-main AND .sidebar their own overflow, with the
+     sidebar additionally set to overscroll-behavior: contain.  Stacked on a
+     phone that produced ~893px of content inside a ~546px box whose scroll
+     could not be reached: the sidebar swallowed the gesture and did not chain
+     to its parent, and Leaflet consumed every touch over the map, so the
+     elevation profile sat at y=847 on a 740px screen with no way to get to
+     it.  On small screens the document itself scrolls instead, which is
+     always reachable. */
+  .app-shell { height: auto; min-height: 100vh; min-height: 100dvh; }
+  .app-main { flex-direction: column; overflow: visible; }
   .sidebar {
     width: 100%; border-right: none; border-bottom: 1px solid var(--hairline);
-    max-height: 45vh;
+    max-height: none; overflow: visible; overscroll-behavior: auto;
   }
-  .map-and-chart { min-height: 55vh; }
-  .map-wrap { min-height: 320px; }
+  /* The map needs a definite height (Leaflet sizes itself to its container),
+     but it must not claim the whole viewport and push the chart off-screen. */
+  .map-and-chart { min-height: 0; }
+  .map-wrap { height: 60vh; min-height: 280px; max-height: 480px; }
   .chart-wrap { height: 240px; }
   .app-header { flex-wrap: wrap; row-gap: 6px; }
   .header-search { flex-wrap: wrap; row-gap: 6px; }
   .header-search input { width: 130px; }
   .app-header .sub { display: none; }
+
+  /* Touch targets: WCAG 2.5.8 asks for 24px minimum, and a gloved hand on a
+     tower base needs considerably more.  This mirrors what .field-shell
+     already does, which the planner never inherited. */
+  .sidebar button, .sidebar input, .sidebar select, .sidebar .file-btn {
+    min-height: 44px; font-size: 15px;
+  }
+  /* Except the compact icon controls, which are sized deliberately. */
+  .sidebar .sortable-controls button { min-height: 32px; }
 }
 
 /* Thin, themed scrollbars on the app's own scroll surfaces. */

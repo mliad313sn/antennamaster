@@ -28,6 +28,25 @@ while the running server was probed empirically for behaviour and defects.
   was a bare `<div onClick>`: not focusable, not announced, unusable without a
   pointer. It is now a proper `radiogroup` with `aria-checked` and Enter/Space.
 
+### Fixed — the planner on a phone
+
+- **Three nested scrollers, none of them reachable.** The desktop shell pins
+  `.app-shell` to the viewport and gives *both* `.app-main` and `.sidebar`
+  their own `overflow`, the sidebar additionally with
+  `overscroll-behavior: contain`. Stacked at 390×844 that produced ~1 480 px of
+  content in a ~727 px box whose scroll no gesture could reach: the sidebar
+  swallowed the touch instead of chaining to its parent, and Leaflet consumed
+  every touch over the map — so the elevation profile sat below the fold with
+  no way to get to it. Below 800 px the document itself now scrolls (measured:
+  `scrollHeight 1484 / clientHeight 727`, every `overflow` back to `visible`),
+  and the map takes a bounded height instead of claiming the viewport.
+- **Touch targets.** Sidebar controls are ≥ 44 px on small screens — the field
+  view already did this and the planner never inherited it.
+- **A `Pixel 5` Playwright project is now part of the e2e gate**, asserting no
+  horizontal scroll, that the page below the fold is reachable, that the
+  sidebar no longer traps the scroll, the 44 px targets, and that the 2D/3D
+  toggle is genuinely on top and responds to a click.
+
 ### Fixed — accessibility (screen reader and keyboard)
 
 - **Nothing was ever announced.** The entire frontend contained one live

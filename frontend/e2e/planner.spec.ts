@@ -30,6 +30,19 @@ async function dismissTour(page: import('@playwright/test').Page) {
   await expect(page.locator('.react-joyride__overlay')).toHaveCount(0);
 }
 
+/**
+ * Enter Expert mode.
+ *
+ * A first run now starts in the guided Simple mode - that is the whole point
+ * of it, and it deliberately hides the propagation model, the technology
+ * select and every other RF knob. The tests below exercise the expert
+ * journey, so they have to ask for it rather than assuming the default.
+ */
+async function goExpert(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Expert', exact: true }).click();
+  await expect(page.getByLabel('Technology')).toBeVisible();
+}
+
 test.describe('the core planning loop', () => {
   test.beforeEach(async ({ page }) => {
     // Playwright gives every test a fresh browser context, so localStorage
@@ -42,6 +55,7 @@ test.describe('the core planning loop', () => {
   test('place a transmitter, run a coverage study, read a point off the map',
     async ({ page }) => {
       await dismissTour(page);
+      await goExpert(page);
 
       // --- place the site by typing exact coordinates (no map maths needed)
       await page.getByLabel('TX lat').fill('47.0');
@@ -96,6 +110,7 @@ test.describe('the core planning loop', () => {
   test('the sidebar can be rearranged and the layout survives a reload',
     async ({ page }) => {
       await dismissTour(page);
+      await goExpert(page);
 
       const panelIds = () => page.locator('[data-panel-id]')
         .evaluateAll((els) => els.map((e) => e.getAttribute('data-panel-id')));
@@ -116,5 +131,35 @@ test.describe('the core planning loop', () => {
       await page.reload();
       const reloaded = await panelIds();
       expect(reloaded.slice(0, 2)).toEqual(after.slice(0, 2));
+    });
+
+  test('a first-time visitor lands in the guided mode and can still get an answer',
+    async ({ page }) => {
+      // Simple mode is the default on a first run, and it must be a complete
+      // path in itself: it used to be purely additive, hiding nothing, so a
+      // non-RF user was handed the full expert sidebar. It must now show the
+      // scenario picker and a small surface - but still reach a result.
+      await dismissTour(page);
+
+      await expect(page.getByRole('button', { name: 'Simple', exact: true }))
+        .toHaveClass(/active/);
+
+      // The RF knobs are gone.
+      await expect(page.getByLabel('Technology')).toHaveCount(0);
+      await expect(page.getByLabel('Propagation model')).toHaveCount(0);
+      const fields = page.locator('.sidebar input, .sidebar select, .sidebar textarea');
+      expect(await fields.count()).toBeLessThanOrEqual(6);
+
+      // Choosing an outcome configures the radio for the user. The scenario
+      // cards are themselves the buttons; picking one reveals the confirm.
+      await page.getByRole('button', { name: /Wi-Fi for a vehicle fleet/i }).click();
+      await page.getByRole('button', { name: /Set this up/i }).click();
+      await expect(page.getByText(/place your points on the map/i)).toBeVisible();
+
+      // ...and the study is runnable without ever naming a technology.
+      await page.getByLabel('TX lat').fill('47.0');
+      await page.getByLabel('TX lon').fill('15.0');
+      const simulate = page.getByRole('button', { name: /Simulate coverage from TX/i });
+      await expect(simulate).toBeEnabled();
     });
 });
