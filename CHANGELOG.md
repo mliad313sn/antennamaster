@@ -4,6 +4,30 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.4 — 2026-08-27
+
+### Fixed — the tactical view claimed to be online when nothing was reachable
+
+- **The connectivity badge now asks the backend, not `navigator.onLine`.**
+  That flag reports whether a network interface exists, not whether anything
+  can be reached, and the two come apart in exactly the situation this screen
+  is for: a site LAN with no route out, a hotspot with no upstream, a captive
+  portal. The badge read "● Online" regardless — on the screen a technician
+  checks *before they climb*, where believing the terrain service is
+  reachable and being wrong is the expensive direction.
+- **A failed request is better evidence than any probe**, so the GPS spot
+  check's own elevation lookup now sets the state directly: if that call
+  failed, the link is down, whatever the browser thinks.
+- The probe requires a healthy answer, not merely an answer. Measured with
+  the backend stopped, the web app's own proxy returns **HTTP 500** rather
+  than failing the request — so "we got a response" would have put "Online"
+  on the badge with the backend dead, which is the same mistake one layer
+  down. `navigator.onLine === false` is still trusted in the negative
+  direction: when it fires it is right, and it saves a doomed request.
+- Verified in the browser: with the backend killed, the badge flips to
+  "○ Offline — cached" within one probe interval while `navigator.onLine`
+  stays `true` throughout.
+
 ## 1.3.3 — 2026-08-27
 
 ### Fixed — the pitch screen's payback contradicted the coverage beside it

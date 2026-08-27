@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DashNav from '@/components/DashNav';
+import { probeBackend } from '@/lib/reachability';
 
 interface Spot {
   lat: number;
@@ -36,12 +37,24 @@ export default function Field() {
 
   // Live connectivity state — field engineers work off-grid; the app is
   // cached for offline use and this makes the current state explicit.
+  //
+  // This asks the BACKEND, not `navigator.onLine`. That flag reports whether
+  // a network interface exists, not whether anything can be reached, and the
+  // two come apart in exactly the situation this screen is for: a site LAN, a
+  // hotspot with no upstream, a captive portal. It drove the badge to read
+  // "● Online" regardless — on the screen a technician checks before they
+  // climb, where believing the terrain service is reachable and being wrong
+  // is the expensive mistake.
   useEffect(() => {
-    const sync = () => setOnline(navigator.onLine);
+    let alive = true;
+    const sync = () => { probeBackend().then((v) => { if (alive) setOnline(v); }); };
     sync();
+    const iv = setInterval(sync, 15000);
     window.addEventListener('online', sync);
     window.addEventListener('offline', sync);
     return () => {
+      alive = false;
+      clearInterval(iv);
       window.removeEventListener('online', sync);
       window.removeEventListener('offline', sync);
     };
@@ -66,7 +79,12 @@ export default function Field() {
       try {
         const resp = await fetch(`/api/terrain/elevation?lat=${latitude}&lon=${longitude}`);
         if (resp.ok) next.elevation_m = (await resp.json()).elevation_m;
-      } catch { /* offline: coordinates still useful */ }
+        setOnline(true);
+      } catch {
+        // A real request that failed is better evidence than any probe:
+        // the coordinates are still useful, but say the link is down.
+        setOnline(false);
+      }
       setSpot(next);
     };
     if (follow) {

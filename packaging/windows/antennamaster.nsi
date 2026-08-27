@@ -11,7 +11,7 @@ Unicode true
 !include "FileFunc.nsh"
 
 !define APPNAME   "AntennaMaster"
-!define VERSION   "1.3.3"
+!define VERSION   "1.3.4"
 !define PUBLISHER "AntennaMaster project"
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 
