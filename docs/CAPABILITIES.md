@@ -45,6 +45,17 @@ All modes bidirectional (exact inverse), vertical `z_scale` independent,
 state persisted as a JSON sidecar and deterministically rebuilt by any
 worker (`ensure_ready`).
 
+## 2b. The study of record
+
+Every coverage study stores, next to its raster, the **complete input set** it
+ran on and its **provenance** — application version, propagation engine,
+terrain source, and which ITU/NTIA reference engines the deployment could
+reach — plus a 16-hex **digest** over both. `GET /api/rf/coverage/{id}/record`
+returns it (owner-scoped), the digest is printed on the exported PDF, and
+`POST /api/rf/coverage/{id}/rerun` re-executes the recorded inputs and reports
+whether the answer moved, as a *new* study with its own id. The filed study is
+immutable by construction: nothing updates it.
+
 ## 3. Propagation models (6 empirical + ITM)
 
 | Model | Range | Use |

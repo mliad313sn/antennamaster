@@ -126,6 +126,11 @@ export interface StudyResult {
 
 export interface CoverageResponse {
   coverage_id: string;
+  /** The citable reference for this study: the digest over its complete
+   *  input set and the build that produced it. Printed on the exported PDF
+   *  and quotable back at us — `GET /api/rf/coverage/{id}/record` returns
+   *  what it stands for. Absent on multi-site composites. */
+  study_digest?: string;
   png_url: string;
   bounds: [[number, number], [number, number]];
   legend: { margin_db: number; color: string; label: string }[];

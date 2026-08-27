@@ -277,7 +277,8 @@
     "itmReliability": "Reliability",
     "itmRel50": "50% — median",
     "itmRel90": "90% — design",
-    "itmRel95": "95% — committed"
+    "itmRel95": "95% — committed",
+    "record": "Study of record"
   },
   "batch": {
     "title": "Batch receivers",
@@ -391,7 +392,8 @@
     "helmert": "Georeferencing fit: how the drawing is aligned to the real world from the reference points you gave. A large error (in meters) usually means a mis-placed point or the wrong units.",
     "gain": "Antenna gain (dBi): how much an antenna concentrates its energy in a direction versus radiating everywhere equally. Higher gain means more reach but a narrower beam.",
     "txpower": "Transmit power (dBm): how much power the radio puts out. More power reaches further, but regulators cap it and it is only one part of the budget.",
-    "itmReliability": "ITM answers “the level exceeded at X% of locations and time”, not a bare median. 50% is the median a link budget gives; a coverage commitment is written on 90–95%, which over real terrain roughness costs around 10–15 dB."
+    "itmReliability": "ITM answers “the level exceeded at X% of locations and time”, not a bare median. 50% is the median a link budget gives; a coverage commitment is written on 90–95%, which over real terrain roughness costs around 10–15 dB.",
+    "studyRecord": "The reference for this exact study: a digest over its complete input set and the build that produced it. It is printed on the exported PDF, and it can be quoted back to retrieve every assumption behind the map — or to re-run the study on its recorded inputs and see whether it still says the same thing."
   },
   "gis": {
     "exportTitle": "Export to GIS",

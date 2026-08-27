@@ -117,11 +117,24 @@ def report_pdf(req: ReportRequest,
 
     coverage_png = None
     coverage_stats = None
+    study_ref = None
     if req.coverage_id:
         hit = results_store.load("coverage", req.coverage_id)
         if hit is None:
             raise HTTPException(404, "Coverage result expired or unknown")
         coverage_png = hit[0]
+        # The citable reference for the map on this page. A reader disputing
+        # the plot a year from now can quote it back and ask for the record,
+        # or for a re-run; a picture with no reference is just a picture.
+        record = (hit[1] or {}).get("record") or {}
+        if record.get("digest"):
+            study_ref = {
+                "coverage_id": req.coverage_id,
+                "digest": record["digest"],
+                "app_version": (record.get("provenance") or {}).get("app_version"),
+                "model": (record.get("request") or {}).get("model")
+                         or (record.get("request") or {}).get("technology"),
+            }
         # Read the figures the engine computed and stored alongside the raster.
         # Older results predate the stored stats; print nothing rather than
         # inventing a number.
@@ -145,7 +158,8 @@ def report_pdf(req: ReportRequest,
     pdf = build_report(title=req.title, org_name=org, logo_png=logo,
                        study=study, profile_points=points, rf=rf,
                        distance_m=distance, coverage_png=coverage_png,
-                       coverage_stats=coverage_stats, costs=costs)
+                       coverage_stats=coverage_stats, costs=costs,
+                       study_ref=study_ref)
     return Response(content=pdf, media_type="application/pdf",
                     headers={"Content-Disposition":
                              'attachment; filename="rf-study.pdf"'})

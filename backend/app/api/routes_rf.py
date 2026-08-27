@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import numpy as np
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import (APIRouter, Depends, File, HTTPException, Query, Request,
+                     UploadFile)
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -11,6 +12,7 @@ from ..services.rf import antenna as antenna_store
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
 from ..services.saas import jobs
+from ..services.saas import study_record
 from ..services.saas.tiers import check_preset_allowed, require_feature
 from ..services.terrain import coverage as coverage_mod
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
@@ -229,11 +231,18 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
     # `stats` is persisted so every downstream artifact (PDF, exports) can read
     # the figures the ENGINE produced instead of trusting a caller-supplied
     # number -- a rendered document must never be able to disagree with its map.
+    # The study of record: the COMPLETE input set and the provenance, not
+    # just enough to redraw the picture. A coverage plot is evidence - it
+    # goes into a licence application or a tender - and a reader months
+    # later has to be able to ask what produced it. Written once, never
+    # updated; a re-run makes a new study with its own id and digest.
+    record = study_record.build(req.model_dump(mode="json"), result.stats)
     results_store.save("coverage", result.coverage_id, result.png,
                        {"bounds": result.bounds,
                         "tx_lat": req.lat, "tx_lon": req.lon,
                         "radius_m": req.radius_km * 1000.0,
                         "stats": result.stats,
+                        "record": record,
                         # Owner-scopes every read of this raster
                         # (see resolve_result).
                         "owner_id": user["id"] if user else None})
@@ -252,6 +261,9 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
         "stats": result.stats,
         "technology": {**tech, "key": req.technology},
         "warnings": result.warnings,
+        # The digest is the citable part: short enough for a report footer,
+        # specific enough that two studies carrying it ran the same way.
+        "study_digest": record["digest"],
     }
 
 
@@ -275,6 +287,86 @@ def resolve_result(coverage_id: str, user: dict | None,
     if owner is not None and (user is None or user.get("id") != owner):
         raise HTTPException(404, "Coverage result expired or unknown")
     return hit
+
+
+@router.get("/coverage/{coverage_id}/record")
+def coverage_record(coverage_id: str,
+                    user: dict | None = Depends(current_user)) -> dict:
+    """The immutable study record behind a coverage raster.
+
+    Everything needed to defend or reproduce the study: the complete input
+    set it ran on, the provenance (application version, propagation engine,
+    terrain source, which reference engines this deployment could reach) and
+    the digest over both. Owner-scoped like every other read of the raster.
+
+    Studies produced before this existed have no record; they answer 404
+    rather than a reconstructed one, because a record assembled after the
+    fact from partial metadata would be a guess wearing the clothes of
+    evidence.
+    """
+    _, meta = resolve_result(coverage_id, user)
+    record = meta.get("record")
+    if not record:
+        raise HTTPException(
+            404, "This study predates the study-record format; re-run it to "
+                 "produce a citable record.")
+    return {"coverage_id": coverage_id, **record}
+
+
+@router.post("/coverage/{coverage_id}/rerun")
+def rerun_coverage(coverage_id: str, request: Request,
+                   user: dict | None = Depends(current_user)) -> dict:
+    """Re-run a stored study on its own recorded inputs.
+
+    The question a reviewer actually asks is not "what did you run?" but
+    "does it still say that?" — after a DEM refresh, a model fix, or a
+    release. So this re-executes the recorded request verbatim and reports
+    whether the answer moved, as a new study with its own id and digest. The
+    original is never touched: an edited study of record is not one.
+
+    A changed digest is not a failure. It means the *build* changed — a
+    model correction, a new terrain source — and that is precisely what the
+    reader needs to see, rather than a silent difference in the numbers.
+    """
+    _, meta = resolve_result(coverage_id, user)
+    record = meta.get("record")
+    if not record:
+        raise HTTPException(
+            404, "This study predates the study-record format and cannot be "
+                 "re-run from its record.")
+    try:
+        req = CoverageRequest(**record["request"])
+    except Exception as exc:
+        # The stored request no longer validates: the schema moved under it.
+        # Say so plainly - silently coercing it would produce a study that
+        # claims to reproduce the original and does not.
+        raise HTTPException(
+            422, f"The recorded inputs no longer match the current request "
+                 f"schema and cannot be re-run verbatim: {exc}") from exc
+
+    check_preset_allowed(user, req.technology)
+    try:
+        with jobs.sim_slot():
+            fresh = run_coverage(req, user=user)
+    except jobs.SimBusyError as exc:
+        raise HTTPException(429, str(exc)) from exc
+
+    before, after = record.get("stats") or {}, fresh.get("stats") or {}
+    changed = {k: [before.get(k), after.get(k)]
+               for k in set(before) | set(after)
+               if before.get(k) != after.get(k)}
+    request.state.audit_detail = (
+        f"rerun of {coverage_id} -> {fresh['coverage_id']} "
+        f"({'identical' if not changed else 'differs'})")
+    return {
+        "original": {"coverage_id": coverage_id,
+                     "digest": record["digest"],
+                     "stats": record.get("stats")},
+        "rerun": fresh,
+        "reproduced": not changed,
+        "changed_stats": changed,
+        "build_changed": record["provenance"] != study_record.provenance(),
+    }
 
 
 @router.get("/coverage/{coverage_id}/at")

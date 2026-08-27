@@ -75,7 +75,7 @@ def build_report(*, title: str, org_name: str, logo_png: bytes | None,
                  study: dict | None, profile_points: list[dict] | None,
                  rf: dict | None, distance_m: float | None,
                  coverage_png: bytes | None, coverage_stats: dict | None,
-                 costs: dict | None) -> bytes:
+                 costs: dict | None, study_ref: dict | None = None) -> bytes:
     """Assemble the PDF; every section is optional and skipped when absent."""
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, topMargin=16 * mm,
@@ -189,6 +189,18 @@ def build_report(*, title: str, org_name: str, logo_png: bytes | None,
         flow.append(Paragraph("Indicative list prices for first-pass "
                               "budgeting; request vendor quotes for "
                               "procurement.", muted))
+
+    # ------------------------------------------------- study of record
+    if study_ref:
+        flow.append(Spacer(1, 10))
+        flow.append(Paragraph(
+            f"Study of record {esc(study_ref['digest'])} · result "
+            f"{esc(study_ref['coverage_id'])} · engine "
+            f"{esc(study_ref.get('model') or '-')} · AntennaMaster "
+            f"{esc(study_ref.get('app_version') or '-')}. The full input set "
+            "and provenance behind this map are retrievable under that "
+            "result id, and the study can be re-run on its recorded inputs.",
+            muted))
 
     doc.build(flow)
     return buf.getvalue()

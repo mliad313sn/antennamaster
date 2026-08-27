@@ -889,6 +889,17 @@ export default function StudyPanel(props: StudyPanelProps) {
 
             {props.coverage && (
               <>
+                {/* The citable reference for this map. A plot in a licence
+                    application or a tender is evidence, and evidence a reader
+                    cannot ask questions about is just a picture. */}
+                {props.coverage.study_digest && (
+                  <div className="stat-line" style={{ marginTop: 8 }}>
+                    <span className="k">
+                      {t('study.record')}<Help term="studyRecord" />
+                    </span>
+                    <span className="v"><code>{props.coverage.study_digest}</code></span>
+                  </div>
+                )}
                 {props.coverage.stats.served_area_fraction !== null && (
                   <div className="stat-line" style={{ marginTop: 8 }}>
                     <span className="k">{t('study.servedArea')}</span>

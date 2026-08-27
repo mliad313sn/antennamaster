@@ -51,6 +51,9 @@ CRITICAL_RULES: list[tuple[str, str, str]] = [
     ("POST", "/api/saas/report.pdf", "export_pdf"),
     ("POST", "/api/saas/coverage/async", "coverage_async"),
     ("POST", "/api/rf/batch", "batch_analysis"),
+    # Re-running a study of record is itself an evidentiary event:
+    # someone asked whether the filed result still holds.
+    ("POST", "/rerun", "study_rerun"),
 ]
 
 _logger = logging.getLogger("antennamaster.audit")

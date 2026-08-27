@@ -40,6 +40,30 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Added — every study is now a study of record
+
+- **A coverage raster kept its bounds, mast position, radius and headline
+  statistics — and nothing else.** Enough to redraw the picture, nothing like
+  enough to defend it: the frequency, model, antenna, margins, clutter and
+  weather assumptions, terrain source and engine versions all vanished when
+  the request finished. Two studies a month apart could differ by 20 dB with
+  nothing on the artefact to say why — and a coverage plot is evidence, read
+  months later by someone who was not in the room. Each study now stores its
+  **complete input set** and its **provenance** (application version,
+  propagation engine, terrain source, which reference engines the deployment
+  could reach) with a **16-hex digest** over both.
+- **`GET /api/rf/coverage/{id}/record`** returns it, owner-scoped like every
+  other read of the raster, and the digest is printed on the exported PDF —
+  a plot a reader cannot ask questions about is just a picture.
+- **`POST /api/rf/coverage/{id}/rerun`** answers the question a reviewer
+  actually asks after a DEM refresh or a release: not "what did you run" but
+  "does it still say that". It re-executes the recorded inputs verbatim and
+  reports whether the answer moved, as a **new** study with its own id and
+  digest. The filed one is never touched — an edited study of record is not
+  one. A study predating the format answers 404 rather than a reconstructed
+  record, because a record assembled after the fact from partial metadata is
+  a guess wearing the clothes of evidence.
+
 ### Added — ITM / Longley-Rice as a coverage engine, not only a link tool
 
 - **The area sweep offered only empirical curves.** Hata, COST-231 and
