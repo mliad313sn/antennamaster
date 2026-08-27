@@ -1,14 +1,14 @@
 [
  {
   "name": "profile 256 samples + study (Deygout per-sample)",
-  "ms": 32,
+  "ms": 27,
   "peak_mb": 0.1,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "profile 2048 samples + study",
-  "ms": 285,
+  "ms": 249,
   "peak_mb": 0.4,
   "ok": true,
   "budget_s": 5.0
@@ -22,21 +22,28 @@
  },
  {
   "name": "coverage MAX 720x400 @50km (SRTM)",
-  "ms": 3996,
+  "ms": 3859,
   "peak_mb": 103.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km FUSED DXF grid",
-  "ms": 4224,
+  "ms": 3966,
   "peak_mb": 103.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
+  "name": "coverage ITM 180x100 @10km (one Longley-Rice run per sample)",
+  "ms": 2423,
+  "peak_mb": 22.9,
+  "ok": true,
+  "budget_s": 5.0
+ },
+ {
   "name": "multi-site 4x (120x80 @10km) + composite",
-  "ms": 355,
+  "ms": 335,
   "peak_mb": 42.3,
   "ok": true,
   "budget_s": 5.0
@@ -50,7 +57,7 @@
  },
  {
   "name": "executive PDF (profile chart + tables)",
-  "ms": 87,
+  "ms": 90,
   "peak_mb": 2.0,
   "ok": true,
   "budget_s": 5.0

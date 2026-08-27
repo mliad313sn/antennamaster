@@ -129,7 +129,10 @@
     "shareLink": "Lien de partage (lecture seule)",
     "shareExpires": "Ce lien expire le {{date}}. Un nouveau partage le remplace ; Révoquer l'annule immédiatement.",
     "shareNoExpiry": "Ce lien n'expire jamais. Un nouveau partage le remplace ; Révoquer l'annule immédiatement.",
-    "shareRevoked": "Lien de partage révoqué — toute copie déjà envoyée ne s'ouvre plus."
+    "shareRevoked": "Lien de partage révoqué — toute copie déjà envoyée ne s'ouvre plus.",
+    "confirmDelete": "Supprimer définitivement",
+    "deleteProject": "Supprimer {{name}}",
+    "deleted": "« {{name}} » a été supprimé."
   },
   "mode": {
     "simple": "Simple",
@@ -270,7 +273,11 @@
     "mcEdgeRate": "Débit usager 5e centile",
     "mcOk": "ok",
     "calibApplied": "Calibration drive-test",
-    "calibRemove": "Retirer"
+    "calibRemove": "Retirer",
+    "itmReliability": "Fiabilité",
+    "itmRel50": "50 % — médiane",
+    "itmRel90": "90 % — dimensionnement",
+    "itmRel95": "95 % — engagement"
   },
   "batch": {
     "title": "Récepteurs en lot",
@@ -383,7 +390,8 @@
     "clutter": "Encombrement : perte de signal supplémentaire due aux bâtiments et au mobilier urbain que le modèle d'altitude ne voit pas. Le pourcentage est la part d'emplacements à couvrir — 50 % est une ville typique, 90 % est prudent.",
     "helmert": "Ajustement de géoréférencement : comment le dessin est aligné au monde réel à partir des points de référence fournis. Une grande erreur (en mètres) signale souvent un point mal placé ou de mauvaises unités.",
     "gain": "Gain d'antenne (dBi) : à quel point une antenne concentre son énergie dans une direction plutôt que de rayonner partout. Un gain élevé donne plus de portée mais un faisceau plus étroit.",
-    "txpower": "Puissance d'émission (dBm) : la puissance émise par la radio. Plus de puissance porte plus loin, mais la réglementation la limite et ce n'est qu'une partie du bilan."
+    "txpower": "Puissance d'émission (dBm) : la puissance émise par la radio. Plus de puissance porte plus loin, mais la réglementation la limite et ce n'est qu'une partie du bilan.",
+    "itmReliability": "ITM répond « le niveau dépassé à X % des emplacements et du temps », et non une simple médiane. 50 % correspond à la médiane d’un bilan de liaison ; un engagement de couverture s’écrit sur 90–95 %, ce qui coûte environ 10 à 15 dB sur un terrain réellement accidenté."
   },
   "gis": {
     "exportTitle": "Exporter vers un SIG",

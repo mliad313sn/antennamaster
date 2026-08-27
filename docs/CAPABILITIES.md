@@ -55,10 +55,24 @@ worker (`ensure_ready`).
 | 3GPP TR 38.901 RMa LOS/NLOS | 0.5–30 GHz | 4G/5G rural |
 | 3GPP TR 38.901 UMa LOS/NLOS | 0.5–100 GHz | 4G/5G urban macro |
 | 3GPP TR 38.901 UMi LOS/NLOS | 0.5–100 GHz | small cells, mmWave |
-| **Longley-Rice / ITM** | irregular terrain | **reliability-quantile path loss** (`/api/terrain/itm`): validated Deygout median + terrain-roughness Δh + time/situation variability (`qerfi`) |
+| **Longley-Rice / ITM (exact NTIA)** | 20 MHz–20 GHz, 1–2000 km | **an area engine, not only a link tool**: selectable on any coverage study (`model="itm"`) as well as point-to-point (`/api/terrain/itm`). One full Longley-Rice run per sample over the profile out to it — the same recipe SPLAT! and Radio Mobile use — with the reliability quantile a licence application is written on |
 
 All floor-bounded by FSPL; out-of-validity inputs clamped with API warnings.
-**Terrain diffraction on top of any model:** Deygout multi-knife-edge (≤3
+
+**ITM is the exception to the line below.** It derives the terrain effect
+itself, so the sweep adds *no* diffraction term on top of it — doing so would
+count every ridge twice. Its variability mode is also different from the
+point-to-point one: an area study uses ITM's `mdvar=2` ("mobile"), where the
+receiver could be anywhere in the pixel, rather than the p2p mode that
+suppresses location variability because both terminals sit at known places.
+That is not a detail — with location variability suppressed a 90% study came
+out 0.7 dB below the median (a reliability knob that appears to work and does
+not); in mobile mode the same 90% costs about 12 dB. Inside 1 km, below ITM's
+stated range, the study falls back to free space and says so. Cost: ~2.4 s for
+a default 180×100 study versus ~150 ms for an empirical model, gated in the
+benchmark suite.
+
+**Terrain diffraction on top of any other model:** Deygout multi-knife-edge (≤3
 edges, ITU-R P.526 loss, k-curved fused profile, grazing-edge recursion
 guard). The shared edge budget is awarded **globally strongest-edge-first**
 across every open sub-path, and the profile orientation is canonicalised, so

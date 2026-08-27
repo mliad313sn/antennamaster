@@ -32,7 +32,8 @@ describe('apiFetch', () => {
     vi.useFakeTimers();
     vi.stubGlobal('fetch', hangingFetch());
 
-    const p = apiFetch('/api/rf/coverage', {}, 1000).catch((e) => e as Error);
+    const p: Promise<Error> = apiFetch('/api/rf/coverage', {}, 1000)
+      .then(() => { throw new Error('expected a timeout'); }, (e) => e as Error);
     await vi.advanceTimersByTimeAsync(1100);
     const err = await p;
 

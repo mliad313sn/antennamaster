@@ -32,12 +32,20 @@ def itm_p2p_loss(distances_m, elevations_m, h_tx_m: float, h_rx_m: float,
                  freq_mhz: float, reliability_pct: float = 50.0,
                  confidence_pct: float = 50.0, eps: float = 15.0,
                  sgm: float = 0.005, en0: float = 314.0,
-                 climate: int = 5, polarization: int = 0) -> dict:
+                 climate: int = 5, polarization: int = 0,
+                 mdvar: int = 11) -> dict:
     """Point-to-point ITM loss over an equally-spaced terrain profile.
 
     Follows the itmlogic reference p2p recipe exactly (same prop-dict
     initialization, same free-space term ``8.685890·ln(2·wn·dist)``, same
     ``avar(z_time, 0, z_confidence)`` call).
+
+    ``mdvar`` selects ITM's mode of variability, and the default (11) is the
+    point-to-point one: mode 1 with location variability *suppressed*, which
+    is right here because both terminals sit at known fixed places — there is
+    no population of receiver locations to be uncertain about. Area studies
+    pass ``mdvar=2`` ("mobile") instead, where the receiver could be anywhere
+    in the pixel and the quantile has to cover that; see ``itm_loss_grid``.
     """
     from itmlogic.misc.qerfi import qerfi
     from itmlogic.preparatory_subroutines.qlrpfl import qlrpfl
@@ -58,7 +66,7 @@ def itm_p2p_loss(distances_m, elevations_m, h_tx_m: float, h_rx_m: float,
         "fmhz": float(freq_mhz), "hg": [float(h_tx_m), float(h_rx_m)],
         "klim": int(climate), "ens0": float(en0),
         "lvar": 5, "gma": 157e-9, "kwx": 0,
-        "klimx": 0, "mdvarx": 11,
+        "klimx": 0, "mdvarx": int(mdvar), "mdvar": int(mdvar),
         "pfl": pfl,
     }
     prop["wn"] = prop["fmhz"] / 47.7
@@ -247,3 +255,104 @@ def p1812_loss(distances_m, elevations_m, lats, lons,
         "time_pct": time_pct, "location_pct": location_pct,
         "clutter_applied": bool(clutter_heights_m is not None),
     }
+
+
+# ------------------------------------------- ITM as an AREA coverage engine
+# ITM's stated validity starts at 1 km (NTIA TN-101 / ITM v1.2.2); below it the
+# algorithm sets kwx=4 rather than refusing, which would silently paint an
+# out-of-range number over the busiest part of the map.
+ITM_MIN_RANGE_M = 1000.0
+def itm_loss_grid(elev: np.ndarray, dist: np.ndarray, tx_elev_m: float,
+                  h_bs_m: float, h_ut_m: float, freq_mhz: float,
+                  reliability_pct: float = 50.0,
+                  confidence_pct: float = 50.0,
+                  climate: int = 5, en0: float = 314.0,
+                  eps: float = 15.0, sgm: float = 0.005,
+                  polarization: int = 0, mdvar: int = 2,
+                  progress_cb=None) -> tuple[np.ndarray, list[str]]:
+    """Total path loss over a whole radial fan, one ITM run per sample.
+
+    This is what makes ITM a *coverage* engine rather than a link tool. The
+    empirical models the sweep otherwise uses (Hata, COST-231, TR 38.901) are
+    fitted curves plus a separate Deygout diffraction term; ITM is the
+    algorithm regulators and the incumbent tools (SPLAT!, Radio Mobile,
+    TAP) actually run, and it derives the terrain effect itself. So the
+    caller must NOT add a diffraction term on top: the number returned here
+    already contains it, and adding Deygout would double-count the terrain.
+
+    One run per (radial, range) sample, over the profile from the mast out to
+    that sample — the same recipe as the point-to-point endpoint, which is
+    exactly how SPLAT! builds a coverage plot. At 180x100 that is 18k runs
+    and about 3 s; the profiles are short near the mast and grow outward, so
+    the average run is far cheaper than the longest one.
+
+    The variability mode is ITM's ``mdvar=2`` ("mobile"), NOT the
+    point-to-point default. That is the substantive difference between a link
+    study and a coverage study: point-to-point suppresses location
+    variability because both terminals sit at known fixed places, whereas
+    here the receiver could be anywhere in the pixel, and the quantile has to
+    cover that. With location variability suppressed a 90% study came out
+    0.7 dB below the median — a reliability knob that appears to work and
+    does not. In mobile mode the same 90% costs ~12 dB, which is the number a
+    coverage commitment is actually written on. The median is identical
+    either way, so the pinned point-to-point validation is unaffected.
+
+    ``elev`` is (radials, steps) ground elevation along each ray, ``dist``
+    the (steps,) equally spaced ranges. Returns (loss_db, warnings).
+    """
+    from .models import fspl_db
+
+    r, s = elev.shape
+    step = float(dist[0])                      # rays start one step out
+    out = np.empty((r, s), dtype=np.float64)
+    warnings: list[str] = []
+    if not 20.0 <= freq_mhz <= 20_000.0:
+        warnings.append(
+            f"ITM is specified for 20 MHz-20 GHz; {freq_mhz:g} MHz is outside "
+            "that range and the result is an extrapolation.")
+
+    kwx_seen = 0
+    near_field = False
+    for i in range(r):
+        # The profile always starts AT the mast: the sweep's own samples
+        # begin one step out, and ITM needs the transmitter's own ground
+        # elevation to compute its horizon and effective height.
+        ray = np.concatenate(([tx_elev_m], elev[i]))
+        d_ray = np.concatenate(([0.0], dist))
+        for j in range(s):
+            # ITM is specified from 1 km out, and inside that it says so
+            # (kwx=4) rather than refusing. Free space is the honest answer
+            # there: at a few hundred metres from the mast the terrain term
+            # is negligible, and it is what the incumbent tools fall back to.
+            # It also guarantees the >=3 profile points the algorithm needs.
+            if dist[j] < ITM_MIN_RANGE_M or j < 2:
+                out[i, j] = float(fspl_db(np.array([dist[j]]), freq_mhz)[0])
+                near_field = True
+                continue
+            res = itm_p2p_loss(d_ray[: j + 2], ray[: j + 2], h_bs_m, h_ut_m,
+                               freq_mhz, reliability_pct=reliability_pct,
+                               confidence_pct=confidence_pct, eps=eps,
+                               sgm=sgm, en0=en0, climate=climate,
+                               polarization=polarization, mdvar=mdvar)
+            out[i, j] = res["path_loss_db"]
+            kwx_seen = max(kwx_seen, res["error_flag_kwx"])
+        if progress_cb is not None:
+            progress_cb((i + 1) / r)
+    if kwx_seen >= 3:
+        # kwx 3 means ITM itself judged a parameter combination invalid, not
+        # merely unusual. Saying so beats printing a number that looks like
+        # every other number on the map.
+        warnings.append(
+            "ITM reported that some paths fall outside its valid parameter "
+            "range (kwx=3); treat those areas as indicative only.")
+    elif kwx_seen > 0:
+        warnings.append(
+            f"ITM flagged unusual parameters on some paths (kwx={kwx_seen}); "
+            "results remain within the model's stated applicability.")
+    if near_field:
+        warnings.append(
+            f"Inside {ITM_MIN_RANGE_M / 1000:g} km the study falls back to free "
+            "space: ITM is specified from 1 km and reports its own parameter "
+            "flag below that.")
+    _ = step
+    return out, warnings

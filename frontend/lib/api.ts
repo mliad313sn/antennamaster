@@ -160,6 +160,9 @@ export interface CoverageParams {
   foliageDepthM?: number; rainRateMmH?: number;
   clutterPct?: number; surface?: boolean; clutterSource?: string;
   hBsM?: number;
+  /** ITM only: the percentage of locations/time the predicted level is
+   *  exceeded. 50 is the median; a coverage commitment is written on 90-95. */
+  itmReliabilityPct?: number;
   // Drive-test calibration correction (apply-ready object from /calibrate):
   calibration?: object | null;
   // Real site link-budget overrides (the preset is only a starting point):
@@ -202,6 +205,7 @@ function coverageBody(params: CoverageParams): Record<string, unknown> {
       rx_gain_dbi: params.rxGainDbi,
       losses_db: params.lossesDb,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
+      itm_reliability_pct: params.itmReliabilityPct,
   };
 }
 

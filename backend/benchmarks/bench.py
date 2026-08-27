@@ -90,6 +90,15 @@ def main() -> int:
               lambda: engine.simulate(47.05, 15.05, dict(tech),
                                       radius_m=50_000, n_radials=720, n_steps=400,
                                       grid=grid, georef=georef)),
+        # ITM runs the full Longley-Rice algorithm once per sample instead of
+        # evaluating a curve, so its cost scales with the sample count in a
+        # way none of the empirical models do. Gate it: an engine that
+        # quietly became ten times slower would turn the default study from
+        # interactive into abandoned.
+        bench("coverage ITM 180x100 @10km (one Longley-Rice run per sample)",
+              lambda: engine.simulate(47.0, 15.0, dict(tech, model="itm"),
+                                      radius_m=10_000, n_radials=180,
+                                      n_steps=100)),
         bench("multi-site 4x (120x80 @10km) + composite",
               lambda: _multi(engine, tech)),
         bench("indoor multi-wall 400px grid, 200 walls",

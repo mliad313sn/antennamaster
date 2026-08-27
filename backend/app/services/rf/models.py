@@ -65,6 +65,19 @@ MODEL_INFO: dict[str, dict] = {
         "environments": ["los", "nlos"],
         "description": "Small cells and mmWave 5G street-level deployments.",
     },
+    # Not an empirical curve: ITM derives the terrain effect itself, so the
+    # sweep must NOT add its own diffraction term on top. Handled as a
+    # special case in the coverage engine (see terrain/coverage.py), which is
+    # why it carries no environments - the terrain IS the environment.
+    "itm": {
+        "label": "ITM / Longley-Rice (NTIA, exact)",
+        "f_range_mhz": [20.0, 20_000.0],
+        "environments": [],
+        "description": "The reference irregular-terrain model regulators and "
+                       "the incumbent tools (SPLAT!, Radio Mobile) run: "
+                       "terrain-derived loss with a reliability quantile, "
+                       "1-2000 km.",
+    },
 }
 
 
@@ -210,6 +223,15 @@ def path_loss_db(model: str, d_m: np.ndarray, f_mhz: float,
                  h_bs_m: float, h_ut_m: float, environment: str = "urban",
                  ) -> tuple[np.ndarray, list[str]]:
     """Dispatch to a model; returns (loss_db, warnings)."""
+    if model == "itm":
+        # ITM is a terrain algorithm, not a distance curve: it needs the
+        # profile, so it cannot be evaluated from range alone. The area
+        # engine calls itm_exact.itm_loss_grid directly, and the
+        # point-to-point endpoint calls itm_p2p_loss. Reaching here means a
+        # caller asked for ITM somewhere neither applies.
+        raise ValueError(
+            "ITM needs a terrain profile and cannot be evaluated from "
+            "distance alone; use the coverage engine or /api/terrain/itm.")
     if model not in _MODEL_FUNCS:
         raise ValueError(f"Unknown propagation model: {model!r}")
     warnings: list[str] = []

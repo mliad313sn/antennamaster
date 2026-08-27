@@ -247,17 +247,34 @@ class CoverageEngine:
         tx_elev = float(self.fusion.fused_elevations(
             np.array([lat]), np.array([lon]), grid, georef)[0][0])
 
-        # ---- 3) per-ray diffraction: Deygout multi-edge up to each step --
+        # ---- 3+4) path loss, one of two ways ------------------------------
         lam = C_LIGHT / (freq * 1e6)
         e_tx = tx_elev + h_bs
-        diff_loss = diffraction_loss_grid(
-            elev, dist, e_tx=e_tx, h_ut=h_ut, lam=lam, k=k,
-            progress_cb=progress_cb)
-
-        # ---- 4) empirical path loss + link budget -------------------------
-        pl, warnings = path_loss_db(tech["model"], dist_g.ravel(), freq,
-                                    h_bs, h_ut, tech.get("environment", "urban"))
-        pl = pl.reshape(n_radials, n_steps)
+        if tech["model"] == "itm":
+            # ITM derives the terrain effect itself, so there is NO separate
+            # diffraction term: adding Deygout on top would count the same
+            # ridges twice and paint a study that is tens of dB pessimistic.
+            # This is the engine SPLAT!, Radio Mobile and TAP run, which is
+            # what makes a study defensible to someone who checks it against
+            # their own tool.
+            from ..rf.itm_exact import itm_loss_grid
+            pl, warnings = itm_loss_grid(
+                elev, dist, tx_elev, h_bs, h_ut, freq,
+                reliability_pct=float(tech.get("itm_reliability_pct", 50.0)),
+                confidence_pct=float(tech.get("itm_confidence_pct", 50.0)),
+                climate=int(tech.get("itm_climate", 5)),
+                progress_cb=progress_cb)
+            diff_loss = np.zeros_like(pl)
+        else:
+            # Empirical curve (Hata, COST-231, TR 38.901) + our own Deygout
+            # multi-edge diffraction, which is what supplies the terrain.
+            diff_loss = diffraction_loss_grid(
+                elev, dist, e_tx=e_tx, h_ut=h_ut, lam=lam, k=k,
+                progress_cb=progress_cb)
+            pl, warnings = path_loss_db(
+                tech["model"], dist_g.ravel(), freq,
+                h_bs, h_ut, tech.get("environment", "urban"))
+            pl = pl.reshape(n_radials, n_steps)
 
         # Elevation angle of every sample as seen from the TX antenna
         # (negative = below the horizon) - used by both pattern paths.

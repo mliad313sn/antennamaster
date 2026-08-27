@@ -40,6 +40,35 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Added — ITM / Longley-Rice as a coverage engine, not only a link tool
+
+- **The area sweep offered only empirical curves.** Hata, COST-231 and
+  TR 38.901 are fitted curves plus our own Deygout diffraction; ITM is the
+  algorithm regulators and the incumbent tools (SPLAT!, Radio Mobile, TAP)
+  actually run, and a consultant's study is defensible partly because a
+  reviewer can reproduce it in their own tool. It was reachable here only
+  point-to-point. `model: "itm"` now runs it over the whole fan — one full
+  Longley-Rice run per sample over the profile out to that sample, the same
+  recipe SPLAT! builds a coverage plot from. ~2.4 s for a default 180×100
+  study, gated in the benchmark suite.
+- **No double-counted terrain.** ITM derives the terrain effect itself, so
+  the sweep adds no Deygout term on top of it. Getting this wrong would have
+  produced a study tens of dB pessimistic behind every ridge — and it would
+  have looked plausible, because coverage behind a ridge *is* poor.
+- **The reliability quantile is the point, and it needed the right
+  variability mode.** An area study uses ITM's `mdvar=2` ("mobile"), where
+  the receiver could be anywhere in the pixel — not the point-to-point mode,
+  which suppresses location variability because both terminals sit at known
+  places. With the p2p mode a 90% study came out **0.7 dB** below the
+  median: a reliability knob that appears to work and does not. In mobile
+  mode the same 90% costs **~12 dB**, which is the number a licence
+  application or a coverage SLA is written on. The median is identical
+  either way, so the pinned point-to-point validation is untouched.
+- Inside 1 km — below ITM's stated range, where it raises its own
+  out-of-range flag rather than refusing — the study falls back to free
+  space and says so, instead of painting an unsupported number over the
+  busiest part of the map.
+
 ### Fixed — a request could hang forever with nothing on screen
 
 - **Every API call was a bare `fetch`, which has no timeout.** On the

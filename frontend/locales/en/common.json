@@ -129,7 +129,10 @@
     "shareLink": "Share link (read-only)",
     "shareExpires": "This link expires on {{date}}. Sharing again replaces it; Revoke kills it now.",
     "shareNoExpiry": "This link never expires. Sharing again replaces it; Revoke kills it now.",
-    "shareRevoked": "Share link revoked — any copy already sent no longer opens."
+    "shareRevoked": "Share link revoked — any copy already sent no longer opens.",
+    "confirmDelete": "Delete permanently",
+    "deleteProject": "Delete {{name}}",
+    "deleted": "“{{name}}” was deleted."
   },
   "mode": {
     "simple": "Simple",
@@ -270,7 +273,11 @@
     "mcEdgeRate": "5th-percentile user rate",
     "mcOk": "ok",
     "calibApplied": "Drive-test calibration",
-    "calibRemove": "Remove"
+    "calibRemove": "Remove",
+    "itmReliability": "Reliability",
+    "itmRel50": "50% — median",
+    "itmRel90": "90% — design",
+    "itmRel95": "95% — committed"
   },
   "batch": {
     "title": "Batch receivers",
@@ -383,7 +390,8 @@
     "clutter": "Clutter: extra signal loss from buildings and street furniture that the elevation map cannot see. The percentage is how many locations you want covered — 50% is a typical city, 90% is conservative.",
     "helmert": "Georeferencing fit: how the drawing is aligned to the real world from the reference points you gave. A large error (in meters) usually means a mis-placed point or the wrong units.",
     "gain": "Antenna gain (dBi): how much an antenna concentrates its energy in a direction versus radiating everywhere equally. Higher gain means more reach but a narrower beam.",
-    "txpower": "Transmit power (dBm): how much power the radio puts out. More power reaches further, but regulators cap it and it is only one part of the budget."
+    "txpower": "Transmit power (dBm): how much power the radio puts out. More power reaches further, but regulators cap it and it is only one part of the budget.",
+    "itmReliability": "ITM answers “the level exceeded at X% of locations and time”, not a bare median. 50% is the median a link budget gives; a coverage commitment is written on 90–95%, which over real terrain roughness costs around 10–15 dB."
   },
   "gis": {
     "exportTitle": "Export to GIS",

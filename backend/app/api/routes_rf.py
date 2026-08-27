@@ -60,6 +60,12 @@ class CoverageRequest(BaseModel):
     # Environmental excess losses (last-mile clutter / weather):
     foliage_depth_m: float = Field(0.0, ge=0, le=400)
     rain_rate_mm_h: float = Field(0.0, ge=0, le=150)
+    # ITM (Longley-Rice) quantiles, used only when model="itm". Its whole
+    # point over an empirical curve is that it answers "the level exceeded at
+    # X% of locations, Y% of the time" rather than a bare median - which is
+    # the number a licence application or an SLA is written on.
+    itm_reliability_pct: float = Field(50.0, gt=0.1, lt=99.9)
+    itm_confidence_pct: float = Field(50.0, gt=0.1, lt=99.9)
     # ITU-R P.2108 statistical man-made clutter: percentage of locations
     # not exceeded (0 = off, 50 = median urban clutter, 90 = conservative).
     clutter_pct: float = Field(0.0, ge=0, le=99.9)
@@ -141,6 +147,12 @@ def _resolve_tech(req: CoverageRequest) -> dict:
             tech[f] = v
     if tech["model"] not in MODEL_INFO:
         raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+    # ITM's quantiles ride on the tech dict so the engine, the async job and
+    # the per-site overrides all carry them without a second plumbing path.
+    for f in ("itm_reliability_pct", "itm_confidence_pct"):
+        v = getattr(req, f, None)
+        if v is not None:
+            tech[f] = v
     return tech
 
 

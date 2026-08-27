@@ -67,6 +67,10 @@ export default function StudyPanel(props: StudyPanelProps) {
   const { t } = useTranslation();
   const [techs, setTechs] = useState<Technology[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
+  // ITM's reliability quantile. 50 is the median a link budget gives;
+  // a coverage commitment is written on 90-95, and with ITM that is a
+  // real ~12 dB, not a rounding difference.
+  const [itmReliability, setItmReliability] = useState(50);
   const [radiusKm, setRadiusKm] = useState(8);
   const [sector, setSector] = useState(false);
   const [azimuth, setAzimuth] = useState(0);
@@ -325,6 +329,7 @@ export default function StudyPanel(props: StudyPanelProps) {
   const activeModel = useMemo(
     () => models.find((m) => m.key === (props.model ?? selectedTech?.model)) ?? null,
     [models, props.model, selectedTech]);
+  const activeModelKey = props.model ?? selectedTech?.model ?? null;
 
   // Group presets by generation for a readable dropdown.
   const groups = useMemo(() => {
@@ -361,6 +366,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         clutterSource: props.worldcoverOn ? 'worldcover' : undefined,
         calibration: props.calibration ?? undefined,
         hBsM: props.txHeight || undefined,
+        itmReliabilityPct: activeModelKey === 'itm' ? itmReliability : undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
         rxSensitivityDbm: numOr(ovrSens),
@@ -477,6 +483,20 @@ export default function StudyPanel(props: StudyPanelProps) {
               </select>
             </div>
           </div>
+          {activeModelKey === 'itm' && (
+            <div>
+              <label htmlFor={`${_uid}-itmrel`}>
+                {t('study.itmReliability')}
+                <Help term="itmReliability" />
+              </label>
+              <select id={`${_uid}-itmrel`} value={itmReliability}
+                onChange={(e) => setItmReliability(Number(e.target.value))}>
+                <option value={50}>{t('study.itmRel50')}</option>
+                <option value={90}>{t('study.itmRel90')}</option>
+                <option value={95}>{t('study.itmRel95')}</option>
+              </select>
+            </div>
+          )}
           {activeModel && activeModel.environments.length > 0 && (
             <div>
               <label htmlFor={`${_uid}-3`}>{t('study.environment')}</label>

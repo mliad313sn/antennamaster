@@ -29,6 +29,7 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareNote, setShareNote] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   useEffect(() => {
     fetchMe().then((u) => {
@@ -119,12 +120,29 @@ export default function Dashboard() {
                       } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
                     }}>{t('dashboard.revoke')}</button>
                   )}
-                  <button onClick={async () => {
-                    try {
-                      await deleteProject(p.id);
-                      setProjects(await listProjects());
-                    } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
-                  }} aria-label={`Delete ${p.name}`}>🗑</button>
+                  {/* A saved project is a whole study. Deleting it took one
+                      tap, with no confirmation and nothing to undo - and a
+                      stray tap on a tablet is exactly how it happened. The
+                      confirmation is inline and names the project, rather
+                      than a modal people dismiss reflexively. */}
+                  {confirmDelete === p.id ? (
+                    <>
+                      <button className="danger" onClick={async () => {
+                        try {
+                          await deleteProject(p.id);
+                          setConfirmDelete(null);
+                          setProjects(await listProjects());
+                          setShareNote(t('dashboard.deleted', { name: p.name }));
+                        } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
+                      }}>{t('dashboard.confirmDelete')}</button>
+                      <button onClick={() => setConfirmDelete(null)}>
+                        {t('account.cancel')}
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={() => { setConfirmDelete(p.id); setShareNote(null); }}
+                      aria-label={t('dashboard.deleteProject', { name: p.name })}>🗑</button>
+                  )}
                 </span>
               </div>
             ))}
