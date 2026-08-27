@@ -96,11 +96,12 @@
     "siteLat": "Latitude du site",
     "siteLon": "Longitude du site",
     "sites": "Sites",
-    "revenue": "Revenu $/mois (flotte)",
+    "revenue": "Revenu $/mois à couverture complète",
     "servedArea": "zone couverte",
     "peakDbm": "crête dBm",
     "heatmapAlt": "Carte de couverture {{label}}",
-    "costs": "CAPEX {{capex}} k$ · OPEX {{opex}} k$/an · TCO₅ {{tco}} k$"
+    "costs": "CAPEX {{capex}} k$ · OPEX {{opex}} k$/an · TCO₅ {{tco}} k$",
+    "roiAssumption": "Le retour suppose un revenu perçu uniquement là où il y a de la couverture : {{pct}} % de la zone desservie → {{earned}} $/mois sur le montant saisi."
   },
   "dashboard": {
     "loading": "Chargement de votre espace de travail…",

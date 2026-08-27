@@ -96,11 +96,12 @@
     "siteLat": "Site latitude",
     "siteLon": "Site longitude",
     "sites": "Sites",
-    "revenue": "Revenue $/mo (fleet)",
+    "revenue": "Revenue $/mo at full coverage",
     "servedArea": "served area",
     "peakDbm": "peak dBm",
     "heatmapAlt": "{{label}} coverage heatmap",
-    "costs": "CAPEX ${{capex}}k · OPEX ${{opex}}k/yr · TCO₅ ${{tco}}k"
+    "costs": "CAPEX ${{capex}}k · OPEX ${{opex}}k/yr · TCO₅ ${{tco}}k",
+    "roiAssumption": "Payback assumes revenue is earned only where there is coverage: {{pct}}% of the area served → ${{earned}}/mo of the figure above."
   },
   "dashboard": {
     "loading": "Loading your workspace…",

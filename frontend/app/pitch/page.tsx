@@ -13,6 +13,7 @@ import {
   type CostEstimate,
 } from '@/lib/saas';
 import { fetchTechnologies } from '@/lib/api';
+import { roi } from '@/lib/roi';
 import type { Technology } from '@/lib/types';
 import DashNav from '@/components/DashNav';
 import SignalLegend from '@/components/SignalLegend';
@@ -76,16 +77,6 @@ export default function Pitch() {
     }
   }
 
-  function roi(costs: CostEstimate | null): { payback: string; y5: string } {
-    if (!costs) return { payback: '—', y5: '—' };
-    const monthly = revenuePerMonth - costs.opex_total_year_usd / 12;
-    if (monthly <= 0) return { payback: 'never', y5: '—' };
-    const months = costs.capex_total_usd / monthly;
-    const y5 = revenuePerMonth * 60 - costs.tco_5y_usd;
-    return { payback: `${months.toFixed(1)} mo`,
-             y5: `${y5 >= 0 ? '+' : ''}$${(y5 / 1000).toFixed(0)}k` };
-  }
-
   async function exportPdf(sc: Scenario) {
     try {
       await downloadReportPdf({
@@ -137,9 +128,17 @@ export default function Pitch() {
           <div className="kpi-row">
             <div className="kpi"><div className="kpi-v">{sc.result.served !== null ? `${(sc.result.served * 100).toFixed(0)}%` : '—'}</div><div className="kpi-k">{t('pitch.servedArea')}</div></div>
             <div className="kpi"><div className="kpi-v">{sc.result.peak.toFixed(0)}</div><div className="kpi-k">{t('pitch.peakDbm')}</div></div>
-            <div className="kpi"><div className="kpi-v">{roi(costs).payback}</div><div className="kpi-k">payback</div></div>
-            <div className="kpi"><div className="kpi-v">{roi(costs).y5}</div><div className="kpi-k">5-yr net</div></div>
+            <div className="kpi"><div className="kpi-v">{roi(revenuePerMonth, costs, sc.result.served).payback}</div><div className="kpi-k">payback</div></div>
+            <div className="kpi"><div className="kpi-v">{roi(revenuePerMonth, costs, sc.result.served).y5}</div><div className="kpi-k">5-yr net</div></div>
           </div>
+          {sc.result.served !== null && (
+            <p className="hint" style={{ marginTop: 6 }}>
+              {t('pitch.roiAssumption', {
+                pct: (sc.result.served * 100).toFixed(0),
+                earned: Math.round(revenuePerMonth * sc.result.served).toLocaleString(),
+              })}
+            </p>
+          )}
           <SignalLegend peakDbm={sc.result.peak} />
           <button style={{ width: '100%' }} onClick={() => exportPdf(sc)}>
             ⤓ Executive PDF

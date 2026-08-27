@@ -4,6 +4,35 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.3 — 2026-08-27
+
+### Fixed — the pitch screen's payback contradicted the coverage beside it
+
+- **Return on investment now answers to the served area.** The ROI used only
+  the revenue figure the user typed and the equipment cost; the served-area
+  fraction was printed in the next KPI box but never entered the calculation.
+  So a design that covers a tenth of the target site — a design that failed —
+  was handed to a buyer with an attractive payback, and the option covering
+  seven times more area was credited with nothing for it. Their paybacks
+  differed only because their radios cost different amounts.
+- Measured on the screen itself, comparing Private LTE B48 against Wi-Fi 5.8
+  PtMP at the same site: **10% served area, 5.9 months payback, +$394k** in
+  one KPI row. The same option now reads **387.9 months and −$36k**, and the
+  72%-coverage option reads 1.3 months and +$334k — which is what the two
+  designs are actually worth relative to one another, and the whole point of
+  a screen that puts them side by side.
+- **The assumption is stated on the card**, because scaling revenue by
+  coverage is a modelling choice, not a fact: "revenue is earned only where
+  there is coverage: 72% of the area served → $5,764/mo of the figure above."
+  An assumption the reader cannot see is an unsupported number wearing a
+  different hat. The revenue input is relabelled "Revenue $/mo at full
+  coverage" to match.
+- With no coverage result there is now no payback figure at all, rather than
+  a confident number with nothing behind it. And a five-year loss renders as
+  −$36k instead of $-36k, which on a slide read like a typo.
+- At 100% served area the calculation is exactly the previous one, so figures
+  already trusted for a fully-covering design do not move.
+
 ## 1.3.2 — 2026-08-27
 
 ### Fixed — the offline base map never actually engaged
