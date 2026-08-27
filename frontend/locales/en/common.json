@@ -651,7 +651,14 @@
     "calibRecommended": "Recommended",
     "calibApply": "Apply to coverage studies",
     "calibActive": "Calibration active",
-    "calibClear": "Clear"
+    "calibClear": "Clear",
+    "calibSaveAs": "Save this tuning as",
+    "calibSavePlaceholder": "e.g. Graz quarry — haul road",
+    "calibSave": "Save",
+    "calibSaved": "Tuning saved.",
+    "calibSavedTitle": "Saved tunings",
+    "calibUse": "Apply",
+    "calibDelete": "Delete {{name}}"
   },
   "globe": {
     "view2d": "2D",

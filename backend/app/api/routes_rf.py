@@ -11,8 +11,7 @@ from ..services import results_store
 from ..services.rf import antenna as antenna_store
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
-from ..services.saas import jobs
-from ..services.saas import study_record
+from ..services.saas import db, jobs, study_record
 from ..services.saas.tiers import check_preset_allowed, require_feature
 from ..services.terrain import coverage as coverage_mod
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
@@ -77,6 +76,11 @@ class CoverageRequest(BaseModel):
     # Simulate on the surface model (DSM) instead of bare terrain;
     # requires AM_DSM_URL to be configured on the server.
     surface: bool = False
+    # A stored, named calibration ("the tuning for the Graz quarry"),
+    # owner-scoped. Reusing a fit by id rather than pasting its coefficients
+    # is what turns a one-off correction into a site asset - and it is what
+    # makes the study of record able to say WHICH tuning was applied.
+    calibration_id: int | None = None
     # Drive-test calibration correction (from /api/rf/calibrate's fit):
     calibration: CalibrationIn | None = None
     # Simulation resolution:
@@ -203,6 +207,21 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
 
     clutter_fn = _clutter_fn(getattr(req, "clutter_source", "none"))
 
+    # A named calibration and an inline one are the same correction by two
+    # routes. Resolving the named one here means the study of record captures
+    # WHICH tuning ran, not merely that one did.
+    calibration = req.calibration.model_dump() if req.calibration else None
+    if req.calibration_id is not None:
+        stored = resolve_calibration(req.calibration_id, user)
+        calibration = (stored["data"] or {}).get("calibration") or {}
+        cal_tech = stored.get("technology") or ""
+        if cal_tech and cal_tech != req.technology:
+            # Not refused - a planner may legitimately reuse a site's clutter
+            # correction across bands - but never applied silently: a fit made
+            # on another technology is a different physical claim.
+            calibration = dict(calibration,
+                               _warn_technology=f"{cal_tech} -> {req.technology}")
+
     engine = CoverageEngine(resolve_fusion(req.surface))
     try:
         result = engine.simulate(
@@ -220,12 +239,19 @@ def run_coverage(req: CoverageRequest, progress_cb=None,
             k=req.k_factor,
             grid=grid, georef=georef,
             raster_px=req.raster_px,
-            calibration=req.calibration.model_dump() if req.calibration else None,
+            calibration={k: v for k, v in calibration.items()
+                         if not k.startswith("_")} if calibration else None,
             clutter_heights_fn=clutter_fn,
             progress_cb=progress_cb,
         )
     except Exception as exc:  # DEM fetch failure -> 502, not a stacktrace
         raise HTTPException(502, f"Coverage simulation failed: {exc}") from exc
+
+    if calibration and calibration.get("_warn_technology"):
+        result.warnings.append(
+            "The applied calibration was fitted for a different technology "
+            f"({calibration['_warn_technology']}); its offset and slope are a "
+            "claim about that band, not this one.")
 
     # Disk-backed so any worker can serve the PNG and restarts lose nothing.
     # `stats` is persisted so every downstream artifact (PDF, exports) can read
@@ -485,6 +511,78 @@ def coverage_kmz(coverage_id: str,
         media_type="application/vnd.google-earth.kmz",
         headers={"Content-Disposition":
                  f'attachment; filename="coverage-{coverage_id}.kmz"'})
+
+
+# ------------------------------------------------- stored calibrations
+class SaveCalibrationIn(BaseModel):
+    """A named, reusable model tuning — "the correction for the Graz quarry".
+
+    The fit itself is only half of it. A correction is credible because of the
+    measurements behind it, so the evidence is stored with the coefficients:
+    how many points, over what distance span, and the RMS error before and
+    after. Applying an offset fitted from six points on another band is how a
+    study goes quietly wrong, and a name alone cannot warn anyone about that.
+    """
+    name: str = Field(min_length=1, max_length=80)
+    technology: str = Field("", max_length=60)
+    calibration: CalibrationIn
+    n_points: int = Field(0, ge=0)
+    rms_before_db: float | None = None
+    rms_after_db: float | None = None
+    residual_std_db: float | None = None
+    note: str = Field("", max_length=400)
+
+
+def _cal_public(row: dict) -> dict:
+    """A calibration as the API returns it — the owner id never leaves."""
+    return {"id": row["id"], "name": row["name"],
+            "technology": row["technology"], "created_at": row["created_at"],
+            **row["data"]}
+
+
+def resolve_calibration(calibration_id: int, user: dict | None) -> dict:
+    """Owner-scoped load. A calibration encodes how a customer's own site
+    actually behaves — competitively meaningful — so it is scoped like every
+    other stored artefact, answering 404 (not 403) so an id is not an
+    existence oracle. Ownerless ones (anonymous self-hosted) stay readable."""
+    row = db.get_calibration(calibration_id)
+    owner = (row or {}).get("user_id")
+    if row is None or (owner is not None
+                       and (user is None or user.get("id") != owner)):
+        raise HTTPException(404, f"Unknown calibration: {calibration_id}")
+    return row
+
+
+@router.post("/calibrations")
+def save_calibration(body: SaveCalibrationIn,
+                     user: dict | None = Depends(current_user)) -> dict:
+    data = {"calibration": body.calibration.model_dump(),
+            "n_points": body.n_points, "rms_before_db": body.rms_before_db,
+            "rms_after_db": body.rms_after_db,
+            "residual_std_db": body.residual_std_db, "note": body.note}
+    row = db.create_calibration(user["id"] if user else None, body.name,
+                                body.technology, data)
+    return {"calibration": _cal_public(row)}
+
+
+@router.get("/calibrations")
+def list_calibrations(user: dict | None = Depends(current_user)) -> dict:
+    return {"calibrations": [_cal_public(r) for r in
+                             db.list_calibrations(user["id"] if user else None)]}
+
+
+@router.get("/calibrations/{calibration_id}")
+def get_calibration(calibration_id: int,
+                    user: dict | None = Depends(current_user)) -> dict:
+    return {"calibration": _cal_public(resolve_calibration(calibration_id, user))}
+
+
+@router.delete("/calibrations/{calibration_id}")
+def delete_calibration(calibration_id: int,
+                       user: dict | None = Depends(current_user)) -> dict:
+    resolve_calibration(calibration_id, user)
+    db.delete_calibration(calibration_id)
+    return {"deleted": calibration_id}
 
 
 # -------------------------------------------------------- EMF compliance

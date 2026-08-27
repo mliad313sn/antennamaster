@@ -71,6 +71,18 @@ CREATE TABLE IF NOT EXISTS audit_log (
     -- not a person, so keeping it does not re-identify the erased actor.
     org_name TEXT
 );
+CREATE TABLE IF NOT EXISTS calibrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    technology TEXT NOT NULL DEFAULT '',
+    -- The fitted correction AND the evidence for it: applying an offset
+    -- fitted from six points on another band is how a study goes quietly
+    -- wrong, so the numbers that justify the tuning travel with it.
+    data_json TEXT NOT NULL DEFAULT '{}',
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_calibrations_user ON calibrations(user_id);
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts);
 """
@@ -354,6 +366,51 @@ def unshare_project(project_id: int) -> None:
 
 
 def _proj(row: sqlite3.Row) -> dict:
+    d = dict(row)
+    d["data"] = json.loads(d.pop("data_json") or "{}")
+    return d
+
+
+# ----------------------------------------------------------- calibrations
+def create_calibration(user_id: int | None, name: str, technology: str,
+                       data: dict) -> dict:
+    with _conn() as c:
+        cur = c.execute(
+            "INSERT INTO calibrations (user_id, name, technology, data_json, "
+            "created_at) VALUES (?,?,?,?,?)",
+            (user_id, name, technology, json.dumps(data), time.time()))
+        new_id = cur.lastrowid
+    return get_calibration(new_id)                # type: ignore[return-value]
+
+
+def get_calibration(calibration_id: int) -> dict | None:
+    with _conn() as c:
+        row = c.execute("SELECT * FROM calibrations WHERE id=?",
+                        (calibration_id,)).fetchone()
+    return _cal(row) if row else None
+
+
+def list_calibrations(user_id: int | None) -> list[dict]:
+    """A caller's own calibrations, plus the ownerless ones an anonymous
+    self-hosted session created — the same visibility rule DXF drawings and
+    antenna patterns follow."""
+    with _conn() as c:
+        if user_id is None:
+            rows = c.execute("SELECT * FROM calibrations WHERE user_id IS NULL "
+                             "ORDER BY created_at DESC").fetchall()
+        else:
+            rows = c.execute(
+                "SELECT * FROM calibrations WHERE user_id=? OR user_id IS NULL "
+                "ORDER BY created_at DESC", (user_id,)).fetchall()
+    return [_cal(r) for r in rows]
+
+
+def delete_calibration(calibration_id: int) -> None:
+    with _conn() as c:
+        c.execute("DELETE FROM calibrations WHERE id=?", (calibration_id,))
+
+
+def _cal(row: sqlite3.Row) -> dict:
     d = dict(row)
     d["data"] = json.loads(d.pop("data_json") or "{}")
     return d

@@ -66,6 +66,7 @@ def test_export_hands_the_user_their_own_data_and_nobody_elses(client):
     assert body["projects"][0]["data"] == {"tx_lat": 47.0}
     # Their own activity, and only theirs.
     assert any(a["action"] == "project_create" for a in body["audit"])
+    assert isinstance(body["calibrations"], list)
     assert other["email"] not in dump.text
     assert "Their secret site" not in dump.text
     # No password material ever leaves the server.
@@ -84,6 +85,12 @@ def test_erasure_destroys_the_account_and_everything_it_owns(client, tmp_path):
                                               "kind": "coverage", "data": {}},
                        headers=hdrs).json()["project"]
 
+    # A named model tuning: the user's own drive-test measurements turned
+    # into a correction, so it leaves with them.
+    client.post("/api/rf/calibrations", headers=hdrs, json={
+        "name": "Doomed tuning", "technology": "pmr446",
+        "calibration": {"mode": "offset", "offset_db": -3.0,
+                        "slope_intercept_db": 0.0, "slope_per_decade_db": 0.0}})
     # An owner-tagged raster and an owner-tagged antenna pattern: the account
     # row is the *small* part of what erasure has to reach.
     results_store.save("coverage", "deadbeef99", b"\x89PNG-not-really",
@@ -107,6 +114,7 @@ def test_erasure_destroys_the_account_and_everything_it_owns(client, tmp_path):
     erased = r.json()["erased"]
     assert erased["projects"] == 1 and erased["results"] == 1
     assert erased["antennas"] == 1 and erased["dxf"] == 1
+    assert erased["calibrations"] == 1
 
     # The account is gone: the session token no longer resolves, and the
     # credentials no longer authenticate.

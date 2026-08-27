@@ -12,13 +12,14 @@
  *
  * Link-based tabs use the TX/RX markers already placed on the map.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '@/lib/useDialog';
 import {
-  availabilityStudy, calibrateDriveTest, copilotAnalyzeLink, emfCompliance,
-  emfReportPdf, erlangStudy, itmStudy, p1812Study, p2001Study, p452Study,
-  twowayLink,
+  availabilityStudy, calibrateDriveTest, copilotAnalyzeLink, deleteCalibration,
+  emfCompliance, emfReportPdf, erlangStudy, itmStudy, listCalibrations,
+  p1812Study, p2001Study, p452Study, saveCalibration, twowayLink,
+  type StoredCalibration,
 } from '@/lib/api';
 
 type LatLng = { lat: number; lng: number };
@@ -545,6 +546,15 @@ function CalibTab({ tx, technology, calibration, onCalibration }: {
   const { t } = useTranslation();
   const [raw, setRaw] = useState('');
   const { busy, err, res, run } = useRun<any>();
+  // A fit was previously a blob you had to keep re-deriving or paste around:
+  // nobody could tell which tuning a filed study used, and last quarter's
+  // drive test was gone. Saved tunings make "the correction for the Graz
+  // quarry" a reusable site asset.
+  const [saved, setSaved] = useState<StoredCalibration[]>([]);
+  const [saveName, setSaveName] = useState('');
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const reload = () => listCalibrations().then(setSaved).catch(() => {});
+  useEffect(() => { reload(); }, []);
   // "lat, lon, rssi" per line — commas, semicolons or whitespace.
   const points = raw.split('\n').map((l) => l.trim()).filter(Boolean)
     .map((l) => l.split(/[,;\s]+/).map(Number))
@@ -588,7 +598,63 @@ function CalibTab({ tx, technology, calibration, onCalibration }: {
             onClick={() => onCalibration(res.calibration)}>
             {t('advanced.calibApply')}
           </button>
+          <div className="row" style={{ marginTop: 6, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label htmlFor="calib-save-name">{t('advanced.calibSaveAs')}</label>
+              <input id="calib-save-name" value={saveName}
+                placeholder={t('advanced.calibSavePlaceholder')}
+                onChange={(e) => setSaveName(e.target.value)} />
+            </div>
+            <button disabled={!saveName.trim()} onClick={async () => {
+              try {
+                // Store the evidence with the coefficients: an offset is
+                // credible because of the RMS it removed, not its own value.
+                await saveCalibration({
+                  name: saveName.trim(), technology: technology || '',
+                  calibration: res.calibration,
+                  n_points: points.length,
+                  rms_before_db: res.fit.rms_error_before_db,
+                  rms_after_db: res.fit.recommended === 'offset_slope'
+                    ? res.fit.rms_error_offset_slope_db
+                    : res.fit.rms_error_offset_db,
+                  residual_std_db: res.fit.residual_std_db,
+                });
+                setSaveName(''); setSaveMsg(t('advanced.calibSaved'));
+                reload();
+              } catch (e) { setSaveMsg((e as Error).message); }
+            }}>{t('advanced.calibSave')}</button>
+          </div>
+          {saveMsg && <p className="hint" role="status">{saveMsg}</p>}
         </>
+      )}
+
+      {saved.length > 0 && (
+        <div style={{ marginTop: 10, borderTop: '1px solid var(--hairline)',
+                      paddingTop: 8 }}>
+          <h4 style={{ margin: '0 0 4px' }}>{t('advanced.calibSavedTitle')}</h4>
+          {saved.map((c) => (
+            <div key={c.id} className="stat-line">
+              <span className="k">
+                {c.name}
+                <span style={{ color: 'var(--ink-muted)', marginLeft: 6 }}>
+                  {c.technology || '—'}
+                  {c.n_points ? ` · ${c.n_points} pts` : ''}
+                  {c.rms_before_db != null && c.rms_after_db != null
+                    ? ` · ${c.rms_before_db}→${c.rms_after_db} dB RMS` : ''}
+                </span>
+              </span>
+              <span className="v" style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => onCalibration(c.calibration)}>
+                  {t('advanced.calibUse')}
+                </button>
+                <button aria-label={t('advanced.calibDelete', { name: c.name })}
+                  onClick={async () => { await deleteCalibration(c.id); reload(); }}>
+                  🗑
+                </button>
+              </span>
+            </div>
+          ))}
+        </div>
       )}
       {calibration && (
         <div className="stat-line" style={{ marginTop: 8 }}>

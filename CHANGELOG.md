@@ -40,6 +40,25 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Added — a model tuning is a named site asset, not a blob you paste around
+
+- **`/api/rf/calibrate` fitted a correction and handed back coefficients.**
+  Applying it to the next study meant carrying that object by hand: nobody
+  could tell which tuning a filed study used, last quarter's drive test was
+  gone, and nothing on screen tied "+6.2 dB" to the measurements behind it.
+  Calibrations are now saved under a name, owner-scoped, listed and reusable
+  — `calibration_id` on a coverage request applies one, and the study of
+  record captures *which*.
+- **The evidence travels with the coefficients.** A correction is credible
+  because of the measurements behind it, so the point count, the distance
+  span and the RMS error before and after are stored with the fit and shown
+  in the picker. A name alone cannot warn anyone that an offset came from
+  six points on another band.
+- **Reusing a fit across bands is allowed but never silent.** A planner may
+  legitimately carry a site's clutter correction to another technology;
+  applying it without a word would be the tool asserting a physical claim
+  the measurements do not support, so the study comes back with a warning.
+
 ### Added — every study is now a study of record
 
 - **A coverage raster kept its bounds, mast position, radius and headline

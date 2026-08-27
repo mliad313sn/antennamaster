@@ -411,6 +411,45 @@ export async function fetchAntennas(): Promise<AntennaInfo[]> {
   return body.antennas ?? [];
 }
 
+// ------------------------------------------------------ stored calibrations
+export interface StoredCalibration {
+  id: number;
+  name: string;
+  technology: string;
+  created_at: number;
+  calibration: Record<string, number | string>;
+  n_points?: number;
+  rms_before_db?: number | null;
+  rms_after_db?: number | null;
+  residual_std_db?: number | null;
+  note?: string;
+}
+
+/** Save a fit as a named site asset. The evidence goes with it — a
+ *  correction is credible because of the measurements behind it, and a name
+ *  alone cannot tell anyone it came from six points on another band. */
+export async function saveCalibration(body: {
+  name: string; technology: string; calibration: object;
+  n_points?: number; rms_before_db?: number; rms_after_db?: number;
+  residual_std_db?: number; note?: string;
+}): Promise<StoredCalibration> {
+  return (await jsonOrThrow<{ calibration: StoredCalibration }>(
+    await apiFetch('/api/rf/calibrations', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body) }))).calibration;
+}
+
+export async function listCalibrations(): Promise<StoredCalibration[]> {
+  const body = await jsonOrThrow<{ calibrations: StoredCalibration[] }>(
+    await apiFetch('/api/rf/calibrations'));
+  return body.calibrations ?? [];
+}
+
+export async function deleteCalibration(id: number): Promise<void> {
+  await jsonOrThrow(await apiFetch(`/api/rf/calibrations/${id}`,
+    { method: 'DELETE' }));
+}
+
 export interface SiteCsvParse {
   sites: SiteEntry[];
   count: number;

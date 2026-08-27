@@ -9,9 +9,11 @@ the user row alone would leave all of that on the data volume, still owner-
 tagged with an id that will be reissued to the next account (SQLite reuses
 AUTOINCREMENT ids only after a vacuum, but nothing guarantees it will not).
 
-So both operations enumerate the same four owner-tagged stores as the access
-guards do, and the export mirrors the erasure: whatever erasure destroys, the
-export must have been able to hand over first.
+So both operations enumerate the same owner-tagged stores as the access
+guards do — DXF drawings, antenna patterns, rendered rasters, the logo, plus
+the database rows (projects and model calibrations) that cascade off the user
+— and the export mirrors the erasure: whatever erasure destroys, the export
+must have been able to hand over first.
 """
 from __future__ import annotations
 
@@ -91,6 +93,13 @@ def export_account(user: dict) -> dict:
             for p in db.list_projects(uid)
         ],
         "audit": db.list_audit_for_user(uid),
+        # Model tunings are the user's own measurements turned into a
+        # correction; they leave with them and come back in an export.
+        "calibrations": [
+            {k: c[k] for k in ("id", "name", "technology", "created_at",
+                               "data") if k in c}
+            for c in db.list_calibrations(uid) if c.get("user_id") == uid
+        ],
         "files": {
             "dxf": [{"dxf_id": i, "filename": d.get("filename")}
                     for i, d in _owned_dxf(uid)],
@@ -113,7 +122,7 @@ def erase_account(user: dict) -> dict:
     """
     uid = user["id"]
     receipt = {"projects": 0, "dxf": 0, "antennas": 0, "results": 0,
-               "logo": False, "audit_pseudonymised": 0}
+               "calibrations": 0, "logo": False, "audit_pseudonymised": 0}
 
     for dxf_id, _ in _owned_dxf(uid):
         from ..dxf.store import get_dxf_store
@@ -150,6 +159,8 @@ def erase_account(user: dict) -> dict:
             pass
 
     receipt["projects"] = db.count_projects(uid)
+    receipt["calibrations"] = sum(1 for c in db.list_calibrations(uid)
+                                  if c.get("user_id") == uid)
     receipt["audit_pseudonymised"] = len(db.list_audit_for_user(uid,
                                                                 limit=50_000))
     # Last: the row itself. Tokens and projects cascade, audit rows are

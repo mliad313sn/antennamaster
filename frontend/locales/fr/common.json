@@ -651,7 +651,14 @@
     "calibRecommended": "Recommandé",
     "calibApply": "Appliquer aux études de couverture",
     "calibActive": "Calibration active",
-    "calibClear": "Effacer"
+    "calibClear": "Effacer",
+    "calibSaveAs": "Enregistrer ce calage sous",
+    "calibSavePlaceholder": "ex. Carrière de Graz — piste de halage",
+    "calibSave": "Enregistrer",
+    "calibSaved": "Calage enregistré.",
+    "calibSavedTitle": "Calages enregistrés",
+    "calibUse": "Appliquer",
+    "calibDelete": "Supprimer {{name}}"
   },
   "globe": {
     "view2d": "2D",
