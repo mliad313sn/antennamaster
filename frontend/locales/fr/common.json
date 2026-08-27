@@ -79,7 +79,8 @@
     "margin": "marge",
     "fromTx": "{{km}} km à {{bearing}}° de l’émetteur",
     "placeHintTx": "Cliquez sur la carte pour placer l’émetteur (TX)",
-    "placeHintRx": "Cliquez sur la carte pour placer le récepteur (RX)"
+    "placeHintRx": "Cliquez sur la carte pour placer le récepteur (RX)",
+    "basemapOffline": "Fond de carte indisponible — tuiles du cache local. Le relief et la couverture proviennent des données d’altitude locales et ne sont pas affectés."
   },
   "pitch": {
     "title": "Interface de présentation",

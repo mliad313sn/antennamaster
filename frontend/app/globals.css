@@ -672,6 +672,18 @@ button.danger:disabled { opacity: 0.5; }
   box-shadow: 0 4px 14px rgba(0,0,0,0.12);
 }
 
+/* Base-map degradation notice. Bottom-left is the one map corner still free:
+   zoom owns top-left, .view-toggle sits under it, .map-hint owns top-centre,
+   LayersControl owns top-right and Leaflet's attribution owns bottom-right.
+   It has to coexist with .map-hint, which is often up at the same time. */
+.map-notice {
+  position: absolute; bottom: 12px; left: 10px; z-index: 1000; max-width: 340px;
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-left: 3px solid #e5b100;
+  border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.4;
+  color: var(--ink-secondary); box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+}
+
 /* ------------------------------- SaaS dashboards ------------------------ */
 .dash-shell { min-height: 100vh; min-height: 100dvh; background: var(--page); }
 .dash-main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }

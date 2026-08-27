@@ -79,7 +79,8 @@
     "margin": "margin",
     "fromTx": "{{km}} km @ {{bearing}}° from TX",
     "placeHintTx": "Click the map to place the transmitter (TX)",
-    "placeHintRx": "Click the map to place the receiver (RX)"
+    "placeHintRx": "Click the map to place the receiver (RX)",
+    "basemapOffline": "Base map unavailable — showing locally cached tiles. Terrain and coverage come from the local elevation data and are unaffected."
   },
   "pitch": {
     "title": "Pitch interface",

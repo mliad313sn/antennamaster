@@ -178,37 +178,126 @@ function FlyTo({ target }: { target: FlyTarget | null }) {
   return null;
 }
 
-/** Seamless offline fallback: when the browser loses connectivity, overlay
- *  the locally-cached base-map tiles (served by the backend tile server) on
- *  top of whatever provider is selected, so the map keeps rendering. The
- *  overlay is removed the moment connectivity returns, revealing the live
- *  tiles again. Pre-warm the cache with tools/download_basemap.py. */
-function OfflineFallback() {
+/** How many remote tiles must fail before we conclude the provider is
+ *  unreachable. Above one, because a single 404 at the edge of a provider's
+ *  coverage is normal; low enough that the user waits under a screenful. */
+export const TILE_FAILURES_BEFORE_FALLBACK = 6;
+
+/** Is this a tile URL we expect the internet for? The local cache layer is
+ *  served by our own backend, so its failures say nothing about the internet
+ *  — and counting them would let the fallback trigger on itself. */
+export function isRemoteTileUrl(url: string | undefined): boolean {
+  return !!url && /^https?:\/\//i.test(url) && !url.includes('/api/basemap/');
+}
+
+/** Seamless offline fallback: overlay the locally-cached base-map tiles
+ *  (served by the backend tile server) on top of whatever provider is
+ *  selected, so the map keeps rendering. Pre-warm with
+ *  tools/download_basemap.py.
+ *
+ *  THE SIGNAL IS FAILED TILES, NOT `navigator.onLine`. That flag reports
+ *  whether a network interface exists — not whether the tile provider can be
+ *  reached — and every browser vendor documents it that way. The two come
+ *  apart in exactly the deployment this product is for: an OT/field machine
+ *  on a LAN with no route out, behind a corporate proxy, or on a captive
+ *  portal. Observed in this repository's own sandbox: `navigator.onLine ===
+ *  true` while every CDN tile failed with ERR_TUNNEL_CONNECTION_FAILED, so
+ *  the fallback never engaged and the planner drew a coverage study over a
+ *  blank grey rectangle — with nothing on screen to say why.
+ *
+ *  So: count `tileerror` from remote layers, and when enough fail in a row,
+ *  swap in the cache. One successful remote tile clears the count and takes
+ *  the overlay away again. The `offline` event stays as an extra trigger,
+ *  since when it does fire it is right. */
+function OfflineFallback({ onDegraded }: { onDegraded?: (v: boolean) => void }) {
   const map = useMap();
-  useEffect(() => {
-    if (typeof L?.tileLayer !== 'function') return;   // guarded for tests
-    let layer: ReturnType<typeof L.tileLayer> | null = null;
-    const goOffline = () => {
-      if (!layer) {
-        layer = L.tileLayer('/api/basemap/{z}/{x}/{y}.png?offline=true', {
-          maxZoom: 19, zIndex: 250,
-          attribution: 'Cached OSM tiles (offline)',
-        });
-      }
-      if (!map.hasLayer(layer)) layer.addTo(map);
-    };
-    const goOnline = () => { if (layer && map.hasLayer(layer)) map.removeLayer(layer); };
-    const sync = () => (navigator.onLine ? goOnline() : goOffline());
-    window.addEventListener('online', goOnline);
-    window.addEventListener('offline', goOffline);
-    sync();
-    return () => {
-      window.removeEventListener('online', goOnline);
-      window.removeEventListener('offline', goOffline);
-      if (layer && map.hasLayer(layer)) map.removeLayer(layer);
-    };
-  }, [map]);
+  useEffect(() => attachOfflineFallback(map, onDegraded), [map, onDegraded]);
   return null;
+}
+
+/** Minimum surface of a Leaflet map this needs — so the behaviour above can
+ *  be driven by a test without a DOM, a tile server or a network. */
+export type FallbackMap = {
+  // Typed loosely on purpose: Leaflet's own overloads for `on` and the layer
+  // methods are far narrower than what this needs, and a fake in a test has
+  // neither. The behaviour under test is the counting, not Leaflet's types.
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  eachLayer: (fn: (l: any) => void, context?: any) => unknown;
+  on: (type: any, fn: any, context?: any) => unknown;
+  hasLayer: (l: any) => boolean;
+  addLayer?: (l: any) => unknown;
+  removeLayer: (l: any) => unknown;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+};
+
+export function attachOfflineFallback(
+  map: FallbackMap,
+  onDegraded?: (v: boolean) => void,
+): () => void {
+  if (typeof L?.tileLayer !== 'function') return () => {};   // guarded for tests
+  let layer: ReturnType<typeof L.tileLayer> | null = null;
+  let failures = 0;
+  let engaged = false;
+
+  const setEngaged = (v: boolean) => {
+    if (v === engaged) return;
+    engaged = v;
+    onDegraded?.(v);
+  };
+  const goOffline = () => {
+    if (!layer) {
+      layer = L.tileLayer('/api/basemap/{z}/{x}/{y}.png?offline=true', {
+        maxZoom: 19, zIndex: 250,
+        attribution: 'Cached OSM tiles (offline)',
+      });
+    }
+    if (!map.hasLayer(layer)) map.addLayer?.(layer);
+    setEngaged(true);
+  };
+  const goOnline = () => {
+    failures = 0;
+    if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+    setEngaged(false);
+  };
+
+  const onTileError = (e: { target?: { _url?: string } }) => {
+    if (!isRemoteTileUrl(e?.target?._url)) return;
+    if (++failures >= TILE_FAILURES_BEFORE_FALLBACK) goOffline();
+  };
+  const onTileLoad = (e: { target?: { _url?: string } }) => {
+    if (isRemoteTileUrl(e?.target?._url)) goOnline();
+  };
+  // Bind to the tile layers present now and to any added later — switching
+  // provider in the layers control adds a fresh one.
+  const watch = (l: unknown) => {
+    const tl = l as { getTileUrl?: unknown; on?: (t: string, f: unknown) => void };
+    if (typeof tl?.getTileUrl !== 'function' || typeof tl.on !== 'function') return;
+    tl.on('tileerror', onTileError);
+    tl.on('tileload', onTileLoad);
+  };
+  map.eachLayer(watch);
+  map.on('layeradd', (e: { layer?: unknown }) => watch(e?.layer));
+
+  // `offline` firing is conclusive; `online` firing is not, so it only
+  // clears the count and lets a real tile decide.
+  const onWindowOffline = () => goOffline();
+  const onWindowOnline = () => { failures = 0; };
+  window.addEventListener('online', onWindowOnline);
+  window.addEventListener('offline', onWindowOffline);
+  if (!navigator.onLine) goOffline();
+
+  return () => {
+    window.removeEventListener('online', onWindowOnline);
+    window.removeEventListener('offline', onWindowOffline);
+    map.eachLayer((l: unknown) => {
+      const tl = l as { off?: (t: string, f: unknown) => void; getTileUrl?: unknown };
+      if (typeof tl?.getTileUrl === 'function' && typeof tl.off === 'function') {
+        tl.off('tileerror', onTileError);
+        tl.off('tileload', onTileLoad);
+      }
+    });
+    if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+  };
 }
 
 /** Remember the last map view so a reload reopens where the user worked. */
@@ -256,6 +345,7 @@ export default function MapView({
 }: MapViewProps) {
   const { t } = useTranslation();
   const view = useMemo(initialView, []);
+  const [basemapOffline, setBasemapOffline] = useState(false);
   const overlayBounds = useMemo(() => {
     if (!georef) return null;
     const [[s, w], [n, e]] = georef.overlay_bounds;
@@ -279,6 +369,17 @@ export default function MapView({
       {!placing && coverage && (
         <div className="map-hint">
           Click anywhere on the coverage to read the signal level there
+        </div>
+      )}
+      {/* A degraded base map looks exactly like a broken application: the
+          study raster floats on a blank rectangle. The distinction matters
+          more here than in most tools, because what the user is looking at is
+          about to be filed - so say which half is affected. The terrain
+          behind the study comes from the local DEM cache, not from these
+          tiles, and is not touched by the provider being unreachable. */}
+      {basemapOffline && (
+        <div className="map-notice" role="status">
+          {t('map.basemapOffline')}
         </div>
       )}
       {/* preferCanvas: render vector layers (receiver/asset markers, polylines)
@@ -309,7 +410,7 @@ export default function MapView({
         <FitToFootprint bounds={overlayBounds} />
         <FlyTo target={flyTarget ?? null} />
         <ViewPersist />
-        <OfflineFallback />
+        <OfflineFallback onDegraded={setBasemapOffline} />
 
         {/* RF coverage raster (signal-strength classes; transparent = unserved). */}
         {coverage && coverageBounds && (

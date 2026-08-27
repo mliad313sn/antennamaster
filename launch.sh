@@ -79,15 +79,29 @@ port_busy "$FRONTEND_PORT" && die "Port $FRONTEND_PORT is already in use."
 
 # ---- 5. clean shutdown of both children ---------------------------------
 BACK_PID=""; FRONT_PID=""
+# `uvicorn --workers 2` is a supervisor with two children of its own, and the
+# node server likewise. SIGTERM to the supervisor reaps them; SIGKILL does NOT
+# - it dies before it can, and the orphans keep the listening socket. The next
+# launch then aborts with "port already in use" and the user is left hunting
+# processes. So descend the tree: children first, parent after, and only then
+# escalate. Reproduced here: `kill -9` on the uvicorn parent left two python
+# workers holding :8010.
+kill_tree() {   # kill_tree <signal> <pid>
+  local sig="$1" pid="$2"
+  [[ -n "$pid" ]] || return 0
+  local kid
+  for kid in $(pgrep -P "$pid" 2>/dev/null); do kill_tree "$sig" "$kid"; done
+  kill "-$sig" "$pid" 2>/dev/null || true
+}
 cleanup() {
   trap - EXIT INT TERM
   printf '\n%s\n' "Stopping…"
-  [[ -n "$FRONT_PID" ]] && kill "$FRONT_PID" 2>/dev/null || true
-  [[ -n "$BACK_PID"  ]] && kill "$BACK_PID"  2>/dev/null || true
+  kill_tree TERM "$FRONT_PID"
+  kill_tree TERM "$BACK_PID"
   # Give them a moment, then hard-kill any stragglers so ports free up.
   sleep 1
-  [[ -n "$FRONT_PID" ]] && kill -9 "$FRONT_PID" 2>/dev/null || true
-  [[ -n "$BACK_PID"  ]] && kill -9 "$BACK_PID"  2>/dev/null || true
+  kill_tree KILL "$FRONT_PID"
+  kill_tree KILL "$BACK_PID"
 }
 trap cleanup EXIT INT TERM
 

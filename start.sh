@@ -91,5 +91,25 @@ fi
 
 echo
 echo "AntennaMaster is up:  http://localhost:${FRONTEND_PORT}  (API docs: http://localhost:${BACKEND_PORT}/docs)"
-echo "Stop with: kill $BACK_PID $FRONT_PID"
+echo "Stop with Ctrl-C."
+
+# Ctrl-C used to leave both servers running: this script ended on a bare
+# `wait`, so the signal reached the shell and the children carried on holding
+# the ports - and the port guard above then refused the next start. Descend
+# the tree, because `uvicorn --workers 2` is a supervisor with two children
+# and killing only the parent orphans them.
+kill_tree() {   # kill_tree <signal> <pid>
+  local sig="$1" pid="$2" kid
+  [[ -n "$pid" ]] || return 0
+  for kid in $(pgrep -P "$pid" 2>/dev/null); do kill_tree "$sig" "$kid"; done
+  kill "-$sig" "$pid" 2>/dev/null || true
+}
+stop_all() {
+  trap - EXIT INT TERM
+  echo; echo "Stopping ..."
+  kill_tree TERM "$FRONT_PID"; kill_tree TERM "$BACK_PID"
+  sleep 1
+  kill_tree KILL "$FRONT_PID"; kill_tree KILL "$BACK_PID"
+}
+trap stop_all EXIT INT TERM
 wait

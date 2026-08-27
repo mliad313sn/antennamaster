@@ -4,6 +4,35 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.2 — 2026-08-27
+
+### Fixed — the offline base map never actually engaged
+
+- **The fallback now triggers on tiles that fail, not on `navigator.onLine`.**
+  That flag reports whether a network interface exists, not whether the tile
+  provider can be reached — and the two come apart in exactly the deployment
+  this product is for: an OT/field machine on a LAN with no route out, behind
+  a corporate proxy, or on a captive portal. Observed while driving the app:
+  `navigator.onLine === true` while every CDN tile failed, so the locally
+  cached tiles — the headline offline feature — were never swapped in, and the
+  planner drew a real coverage study over a blank grey rectangle.
+- **And it now says so.** A degraded base map looks exactly like a broken
+  application, which matters more here than in most tools because what the
+  user is looking at is about to be filed. The notice names which half is
+  affected: the tiles are missing, the terrain and the coverage behind the
+  study come from the local elevation data and are not.
+- Failures from the local cache layer are excluded from the count, or a cold
+  cache would feed the trigger from the very layer the fallback installs and
+  the state could never clear.
+
+### Fixed — Ctrl-C left both servers running
+
+- `start.sh` ended on a bare `wait`, so the signal reached the shell and the
+  children kept holding the ports — and the new port guard then refused the
+  next start. Both launchers now stop the whole process tree: `uvicorn
+  --workers 2` is a supervisor with two children of its own, and killing only
+  the parent orphans them (reproduced: two workers left holding :8010).
+
 ## 1.3.1 — 2026-08-27
 
 Three defects that only a *running* installation can show — every one of them
