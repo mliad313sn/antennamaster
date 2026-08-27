@@ -58,7 +58,20 @@ Override any setting in `docker-compose.yml` under the backend's
 | `AM_CORS_ORIGINS` | `*` | lock to your domain(s) in production |
 | `AM_SAAS_MODE` | unset | `1` enforces accounts/tiers/quotas |
 | `AM_DSM_URL` | unset | optional building/canopy surface-model tiles |
+| `AM_RATE_LIMIT` | `1` | abuse limits on the expensive endpoints; `0` disables |
+| `AM_RATE_COMPUTE_PER_MIN` | 20 anon / 60 signed-in | coverage, batch, site-search, Monte-Carlo, async jobs |
+| `AM_RATE_UPLOAD_PER_MIN` | ≈0.08 anon / 0.7 signed-in | DXF, antenna and logo uploads (hourly budget) |
+| `AM_AUDIT_RETENTION_DAYS` | 365 | audit rows older than this are pruned; `0` keeps everything |
 | `UVICORN_WORKERS` | 2 | backend worker processes |
+
+**Rate limits.** A coverage study is seconds of CPU plus a burst of DEM
+fetches, so the expensive endpoints are throttled per account (or per client
+IP when anonymous), sliding-window, answering **429 with `Retry-After`**. The
+counters are per worker, so the effective ceiling is the limit × `UVICORN_
+WORKERS`: that undercounting is deliberate — this is a floor against a runaway
+loop, not a billing meter. Put a limit on your reverse proxy too if the
+deployment is internet-facing. On an air-gapped box with one engineer,
+`AM_RATE_LIMIT=0`.
 
 **Splitting frontend and backend across hosts:** the frontend bakes the API
 proxy target at build time, so rebuild it pointing at the backend host:

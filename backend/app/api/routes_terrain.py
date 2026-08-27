@@ -8,6 +8,7 @@ import numpy as np
 from ..services.rf.models import MODEL_INFO, deygout_loss_db, path_loss_db
 from ..services.rf.physics import analyze_path, apply_earth_curvature
 from ..services.rf.technologies import get_technology, link_budget
+from ..services.saas.tiers import check_preset_allowed
 from ..services.terrain.fusion import TerrainFusionService
 from .routes_auth import current_user
 
@@ -160,6 +161,12 @@ def terrain_profile(
     # Effective frequency: explicit param > technology preset > 446 MHz.
     tech_preview = None
     if technology is not None:
+        # Entitlement, not just validity. /api/rf/coverage gates gated
+        # presets and this router did not, so in SaaS mode a basic account
+        # could run the enterprise private-LTE model here instead - a full
+        # path-loss + diffraction study of the very preset it is not
+        # entitled to. The gate belongs on every consumer of a preset.
+        check_preset_allowed(user, technology)
         try:
             tech_preview = get_technology(technology)
         except ValueError as exc:
@@ -349,6 +356,7 @@ def itm_study(
     reliability quantile — by default the EXACT NTIA algorithm."""
     eff_freq = freq_mhz
     if technology is not None:
+        check_preset_allowed(user, technology)
         try:
             eff_freq = freq_mhz or get_technology(technology)["freq_mhz"]
         except ValueError as exc:
@@ -575,6 +583,7 @@ def link_availability_study(
     """Annual availability of a PtP hop (ITU-R P.530 multipath + rain):
     the 99.99x% number a backhaul contract is written on.  The fade margin
     defaults to the hop's real link-budget margin over the fused terrain."""
+    check_preset_allowed(user, technology)
     try:
         tech = get_technology(technology)
     except ValueError as exc:
@@ -643,6 +652,7 @@ def optimize_heights(
         grid, georef = session.grid, session.georef
 
     if technology is not None:
+        check_preset_allowed(user, technology)
         try:
             tech = get_technology(technology)
         except ValueError as exc:

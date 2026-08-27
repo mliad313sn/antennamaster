@@ -373,3 +373,40 @@ def test_async_job_is_owner_scoped(client):
     assert client.get(f"/api/saas/jobs/{jid}").status_code == 404
     body = client.get(f"/api/saas/jobs/{jid}", headers=hdrs_a).json()
     assert "owner_id" not in body                  # internal field not leaked
+
+
+def test_gated_presets_are_enforced_on_the_terrain_router_too(client,
+                                                              monkeypatch):
+    """A preset gate on one router is not a gate.
+
+    `/api/rf/coverage` refused an enterprise-only private-LTE preset to a
+    basic account, but the terrain router took the same `technology=` query
+    parameter and never called `check_preset_allowed`. So the same account
+    could run the gated model through `/api/terrain/profile` - a full
+    path-loss + Deygout diffraction study on the preset it is not entitled to
+    - and export it as CSV. `/api/terrain/availability` was worse: its
+    technology defaults to `ptp18000`, itself a Pro preset, so the *default*
+    call was the bypass.
+    """
+    monkeypatch.setenv("AM_SAAS_MODE", "1")
+    line = {"lat1": 47.0, "lon1": 15.0, "lat2": 47.02, "lon2": 15.02,
+            "samples": 32}
+
+    # Anonymous == basic in SaaS mode.
+    assert client.post("/api/rf/coverage", json={
+        "lat": 47.0, "lon": 15.0, "technology": "private_lte_b48",
+        "radius_km": 2, "n_radials": 36, "n_steps": 20}).status_code == 402
+    for path in ("/api/terrain/profile", "/api/terrain/profile.csv",
+                 "/api/terrain/itm", "/api/terrain/optimize-heights"):
+        r = client.get(path, params={**line, "technology": "private_lte_b48"})
+        assert r.status_code == 402, f"{path} let a basic account in: {r.status_code}"
+    # Its default technology is a Pro preset, so naming nothing is the bypass.
+    assert client.get("/api/terrain/availability",
+                      params=line).status_code == 402
+
+    # Ungated presets stay open, and so does the whole router in open mode.
+    assert client.get("/api/terrain/profile",
+                      params={**line, "technology": "pmr446"}).status_code == 200
+    monkeypatch.setenv("AM_SAAS_MODE", "0")
+    assert client.get("/api/terrain/profile", params={
+        **line, "technology": "private_lte_b48"}).status_code == 200

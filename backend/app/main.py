@@ -159,6 +159,72 @@ def _client_ip(request) -> str | None:
     return request.client.host if request.client else None
 
 
+# Which requests cost enough to be worth limiting: (METHOD, path substring)
+# -> budget class. Anything not listed is cheap metadata and is not limited.
+_COSTLY: list[tuple[str, str, str]] = [
+    ("POST", "/api/dxf/upload", "upload"),
+    ("POST", "/api/rf/antenna", "upload"),
+    ("POST", "/api/auth/logo", "upload"),
+    ("POST", "/api/rf/coverage", "compute"),        # also /coverage/multi
+    ("POST", "/api/rf/batch", "compute"),
+    ("POST", "/api/rf/site-search", "compute"),
+    ("POST", "/api/rf/throughput-map", "compute"),
+    ("POST", "/api/rf/montecarlo", "compute"),
+    ("POST", "/api/saas/coverage/async", "compute"),
+    ("POST", "/api/indoor/coverage", "compute"),
+    ("GET", "/api/terrain/optimize-heights", "compute"),
+]
+
+
+def _cost_class(method: str, path: str) -> str | None:
+    for m, needle, kind in _COSTLY:
+        if method == m and path.startswith(needle):
+            return kind
+    return None
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request, call_next):
+    """Throttle the expensive endpoints.
+
+    A coverage study is seconds of CPU plus a burst of DEM fetches, and it was
+    reachable unauthenticated, unlimited, in a loop — a free denial of service
+    against every other tenant on the box, and a way to fill the disk through
+    the upload routes. Enforced centrally for the same reason the audit trail
+    is: a per-endpoint decorator is one someone forgets to add to the next
+    expensive route.
+
+    The bucket is keyed by account when the request carries a token that
+    actually resolves, and by client IP otherwise — keying on the token alone
+    would let an attacker mint a fresh budget per request by varying a garbage
+    header.
+    """
+    from .services.saas import ratelimit
+    kind = _cost_class(request.method, request.url.path)
+    if kind is not None and ratelimit.enabled():
+        identity, authenticated = _client_ip(request) or "unknown", False
+        auth = request.headers.get("authorization")
+        if auth and auth.lower().startswith("bearer "):
+            try:
+                from .services.saas import db
+                u = db.user_for_token(auth.split(" ", 1)[1].strip())
+                if u:
+                    identity, authenticated = f"user:{u['id']}", True
+            except Exception:  # noqa: BLE001 - never fail a request on this
+                pass
+        wait = ratelimit.check(kind, identity, authenticated)
+        if wait is not None:
+            return JSONResponse(
+                status_code=429,
+                headers={"Retry-After": str(max(1, int(wait) + 1))},
+                content={"detail":
+                         "Too many requests for this endpoint. "
+                         f"Try again in {int(wait) + 1}s"
+                         + ("." if authenticated else
+                            ", or sign in for a higher allowance.")})
+    return await call_next(request)
+
+
 @app.middleware("http")
 async def audit_middleware(request, call_next):
     """Centralized OT/IT audit trail: records every critical action (logins,

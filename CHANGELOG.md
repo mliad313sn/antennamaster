@@ -40,6 +40,30 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Fixed — a gated preset was only gated on one router
+
+- **`/api/terrain/*` never checked preset entitlements.** `/api/rf/coverage`
+  refused an enterprise-only private-LTE preset to a basic account, but the
+  terrain router took the same `technology=` parameter and let it straight
+  through — so the same account could run the gated model as a full
+  path-loss + Deygout diffraction study through `/api/terrain/profile`,
+  `/itm`, `/optimize-heights`, and export it as CSV.
+  `/api/terrain/availability` was worse: its technology *defaults* to
+  `ptp18000`, itself a Pro preset, so the plain default call was the bypass.
+
+### Added — the expensive endpoints are no longer an unlimited free resource
+
+- **No quota, no queue, no throttle on anything heavy.** A coverage study is
+  seconds of CPU plus a burst of DEM fetches, and it was reachable
+  unauthenticated in a loop — a free denial of service against every other
+  tenant on the box, with the upload routes doing the same to the disk
+  (100 MB per DXF). A central middleware now applies a sliding-window limit
+  (compute: 20/min anonymous, 60/min signed-in; uploads: 5/h and 40/h) and
+  answers 429 with `Retry-After`. The bucket is keyed by account when the
+  token resolves and by client IP otherwise, so varying a garbage
+  `Authorization` header does not mint a fresh budget. `AM_RATE_LIMIT=0`
+  turns it off for an air-gapped box with one engineer on it.
+
 ### Fixed — the offline cache handed one account's data to the next
 
 - **The PWA cached every API response in a single URL-keyed bucket.** The

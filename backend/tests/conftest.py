@@ -29,6 +29,18 @@ class FakeTileStore(RampTileStore):
         return super().get_tile(z, x, y)
 
 
+@pytest.fixture(autouse=True)
+def _no_rate_limit(monkeypatch):
+    """The abuse limits are off by default in the suite.
+
+    They are keyed by client IP, and every TestClient request comes from the
+    same one, so a test that legitimately runs 30 coverage studies would trip
+    a guard aimed at a runaway loop. `test_rate_limits.py` turns them back on
+    for itself, which is where the behaviour belongs anyway.
+    """
+    monkeypatch.setenv("AM_RATE_LIMIT", "0")
+
+
 @pytest.fixture
 def fake_store(tmp_path):
     return FakeTileStore(tmp_path)

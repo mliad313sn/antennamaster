@@ -232,6 +232,25 @@ tightening is best-effort and no-ops on filesystems without POSIX modes.
 - Backend errors are wrapped (DEM/parse failures → 502/422 with a short
   message); full tracebacks are logged server-side only, never returned.
 
+### Availability (abuse limits)
+A coverage study is seconds of CPU over a numpy grid plus a burst of DEM tile
+fetches, and every heavy endpoint was reachable unauthenticated with no quota,
+no queue and no throttle — a loop from one IP was a free denial of service
+against every other tenant on the box, and the upload routes were the same
+thing pointed at the disk. A **central middleware** (same argument as the
+audit trail: a per-endpoint decorator is one someone forgets on the next
+expensive route) applies a **sliding-window** limit to coverage/multi, batch,
+site-search, throughput-map, Monte-Carlo, async jobs, indoor coverage,
+height optimisation and the three upload routes, answering **429 with
+`Retry-After`**. Two budget classes — compute (20/min anonymous, 60/min
+signed-in) and upload (5/h anonymous, 40/h signed-in) — so cheap compute
+cannot spend the disk budget. The bucket is keyed by **account when the
+bearer token resolves and by client IP otherwise**: keying on the token alone
+would let an attacker mint a fresh budget per request by varying a garbage
+header. Counters are per worker (deliberate under-counting: a floor against a
+runaway loop, not a billing meter); `AM_RATE_LIMIT=0` disables them for an
+air-gapped install. Regression: `backend/tests/test_rate_limits.py`.
+
 ### Offline cache isolation (PWA)
 The service worker's API cache is **partitioned per identity** and purged at
 sign-out. The Cache API matches on URL and `Vary`, never on `Authorization`,
