@@ -1,0 +1,163 @@
+name: Release
+
+# Cutting a release is the one step the rest of this repository's automation
+# cannot do: pushing a tag and creating a release need `contents: write`, and
+# a Claude Code session's git credentials are scoped to branches. So the
+# repository publishes its own releases, with a token scoped to exactly that.
+#
+# It is deliberately a set of refusals. Every check here exists because the
+# corresponding mistake is easy, silent, and expensive once the artefact is
+# downloadable:
+#   - publishing from a commit whose CI is not green;
+#   - publishing a version whose number disagrees with the tree;
+#   - attaching an installer built before the last commit, so one version
+#     name means two different payloads.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading v (e.g. 1.3.0)'
+        required: true
+        type: string
+      allow_red_ci:
+        description: 'Publish even if CI is not green on this commit (do not)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write        # the whole point; nothing else is needed
+
+defaults:
+  run:
+    # -eo pipefail. The GitHub default is `bash -e` WITHOUT pipefail, which is
+    # how a failing command in a pipeline reads as success - a lesson this
+    # repository already paid for once in ci.yml.
+    shell: bash
+
+jobs:
+  release:
+    name: Publish the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # tags and history, so the tag can be cut
+
+      - name: The commit's CI must be green
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ALLOW_RED: ${{ inputs.allow_red_ci }}
+        run: |
+          CONCLUSION=$(gh run list --workflow=ci.yml --commit="$GITHUB_SHA" \
+            --limit 1 --json conclusion --jq '.[0].conclusion // "none"')
+          echo "CI on ${GITHUB_SHA:0:8}: $CONCLUSION"
+          if [ "$CONCLUSION" != "success" ]; then
+            if [ "$ALLOW_RED" = "true" ]; then
+              echo "::warning::Publishing from a commit whose CI is '$CONCLUSION' because allow_red_ci was set."
+            else
+              echo "::error::CI on this commit is '$CONCLUSION', not success. A release is cut from a green commit, or it is a guess about what works."
+              exit 1
+            fi
+          fi
+
+      - name: The tree must agree with the version being released
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          fail=0
+          check() {   # check <label> <expected> <actual>
+            if [ "$2" != "$3" ]; then
+              echo "::error::$1 says '$3', the release says '$2'"
+              fail=1
+            else
+              echo "ok  $1 = $3"
+            fi
+          }
+          check "packaging/windows/antennamaster.nsi" "$VERSION" \
+            "$(sed -n 's/^!define VERSION *"\(.*\)"/\1/p' packaging/windows/antennamaster.nsi)"
+          check "frontend/package.json" "$VERSION" \
+            "$(python3 -c 'import json;print(json.load(open("frontend/package.json"))["version"])')"
+          check "backend study record APP_VERSION" "$VERSION" \
+            "$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' backend/app/services/saas/study_record.py)"
+          if ! grep -q "^## $VERSION " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## $VERSION' section - a release with no notes is a release nobody can read"
+            fail=1
+          else
+            echo "ok  CHANGELOG.md has a section for $VERSION"
+          fi
+          # A study record stamps APP_VERSION into every filed study, so a
+          # mismatch here would make studies cite a build that was never
+          # released. That is why this is an error and not a warning.
+          [ "$fail" = "0" ]
+
+      - name: The installer must exist and match the tree it was built from
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          EXE="dist/AntennaMaster-Setup-${VERSION}.exe"
+          [ -f "$EXE" ] || { echo "::error::$EXE is not in the tree. Run ./tools/build_windows_installer.sh and commit it."; exit 1; }
+          echo "sha256 $(sha256sum "$EXE" | cut -d' ' -f1)"
+
+          # Verify what is actually INSIDE it rather than trusting its name.
+          # An installer built before the last commit ships a different
+          # payload under the same version - the failure the study-of-record
+          # work exists to prevent, and the one that actually happened here.
+          if ! command -v 7z >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y p7zip-full >/dev/null
+          fi
+          7z x -o/tmp/exe -y "$EXE" >/dev/null
+          IN_EXE=$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' /tmp/exe/backend/app/services/saas/study_record.py)
+          [ "$IN_EXE" = "$VERSION" ] || { echo "::error::the installer's payload stamps $IN_EXE, not $VERSION - it is stale, rebuild it"; exit 1; }
+          echo "ok  the shipped payload stamps $VERSION"
+
+          # The payload must be the tree at THIS commit, not an older build.
+          if ! diff -q /tmp/exe/backend/app/services/saas/study_record.py \
+                       backend/app/services/saas/study_record.py >/dev/null; then
+            echo "::error::the installer's backend differs from this commit's - rebuild and commit it"
+            exit 1
+          fi
+          echo "ok  the shipped payload matches this commit"
+
+      - name: Release notes come from the CHANGELOG, or they disagree with it
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python3 - "$VERSION" <<'PY' > /tmp/notes.md
+          import sys
+          version = sys.argv[1]
+          text = open("CHANGELOG.md", encoding="utf-8").read().splitlines(keepends=True)
+          out, taking = [], False
+          for line in text:
+              if line.startswith(f"## {version} "):
+                  taking = True
+                  continue
+              if taking and line.startswith("## "):
+                  break
+              if taking:
+                  out.append(line)
+          body = "".join(out).strip()
+          if not body:
+              raise SystemExit(f"no CHANGELOG section for {version}")
+          print(body)
+          PY
+          echo "notes: $(wc -l < /tmp/notes.md) lines"
+          head -5 /tmp/notes.md
+
+      - name: Create the tag and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::v${VERSION} is already released. A published version is immutable; cut a new one."
+            exit 1
+          fi
+          gh release create "v${VERSION}" \
+            --target "$GITHUB_SHA" \
+            --title "AntennaMaster ${VERSION}" \
+            --notes-file /tmp/notes.md \
+            "dist/AntennaMaster-Setup-${VERSION}.exe"
+          echo "published: $(gh release view "v${VERSION}" --json url --jq .url)"
