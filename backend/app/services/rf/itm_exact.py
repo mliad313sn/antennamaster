@@ -363,6 +363,12 @@ def itm_loss_grid(elev: np.ndarray, dist: np.ndarray, tx_elev_m: float,
 # the Recommendation simply does not apply, so the study says free space
 # rather than extrapolating the official code outside its own range.
 P1812_MIN_RANGE_M = 250.0
+# The reference implementation refuses a profile of 4 points or fewer
+# ("The number of points in path profile should be larger than 4",
+# Py1812/P1812.py). The sweep's inner samples can produce exactly that, so
+# the count is checked here rather than discovered as a ValueError out of a
+# third-party library halfway through a study.
+P1812_MIN_PROFILE_POINTS = 5
 
 
 def p1812_loss_grid(elev: np.ndarray, dist: np.ndarray,
@@ -427,7 +433,11 @@ def p1812_loss_grid(elev: np.ndarray, dist: np.ndarray,
         ray_R = (np.concatenate(([0.0], clutter_heights[i]))
                  if clutter_heights is not None else None)
         for j in range(s):
-            if dist[j] < P1812_MIN_RANGE_M or j < 2:
+            # Two independent preconditions, both from the Recommendation:
+            # its 250 m lower range limit, and its minimum profile length
+            # (the slice below is j + 2 points long).
+            if (dist[j] < P1812_MIN_RANGE_M
+                    or j + 2 < P1812_MIN_PROFILE_POINTS):
                 out[i, j] = float(fspl_db(np.array([dist[j]]), freq_mhz)[0])
                 near_field = True
                 continue

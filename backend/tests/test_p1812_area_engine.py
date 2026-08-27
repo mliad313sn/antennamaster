@@ -62,6 +62,14 @@ def recorded(monkeypatch):
     def fake(distances_m, elevations_m, lats, lons, h_tx_m, h_rx_m, freq_mhz,
              time_pct=50.0, location_pct=50.0, clutter_heights_m=None,
              polarization=1):
+        # A stand-in that is MORE permissive than the thing it stands for is
+        # how a green local suite turns into a red CI run: the first version
+        # of this fake accepted any profile, so the engine happily built
+        # 4-point ones and only the official code — which requires more than
+        # 4 — objected. The stand-in now enforces the same precondition.
+        if len(np.asarray(distances_m)) <= 4:
+            raise ValueError(
+                "The number of points in path profile should be larger than 4")
         calls.append({
             "d": np.asarray(distances_m, dtype=float),
             "h": np.asarray(elevations_m, dtype=float),
