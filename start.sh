@@ -26,13 +26,42 @@ BACKEND_PORT="${BACKEND_PORT:-8010}"
 FRONTEND_PORT="${FRONTEND_PORT:-3010}"
 export BACKEND_URL="http://localhost:${BACKEND_PORT}"
 
+# A port already in use means an OLDER instance is still listening — and the
+# health probe below cannot tell the difference, so this script would print
+# "up" while serving the previous version of the app. That is the same silent
+# staleness the rebuild check above exists to prevent, one layer down. Refuse.
+port_busy() { { command -v lsof >/dev/null 2>&1 && lsof -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; } \
+  || { command -v ss >/dev/null 2>&1 && ss -ltn 2>/dev/null | grep -q ":$1 "; }; }
+for p in "$BACKEND_PORT" "$FRONTEND_PORT"; do
+  if port_busy "$p"; then
+    echo "Port $p is already in use — another AntennaMaster is still running." >&2
+    echo "Stop it first, or this script would report success while serving it." >&2
+    exit 1
+  fi
+done
+
 echo "Starting backend on :${BACKEND_PORT} ..."
 (cd backend && exec python -m uvicorn app.main:app --host 0.0.0.0 \
    --port "$BACKEND_PORT" --workers 2) &
 BACK_PID=$!
 
-if [[ ! -d frontend/.next ]]; then
-  echo "Building frontend (first run) ..."
+# Rebuild when the sources are newer than the build - not only when there is
+# no build at all. Serving a stale bundle is the worst failure mode this
+# script has: it exits 0, prints "up", every route answers 200, and the app you
+# get is the one from before your edit. It cost an hour once; the giveaway was
+# a build directory 24 minutes younger than the server process. Next's own
+# cache makes an up-to-date rebuild cheap, so the check is allowed to be
+# conservative and rebuild when unsure.
+needs_build() {
+  [[ -f frontend/.next/BUILD_ID ]] || return 0
+  local newer
+  newer=$(find frontend/app frontend/components frontend/lib frontend/public \
+            frontend/next.config.mjs frontend/package.json frontend/locales \
+            -newer frontend/.next/BUILD_ID 2>/dev/null | head -1)
+  [[ -n "$newer" ]]
+}
+if needs_build; then
+  echo "Frontend sources changed since the last build — rebuilding ..."
   (cd frontend && npm run build)
 fi
 echo "Starting frontend on :${FRONTEND_PORT} ..."

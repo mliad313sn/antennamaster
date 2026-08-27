@@ -11,7 +11,7 @@ Unicode true
 !include "FileFunc.nsh"
 
 !define APPNAME   "AntennaMaster"
-!define VERSION   "1.3.0"
+!define VERSION   "1.3.1"
 !define PUBLISHER "AntennaMaster project"
 !define UNINSTKEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 
@@ -34,6 +34,7 @@ ShowInstDetails show
 !define MUI_FINISHPAGE_SHOWREADME_NOTCHECKED
 
 !insertmacro MUI_PAGE_WELCOME
+!insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
 !insertmacro MUI_PAGE_FINISH
@@ -44,6 +45,16 @@ ShowInstDetails show
 
 Section "Application" SecApp
   SectionIn RO
+
+  ; Upgrading in place: drop the PREVIOUS web build before writing the new
+  ; sources over it. The payload is source-only (install.ps1 builds on the
+  ; target), so leaving .next behind pairs new code with an old bundle — the
+  ; app starts, every route answers, and the user silently gets the version
+  ; they just replaced. launch.ps1 refuses to start on that mismatch; deleting
+  ; it here means the mismatch never exists. Same for the Python bytecode.
+  RMDir /r "$INSTDIR\frontend\.next"
+  RMDir /r "$INSTDIR\frontend\node_modules\.cache"
+
   SetOutPath "$INSTDIR"
   File /r "stage\*.*"
   File "antennamaster.ico"
@@ -79,6 +90,24 @@ Section "Application" SecApp
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 SectionEnd
 
+; The thing a user actually looks for after an install is an icon to
+; double-click. The Start-menu entry above is the same launcher; this is
+; optional because a desktop full of icons is a legitimate preference.
+Section "Desktop shortcut" SecDesktop
+  CreateShortCut "$DESKTOP\${APPNAME}.lnk" \
+    "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" \
+    '-ExecutionPolicy Bypass -File "$INSTDIR\launch.ps1"' \
+    "$INSTDIR\antennamaster.ico" 0 SW_SHOWMINIMIZED "" \
+    "Launch AntennaMaster (backend + web app + browser)"
+SectionEnd
+
+!insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecApp} \
+    "The AntennaMaster application, its launcher and the offline documentation."
+  !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} \
+    "Put an AntennaMaster launcher icon on the desktop."
+!insertmacro MUI_FUNCTION_DESCRIPTION_END
+
 Function RunSetup
   ExecShell "open" "$WINDIR\System32\WindowsPowerShell\v1.0\powershell.exe" \
     '-ExecutionPolicy Bypass -NoExit -File "$INSTDIR\install.ps1" -Yes'
@@ -92,5 +121,6 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\${APPNAME}\${APPNAME} setup (repair).lnk"
   Delete "$SMPROGRAMS\${APPNAME}\Uninstall.lnk"
   RMDir "$SMPROGRAMS\${APPNAME}"
+  Delete "$DESKTOP\${APPNAME}.lnk"
   DeleteRegKey HKCU "${UNINSTKEY}"
 SectionEnd

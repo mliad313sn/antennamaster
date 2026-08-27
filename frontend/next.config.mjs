@@ -1,6 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Next's built-in gzip BUFFERS a streaming response, and Live Operations is
+  // a Server-Sent Events stream proxied through this server. Measured on the
+  // running stack: the backend on :8010 answers `content-encoding: identity`
+  // and delivers the first frame in 0.0 s, while the same request through
+  // :3010 comes back `content-encoding: gzip` and never yields a byte. Every
+  // real user goes through this server, so the live twin was permanently
+  // blank in every browser - and silently so, because the connection
+  // SUCCEEDS, EventSource never fires onerror, and the polling fallback never
+  // engaged. `curl` worked throughout, because it does not ask for gzip.
+  //
+  // Turning Next's compression off costs little here: the API payloads worth
+  // compressing (a 2048-sample profile is ~330 KB of JSON) are already gzipped
+  // by the backend's own GZipMiddleware and pass through untouched, and any
+  // production deployment fronts this with the HTTPS reverse proxy
+  // DEPLOYMENT_GUIDE.md requires, which compresses the static shell.
+  compress: false,
   // Self-contained server bundle for a minimal production Docker image
   // (only the files actually used are traced into .next/standalone).
   output: 'standalone',

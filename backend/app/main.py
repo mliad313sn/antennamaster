@@ -45,13 +45,20 @@ async def _lifespan(app_: FastAPI):
     """Run the telemetry disconnect-sweeper for the app's lifetime: flags
     assets that stop transmitting as RF-disconnects (correlated with predicted
     dead zones)."""
-    from .services.telemetry import ENGINE
+    from .services import telemetry_store
 
     async def sweeper():
         while True:
             await asyncio.sleep(5.0)
             try:
-                ENGINE.sweep(time.monotonic(), timeout_s=30.0)
+                # Every tenant, from the shared store - not one process-local
+                # engine. Wall clock, because the last-seen stamps it compares
+                # against were written by whichever worker took the ping, and
+                # a monotonic epoch is per-process.
+                now = time.time()
+                for tenant in telemetry_store.tenants():
+                    with telemetry_store.shared(tenant) as eng:
+                        eng.sweep(now, timeout_s=30.0)
             except Exception:
                 pass
     task = asyncio.create_task(sweeper())

@@ -4,6 +4,60 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.1 — 2026-08-27
+
+Three defects that only a *running* installation can show — every one of them
+passed the whole test suite, and every one of them was found by launching the
+app and using it.
+
+### Fixed — the live twin was a different world in each worker
+
+- **Telemetry state is now shared across uvicorn workers** (SQLite, one row per
+  tenant) instead of living in a module-level dict. The documented launch path
+  runs `--workers 2`, so a ping ingested by worker A was simply absent when
+  worker B served the next read. Measured on the running stack: eight
+  consecutive `/state` reads after one ingest returned **2, 1, 2, 2, 2, 2, 2,
+  2** assets; the dashboard showed a fleet flickering in and out of existence.
+  Now `1, 1, 1, 1, 1, 1, 1, 1`.
+- **Timestamps are wall clock, not `time.monotonic()`.** Monotonic's epoch is
+  arbitrary and *per process*; the moment those numbers crossed a worker
+  boundary an asset looked either impossibly stale or stale in the future, so
+  the 30 s disconnect sweep fired at random. Monotonic was the right choice
+  while the state never left the process — it stopped being right when it did.
+- The RF predicate closes over the terrain service and cannot be serialised, so
+  the coverage *request* is what is stored and each worker rebuilds its own.
+  A worker that never handled the binding still correlates.
+
+### Fixed — the Live Operations stream never reached the browser
+
+- **`Content-Encoding: identity` on the SSE response and `compress: false` in
+  the web app.** Anything between browser and backend that buffers — Next's own
+  gzip here, but equally nginx without `proxy_buffering off` — holds every
+  frame of an infinite response forever. Measured through the app's own proxy:
+  the backend delivered the first frame in 0.0 s while the browser received
+  nothing at all, ever.
+- **And the dashboard now makes the stream prove itself.** The failure above
+  was survivable only because it was *silent*: the connection succeeded, so
+  `onerror` never fired and the polling fallback never engaged. A stream that
+  delivers no frame within 4 s is now treated as broken and polling takes over
+  — which is the case that matters behind a proxy nobody told us about.
+
+### Fixed — a stale build could be served silently
+
+- **`start.sh` rebuilds when the sources are newer than the build**, not only
+  when there is no build at all; **`launch.sh` / `launch.ps1` refuse to start**
+  on that mismatch and name the command that fixes it; and **the Windows
+  installer deletes the previous web build** before writing new sources over
+  it, so the mismatch cannot arise from an in-place upgrade. This is the worst
+  failure mode a launcher has: it exits 0, prints "up", every route answers
+  200, and the application is the one from before the change.
+
+### Added
+
+- **Desktop shortcut** (optional, on a new components page) alongside the
+  existing Start-menu launcher entry — an icon to double-click is what people
+  look for after an install.
+
 ## 1.3.0 — 2026-08-27
 
 ### Added — ITU-R P.1812 as an area-coverage engine

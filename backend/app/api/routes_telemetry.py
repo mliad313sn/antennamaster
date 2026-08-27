@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import get_technology
-from ..services.telemetry import ENGINE, engine_for
+from ..services import telemetry_store
 from ..services.saas.tiers import saas_mode
 from .routes_auth import current_user
 
@@ -29,7 +29,10 @@ def tenant_engine(user: dict | None = Depends(current_user),
                                         "which cannot send an Authorization "
                                         "header. Ignored when the header is "
                                         "present.")):
-    """The telemetry engine this caller is allowed to touch.
+    """The telemetry TENANT this caller is allowed to touch.
+
+    Returns a key, not an engine: the state lives in a shared store so every
+    uvicorn worker sees the same fleet (see services/telemetry_store.py).
 
     Live asset positions are the real-time locations of responders, mine crews
     and field staff - the most sensitive data this product handles. Every
@@ -44,7 +47,7 @@ def tenant_engine(user: dict | None = Depends(current_user),
     and coverage-result guards already follow.
     """
     if not saas_mode():
-        return ENGINE
+        return "local"
     if user is None and token:
         # EventSource has no way to set a header, and the Live Ops dashboard
         # is an SSE client, so the stream accepts the token as a query
@@ -55,7 +58,7 @@ def tenant_engine(user: dict | None = Depends(current_user),
     if user is None:
         raise HTTPException(401, "Authentication required for telemetry")
     org = (user.get("org_name") or "").strip()
-    return engine_for(f"org:{org}" if org else f"user:{user['id']}")
+    return f"org:{org}" if org else f"user:{user['id']}"
 from .routes_terrain import resolve_fusion
 
 router = APIRouter(prefix="/api/telemetry", tags=["telemetry"])
@@ -106,60 +109,97 @@ def _build_served_fn(req: CoverageContextRequest):
     return served_fn, tech
 
 
+def _predicate_from_context(ctx: dict):
+    """Rebuild the served-predicate from a stored coverage request.
+
+    Registered with the store so any worker - including one that never
+    handled the /coverage-context call - can correlate against the same RF
+    prediction after loading the shared state.
+    """
+    return _build_served_fn(CoverageContextRequest(**ctx))[0]
+
+
+telemetry_store.set_predicate_factory(_predicate_from_context)
+
+
 @router.post("/coverage-context")
 def set_coverage_context(req: CoverageContextRequest,
-                         eng=Depends(tenant_engine)) -> dict:
+                         tenant: str = Depends(tenant_engine)) -> dict:
     """Bind the live twin to an RF coverage prediction (TX + technology) so
     incoming assets are correlated against predicted dead zones."""
     served_fn, tech = _build_served_fn(req)
-    eng.set_coverage(served_fn, {
-        "tx_lat": req.tx_lat, "tx_lon": req.tx_lon,
-        "technology": req.technology, "freq_mhz": tech["freq_mhz"]})
-    return {"ok": True, "coverage_context": eng.coverage_context}
+    # Store the WHOLE request, not a summary: the predicate closes over the
+    # terrain service and cannot be serialised, so each worker rebuilds its
+    # own from this on load. A summary would rebuild a different predicate.
+    ctx = req.model_dump() | {"freq_mhz": tech["freq_mhz"]}
+    with telemetry_store.shared(tenant) as eng:
+        eng.set_coverage(served_fn, ctx)
+        return {"ok": True, "coverage_context": eng.coverage_context}
 
 
 @router.post("/ingest")
-def ingest(req: IngestRequest, eng=Depends(tenant_engine)) -> dict:
+def ingest(req: IngestRequest,
+           tenant: str = Depends(tenant_engine)) -> dict:
     """Ingest one or more asset position pings (fleet-management / IoT feed)."""
-    now = time.monotonic()
-    updated = [eng.ingest(p.asset_id, p.lat, p.lon, now, p.name)
-               for p in req.pings]
+    # Wall clock, not monotonic: these timestamps cross process boundaries
+    # now, and a monotonic epoch is per-process.
+    now = time.time()
+    with telemetry_store.shared(tenant) as eng:
+        updated = [eng.ingest(p.asset_id, p.lat, p.lon, now, p.name)
+                   for p in req.pings]
     return {"ingested": len(updated), "assets": updated}
 
 
 @router.get("/state")
-def state(eng=Depends(tenant_engine)) -> dict:
+def state(tenant: str = Depends(tenant_engine)) -> dict:
     """Current live-twin snapshot (assets + coverage context + event cursor)."""
-    return eng.snapshot()
+    with telemetry_store.shared(tenant, write=False) as eng:
+        return eng.snapshot()
 
 
 @router.get("/events")
-def events(since: int = 0, eng=Depends(tenant_engine)) -> dict:
+def events(since: int = 0,
+           tenant: str = Depends(tenant_engine)) -> dict:
     """Correlation events (dead-zone entries, RF disconnects) after ``since``."""
-    return {"events": eng.events_since(since), "event_seq": eng.event_seq}
+    with telemetry_store.shared(tenant, write=False) as eng:
+        return {"events": eng.events_since(since), "event_seq": eng.event_seq}
 
 
 @router.get("/stream")
 async def stream(request: Request,
-                 eng=Depends(tenant_engine)) -> StreamingResponse:
+                 tenant: str = Depends(tenant_engine)) -> StreamingResponse:
     """Server-Sent Events stream of the live twin: a periodic state snapshot
     plus any new correlation events, for the Live Operations dashboard."""
     async def gen():
         cursor = 0
-        # Prime with the current state so a new client renders immediately.
-        yield f"event: state\ndata: {json.dumps(eng.snapshot())}\n\n"
+        with telemetry_store.shared(tenant, write=False) as eng:
+            yield f"event: state\ndata: {json.dumps(eng.snapshot())}\n\n"
         while True:
             if await request.is_disconnected():
                 break
-            new = eng.events_since(cursor)
-            cursor = eng.event_seq
+            with telemetry_store.shared(tenant, write=False) as eng:
+                new = eng.events_since(cursor)
+                cursor = eng.event_seq
+                snap = eng.snapshot()
             for e in new:
                 yield f"event: correlation\ndata: {json.dumps(e)}\n\n"
-            yield f"event: state\ndata: {json.dumps(eng.snapshot())}\n\n"
+            yield f"event: state\ndata: {json.dumps(snap)}\n\n"
             await asyncio.sleep(1.0)
-    return StreamingResponse(gen(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache",
-                                      "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        gen(), media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache",
+                 # Do not let a proxy buffer the stream...
+                 "X-Accel-Buffering": "no",
+                 # ...and do not let OUR OWN gzip middleware buffer it either.
+                 # Browsers always advertise gzip, so GZipMiddleware wrapped
+                 # this response and held every frame waiting for a stream
+                 # that never ends: Live Operations was permanently blank in
+                 # every real browser while `curl` (which does not ask for
+                 # gzip by default) worked perfectly. Worse, the connection
+                 # SUCCEEDS, so EventSource never fires onerror and the
+                 # polling fallback never engaged. Declaring the encoding
+                 # up front makes the compressor skip it.
+                 "Content-Encoding": "identity"})
 
 
 @router.websocket("/ws")
@@ -182,9 +222,9 @@ async def ingest_ws(ws: WebSocket) -> None:
             await ws.close(code=1008)
             return
         org = (user.get("org_name") or "").strip()
-        eng = engine_for(f"org:{org}" if org else f"user:{user['id']}")
+        tenant = f"org:{org}" if org else f"user:{user['id']}"
     else:
-        eng = ENGINE
+        tenant = "local"
 
     await ws.accept()
     try:
@@ -195,8 +235,9 @@ async def ingest_ws(ws: WebSocket) -> None:
             except Exception as exc:  # malformed ping -> report, keep the socket
                 await ws.send_json({"error": str(exc)})
                 continue
-            updated = eng.ingest(p.asset_id, p.lat, p.lon, time.monotonic(),
-                                 p.name)
+            with telemetry_store.shared(tenant) as eng:
+                updated = eng.ingest(p.asset_id, p.lat, p.lon, time.time(),
+                                     p.name)
             await ws.send_json({"ok": True, "asset": updated})
     except WebSocketDisconnect:
         return

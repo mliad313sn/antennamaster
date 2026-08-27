@@ -35,6 +35,27 @@ if ($LASTEXITCODE -ne 0) { Die "Backend deps incomplete. Re-run .\install.ps1." 
 if (-not (Test-Path (Join-Path $Root 'frontend\node_modules'))) { Die "frontend\node_modules missing. Run .\install.ps1." }
 if (-not (Test-Path (Join-Path $Root 'frontend\.next'))) { Die "Frontend not built. Run .\install.ps1." }
 
+# ---- the build must be newer than the sources it was built from ---------
+# Upgrading in place drops new sources next to the PREVIOUS build: the
+# installer stages source only, and .next survives from the version before.
+# Everything then starts, every route answers 200, and the app the user gets
+# is the old one - a failure with no symptom except being wrong. Refuse
+# instead, and name the one command that fixes it.
+$buildId = Join-Path $Root 'frontend\.next\BUILD_ID'
+if (Test-Path $buildId) {
+  $builtAt = (Get-Item $buildId).LastWriteTimeUtc
+  $watched = @('frontend\app','frontend\components','frontend\lib','frontend\locales',
+               'frontend\public','frontend\next.config.mjs','frontend\package.json')
+  $stale = $watched | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path $_ } |
+    Get-ChildItem -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTimeUtc -gt $builtAt } | Select-Object -First 1
+  if ($stale) {
+    Die ("The web app was built before the current sources (e.g. $($stale.FullName)).`n" +
+         "Starting now would silently serve the previous version. Rebuild first:`n" +
+         "  cd frontend; npm run build")
+  }
+}
+
 function Port-Busy($p) {
   try { return [bool](Get-NetTCPConnection -State Listen -LocalPort $p -ErrorAction SilentlyContinue) }
   catch { return $false }

@@ -30,6 +30,20 @@ class FakeTileStore(RampTileStore):
 
 
 @pytest.fixture(autouse=True)
+def _clean_telemetry():
+    """Start every test with an empty live twin.
+
+    Telemetry state is now shared through SQLite so sibling uvicorn workers
+    see the same fleet, which also means it outlives a test - and a test that
+    inherits another's assets fails in a place that has nothing to do with it.
+    """
+    from app.services import telemetry_store
+    telemetry_store.reset()
+    yield
+    telemetry_store.reset()
+
+
+@pytest.fixture(autouse=True)
 def _no_rate_limit(monkeypatch):
     """The abuse limits are off by default in the suite.
 

@@ -81,25 +81,47 @@ export default function LiveOps() {
         } catch { /* keep trying */ }
       }, 1500);
     };
+    // A stream that CONNECTS but never delivers is the dangerous case, and
+    // it is the common one: anything between the browser and the backend that
+    // buffers - Next's own gzip, nginx without `proxy_buffering off`, a
+    // corporate proxy - holds every frame of an infinite response forever.
+    // `onerror` never fires, so the fallback below never engaged and the
+    // dashboard sat silently empty. Measured through the app's own proxy:
+    // the backend delivered the first frame in 0.0 s while the browser
+    // received nothing at all. So the stream now has to PROVE it works.
+    let firstFrame: ReturnType<typeof setTimeout> | null = null;
+    const streamIsAlive = () => {
+      if (firstFrame) { clearTimeout(firstFrame); firstFrame = null; }
+    };
     try {
       // EventSource cannot set headers, so in multi-tenant mode the token
       // travels as a query parameter (the backend accepts either).
       const tok = getToken();
       es = new EventSource('/api/telemetry/stream'
         + (tok ? `?token=${encodeURIComponent(tok)}` : ''));
+      firstFrame = setTimeout(() => {
+        es?.close(); es = null;
+        startPolling();
+      }, 4000);
       es.addEventListener('state', (e) => {
+        streamIsAlive();
         try { setAssets(JSON.parse((e as MessageEvent).data).assets ?? []); }
         catch { /* ignore a malformed frame; the next one recovers */ }
       });
       es.addEventListener('correlation', (e) => {
+        streamIsAlive();
         try {
           const ev = JSON.parse((e as MessageEvent).data);
           setEvents((prev) => [ev, ...prev].slice(0, 40));
         } catch { /* ignore a malformed frame */ }
       });
-      es.onerror = () => { es?.close(); es = null; startPolling(); };
+      es.onerror = () => { streamIsAlive(); es?.close(); es = null; startPolling(); };
     } catch { startPolling(); }
-    return () => { es?.close(); if (poll) clearInterval(poll); };
+    return () => {
+      if (firstFrame) clearTimeout(firstFrame);
+      es?.close();
+      if (poll) clearInterval(poll);
+    };
   }, []);
 
   async function bindCoverage() {

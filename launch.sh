@@ -38,6 +38,21 @@ VENV_PY="$ROOT/backend/.venv/bin/python"
 [[ -d frontend/node_modules ]] || die "frontend/node_modules missing. Run ${BLD}./install.sh${RST}."
 [[ -d frontend/.next ]] || die "Frontend not built. Run ${BLD}./install.sh${RST}."
 
+# ---- the build must be newer than the sources it was built from ---------
+# Upgrading in place drops new sources next to the PREVIOUS build: the
+# installer stages source only, and .next survives from the version before.
+# Everything then starts, every route answers 200, and the app the user gets
+# is the old one — a failure with no symptom except being wrong. Refuse
+# instead, and name the one command that fixes it.
+if [[ -f frontend/.next/BUILD_ID ]]; then
+  STALE="$(find frontend/app frontend/components frontend/lib frontend/locales \
+             frontend/public frontend/next.config.mjs frontend/package.json \
+             -newer frontend/.next/BUILD_ID 2>/dev/null | head -1)"
+  [[ -z "$STALE" ]] || die "The web app was built before the current sources (e.g. ${BLD}${STALE}${RST}).
+Starting now would silently serve the previous version. Rebuild first:
+  ${BLD}cd frontend && npm run build${RST}"
+fi
+
 # ---- the API proxy target is baked into the build, not read at runtime ---
 # Next resolves next.config.mjs rewrites at BUILD time into
 # routes-manifest.json, so exporting BACKEND_PORT here cannot move the proxy.
