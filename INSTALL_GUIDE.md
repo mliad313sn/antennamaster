@@ -10,14 +10,14 @@ ARM64 (Apple Silicon).
 
 | OS | Install | Launch |
 |---|---|---|
-| **Windows (one-click)** | run **`dist/AntennaMaster-Setup-1.3.5.exe`** | Start menu → **AntennaMaster** |
+| **Windows (one-click)** | run **`dist/AntennaMaster-Setup-1.3.6.exe`** | Start menu → **AntennaMaster** |
 | **macOS / Linux** | `./install.sh` | `./launch.sh` |
 | **Windows (from source)** | `powershell -ExecutionPolicy Bypass -File .\install.ps1` | `powershell -ExecutionPolicy Bypass -File .\launch.ps1` |
 | **Any (Docker)** | — | `docker compose up -d --build` |
 
 ### The Windows setup .exe
 
-`dist/AntennaMaster-Setup-1.3.5.exe` is a signed-format NSIS installer built
+`dist/AntennaMaster-Setup-1.3.6.exe` is a signed-format NSIS installer built
 straight from this repository (`./tools/build_windows_installer.sh`, works on
 Linux/macOS with `nsis` installed — no Windows machine needed to produce it).
 It performs a **per-user install** (no admin prompt) into

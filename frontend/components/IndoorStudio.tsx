@@ -12,6 +12,7 @@
 import { useEffect, useRef, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDialog } from '@/lib/useDialog';
+import { downloadAsset, useAuthedAsset } from '@/lib/authedAsset';
 import {
   Area, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
@@ -83,6 +84,8 @@ function PlanStudy() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  // Owner-scoped now, so the browser cannot load it by URL. See lib/authedAsset.
+  const heatmapSrc = useAuthedAsset(result?.png_url);
 
   useEffect(() => { fetchMaterials().then(setMaterials).catch(() => {}); }, []);
 
@@ -234,7 +237,10 @@ function PlanStudy() {
                   <span className="k">{t('indoor.rxDynamicRange')}</span>
                   <span className="v">{result.stats.min_rx_power_dbm.toFixed(0)} … {result.stats.max_rx_power_dbm.toFixed(0)} dBm</span>
                 </div>
-                <a className="download-link" href={result.png_url} download>⤓ {t('indoor.downloadHeatmap')}</a>
+                <button className="download-link" type="button"
+                  onClick={() => downloadAsset(result.png_url).catch(
+                    (e: unknown) => setError((e as Error).message))}>
+                  ⤓ {t('indoor.downloadHeatmap')}</button>
                 <div style={{ marginTop: 4 }}>
                   {result.legend.map((l) => (
                     <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11 }}>
@@ -250,7 +256,7 @@ function PlanStudy() {
             {result ? (
               /* Heatmap replaces the preview; click returns to TX placement */
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={result.png_url} alt={t('indoor.heatmapAlt')}
+              <img src={heatmapSrc ?? ''} alt={t('indoor.heatmapAlt')}
                 style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }}
                 ref={imgRef} onClick={planClick} />
             ) : preview ? (
@@ -612,6 +618,8 @@ function DasStudy() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const imgRef = useRef<HTMLImageElement>(null);
+  // Owner-scoped now, so the browser cannot load it by URL. See lib/authedAsset.
+  const heatmapSrc = useAuthedAsset(result?.png_url);
 
   useEffect(() => { fetchMaterials().then(setMaterials).catch(() => {}); }, []);
 
@@ -838,7 +846,7 @@ function DasStudy() {
           <div style={{ flex: 1, minWidth: 0 }}>
             {result ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={result.png_url} alt={t('indoor.heatmapAlt')} ref={imgRef} onClick={planClick}
+              <img src={heatmapSrc ?? ''} alt={t('indoor.heatmapAlt')} ref={imgRef} onClick={planClick}
                 style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }} />
             ) : preview ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -953,6 +961,8 @@ function FloorsStudy() {
   }
 
   const resultFloor = result?.floors?.find((f: any) => f.level === viewLevel);
+  // Owner-scoped now, so the browser cannot load it by URL. See lib/authedAsset.
+  const heatmapSrc = useAuthedAsset(resultFloor?.png_url);
 
   return (
     <div>
@@ -1043,7 +1053,7 @@ function FloorsStudy() {
             </div>
             {resultFloor ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={resultFloor.png_url} alt={t('indoor.heatmapAlt')} ref={imgRef} onClick={planClick}
+              <img src={heatmapSrc ?? ''} alt={t('indoor.heatmapAlt')} ref={imgRef} onClick={planClick}
                 style={{ width: '100%', border: '1px solid var(--hairline)', borderRadius: 8, cursor: 'crosshair' }} />
             ) : preview ? (
               // eslint-disable-next-line @next/next/no-img-element

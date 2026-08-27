@@ -127,7 +127,8 @@ def indoor_coverage(req: IndoorCoverageRequest,
         raise HTTPException(422, str(exc)) from exc
 
     results_store.save("indoor", result.result_id, result.png,
-                       {"bounds_dxf": result.bounds_dxf})
+                       {"bounds_dxf": result.bounds_dxf,
+                        "owner_id": user["id"] if user else None})
 
     return {
         "result_id": result.result_id,
@@ -246,7 +247,8 @@ def das_design(req: DasRequest,
                           tx_height_m=req.tx_height_m,
                           rx_height_m=req.rx_height_m, grid_px=req.grid_px)
     results_store.save("indoor", result.result_id, result.png,
-                       {"bounds_dxf": result.bounds_dxf})
+                       {"bounds_dxf": result.bounds_dxf,
+                        "owner_id": user["id"] if user else None})
     return {"result_id": result.result_id,
             "png_url": f"/api/indoor/coverage/{result.result_id}.png",
             "bounds_dxf": result.bounds_dxf, "legend": result.legend,
@@ -300,7 +302,8 @@ def floor_stack(req: FloorStackRequest,
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
         results_store.save("indoor", result.result_id, result.png,
-                           {"bounds_dxf": result.bounds_dxf})
+                           {"bounds_dxf": result.bounds_dxf,
+                            "owner_id": user["id"] if user else None})
         floors_out.append({
             "level": fl.level, "floors_crossed": crossed,
             "result_id": result.result_id,
@@ -313,12 +316,34 @@ def floor_stack(req: FloorStackRequest,
 
 
 @router.get("/coverage/{result_id}.png")
-def indoor_coverage_png(result_id: str) -> Response:
+def indoor_coverage_png(result_id: str,
+                        user: dict | None = Depends(current_user)) -> Response:
+    """An indoor heatmap, owner-scoped.
+
+    Outdoor coverage was hardened against this and indoor was left behind,
+    which made a result id a capability here: anyone holding the 12-hex id
+    could read the heatmap. What that leaks is not a colour ramp — it is a
+    building's interior, drawn to scale from the customer's own floor plan,
+    with the wall materials and the DAS layout that were studied. For a
+    hospital, a prison, a mine gallery or a public-safety site that is the
+    same class of confidential information the outdoor fix exists to protect,
+    and arguably a more sensitive one.
+
+    Mirrors ``resolve_result``: results with no owner (the anonymous
+    self-hosted default) stay open, and someone else's result answers 404
+    rather than 403 so the id is not an existence oracle.
+    """
     hit = results_store.load("indoor", result_id)
     if hit is None:
         raise HTTPException(404, "Indoor coverage result expired or unknown")
+    owner = (hit[1] or {}).get("owner_id")
+    if owner is not None and (user is None or user.get("id") != owner):
+        raise HTTPException(404, "Indoor coverage result expired or unknown")
+    # Private to one account: a shared cache must never hand it to the next
+    # requester, who by definition is a different tenant.
+    cache = "max-age=3600" if owner is None else "private, max-age=3600"
     return Response(content=hit[0], media_type="image/png",
-                    headers={"Cache-Control": "max-age=3600"})
+                    headers={"Cache-Control": cache})
 
 
 # ------------------------------------------------------- tunnels & TTE

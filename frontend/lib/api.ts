@@ -1,4 +1,5 @@
 /** Thin fetch wrappers for the terrain backend (proxied through /api). */
+import { authHeaders } from './token';
 import type {
   BatchResponse, Equipment, OptimizeHeightsResponse, Scenario, ScenarioResolved, SiteCandidate,
   AntennaInfo, CoverageResponse, GeorefRequest, GeorefResponse,
@@ -58,7 +59,19 @@ export async function apiFetch(url: string, init: RequestInit = {},
     else external.addEventListener('abort', relay, { once: true });
   }
   try {
-    return await fetch(url, { ...init, signal: ctl.signal });
+    // The account's bearer token goes on EVERY call from here. It did not
+    // before, because the helper lived in saas.ts which imports this module,
+    // and the cost of that accident was not stylistic: click-to-inspect on a
+    // signed-in user's own coverage answered 404, and the synchronous
+    // coverage fallback stored its result with no owner at all - readable by
+    // anyone holding the id, which is the leak the owner-scoping exists to
+    // prevent. Every target here is same-origin /api/..., so there is nowhere
+    // for a credential to leak to. A caller may still override the header.
+    return await fetch(url, {
+      ...init,
+      headers: { ...authHeaders(), ...init.headers },
+      signal: ctl.signal,
+    });
   } catch (e) {
     if (external?.aborted) throw e;              // the user stopped it
     if ((e as Error)?.name === 'AbortError') {

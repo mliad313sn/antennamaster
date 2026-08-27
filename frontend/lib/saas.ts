@@ -1,4 +1,5 @@
 /** SaaS API client: auth, projects, tiers, costs, jobs, PDF reports. */
+import { TOKEN_KEY, authHeaders, getToken } from './token';
 import { apiFetch, HEAVY_TIMEOUT_MS } from './api';
 
 export interface User {
@@ -49,11 +50,10 @@ export interface Job {
   error: string | null;
 }
 
-const TOKEN_KEY = 'am_token';
+// Re-exported so the many existing `from '@/lib/saas'` imports keep working;
+// they live in token.ts now so api.ts can read them without a cycle.
+export { authHeaders, getToken };
 
-export function getToken(): string | null {
-  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
-}
 export function setToken(t: string | null): void {
   try {
     if (t) localStorage.setItem(TOKEN_KEY, t);
@@ -69,10 +69,6 @@ export function setToken(t: string | null): void {
   }
 }
 
-export function authHeaders(): Record<string, string> {
-  const t = getToken();
-  return t ? { Authorization: `Bearer ${t}` } : {};
-}
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
   // Through apiFetch, so an account call cannot hang forever on a dropped

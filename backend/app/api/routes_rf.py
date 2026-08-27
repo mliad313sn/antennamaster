@@ -448,7 +448,22 @@ def coverage_png(coverage_id: str,
                  user: dict | None = Depends(current_user)) -> Response:
     hit = resolve_result(coverage_id, user)
     return Response(content=hit[0], media_type="image/png",
-                    headers={"Cache-Control": "max-age=3600"})
+                    headers={"Cache-Control": _cache_control(hit)})
+
+
+def _cache_control(hit: tuple[bytes, dict]) -> str:
+    """`private` once a raster belongs to an account.
+
+    A bare `max-age` is a shared cache's business too. RFC 9111 §3.5 already
+    stops a compliant one from storing a response to a request carrying an
+    `Authorization` header — but that is the whole protection, resting on
+    every reverse proxy and CDN in front of this deployment implementing it
+    correctly. Saying `private` states the intent instead of relying on it,
+    and costs a signed-in user nothing: their own browser still caches it.
+    Anonymous results have no owner and stay shareable.
+    """
+    owner = (hit[1] or {}).get("owner_id")
+    return "max-age=3600" if owner is None else "private, max-age=3600"
 
 
 @router.get("/coverage/{coverage_id}.tif")

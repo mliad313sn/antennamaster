@@ -4,6 +4,51 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.6 — 2026-08-27
+
+### Fixed — the planner's own API calls carried no credentials
+
+`authHeaders` lived in `saas.ts`, which imports `apiFetch` from `api.ts`, so
+`api.ts` could not read it back without a circular import — and none of the
+planner's calls sent the account token. Two consequences, both measured
+against the running stack:
+
+- **A signed-in user's coverage could be stored with no owner at all.** The
+  synchronous coverage path — the fallback taken whenever the async job API
+  refuses, e.g. under the rate limiter — posted the study anonymously.
+  Measured: `POST /api/rf/coverage` without the header, then fetch the raster
+  as a total stranger → **200**. That left a georeferenced site footprint
+  readable by anyone holding the 12-hex id: exactly the leak the owner-scoping
+  exists to prevent, arriving through the back door rather than the front.
+- **Click-to-inspect answered 404.** `/api/rf/coverage/{id}/at` is
+  owner-scoped, so clicking your own coverage to read the level there returned
+  nothing. It now reports, e.g., "−119.7 dBm · margin −6.7 dB · 1.64 km @ 127°
+  from TX".
+
+The token moved to `lib/token.ts` so both modules can reach it, and `apiFetch`
+attaches it to every call. Every target is a same-origin `/api/...` path, so
+there is nowhere for a credential to leak to; anonymous installs send nothing
+and are unaffected.
+
+### Fixed — indoor floor-plan studies were readable by id
+
+- **Indoor heatmaps are now owner-scoped**, like outdoor coverage. Outdoor was
+  hardened and the indoor studio — which writes to the same result store —
+  was left behind, so anyone holding the id could read the study. What that
+  exposes is not a colour ramp: it is a building's interior, drawn to scale
+  from the customer's own floor plan, with the wall materials and the antenna
+  placement that were studied. For a hospital, a prison, a mine gallery or a
+  public-safety site that is the same class of confidential information the
+  outdoor fix protects, and arguably a more sensitive one.
+- A non-owner gets 404 rather than 403, so the id is not an existence oracle,
+  and anonymous self-hosted installs — where results have no owner — keep
+  working unchanged.
+- **An owned raster now says `private`** so a reverse proxy or CDN cannot hand
+  one tenant's study to the next requester for that URL. RFC 9111 already
+  stops a compliant shared cache from storing a response to an authorised
+  request; saying so costs nothing rather than resting on every intermediary
+  implementing it. Applies to indoor and outdoor alike.
+
 ## 1.3.5 — 2026-08-27
 
 ### Fixed — a signed-in user could not see or download their own coverage
