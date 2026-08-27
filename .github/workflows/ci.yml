@@ -6,7 +6,10 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    # A release/v* branch points at a commit that has already been through
+    # CI - that green run is exactly what the release gate looks for - so
+    # re-running the whole suite on it would only duplicate it.
+    branches: ['**', '!release/v*']
   pull_request:
   workflow_dispatch:
 

@@ -14,6 +14,15 @@ name: Release
 #     name means two different payloads.
 
 on:
+  # Two ways in, because the two callers have different powers.
+  #
+  # A human dispatches it. An automated session cannot: dispatching needs
+  # `actions: write` on the app, which returns 403 here - so it pushes a
+  # `release/v<version>` branch instead, which it IS allowed to do, and the
+  # branch name carries the version. Same job, same refusals, same token.
+  push:
+    branches:
+      - 'release/v*'
   workflow_dispatch:
     inputs:
       version:
@@ -45,13 +54,35 @@ jobs:
         with:
           fetch-depth: 0          # tags and history, so the tag can be cut
 
+      - name: Resolve the version being released
+        id: v
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "${INPUT_VERSION:-}" ]; then
+            VERSION="$INPUT_VERSION"                  # dispatched by a human
+          else
+            VERSION="${GITHUB_REF_NAME#release/v}"    # pushed as release/vX.Y.Z
+          fi
+          case "$VERSION" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::'$VERSION' is not a version. Push a branch named release/vX.Y.Z, or dispatch with a version input."; exit 1 ;;
+          esac
+          echo "releasing $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: The commit's CI must be green
         env:
           GH_TOKEN: ${{ github.token }}
           ALLOW_RED: ${{ inputs.allow_red_ci }}
         run: |
+          # "Has this commit passed CI?", not "what did its most recent run
+          # say?". Pushing the release branch starts a fresh CI run on the
+          # same commit, and asking for the latest would find that one still
+          # in progress and refuse a perfectly green commit.
           CONCLUSION=$(gh run list --workflow=ci.yml --commit="$GITHUB_SHA" \
-            --limit 1 --json conclusion --jq '.[0].conclusion // "none"')
+            --status=success --limit 1 --json conclusion \
+            --jq '.[0].conclusion // "none"')
           echo "CI on ${GITHUB_SHA:0:8}: $CONCLUSION"
           if [ "$CONCLUSION" != "success" ]; then
             if [ "$ALLOW_RED" = "true" ]; then
@@ -64,7 +95,7 @@ jobs:
 
       - name: The tree must agree with the version being released
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           fail=0
           check() {   # check <label> <expected> <actual>
@@ -94,7 +125,7 @@ jobs:
 
       - name: The installer must exist and match the tree it was built from
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           EXE="dist/AntennaMaster-Setup-${VERSION}.exe"
           [ -f "$EXE" ] || { echo "::error::$EXE is not in the tree. Run ./tools/build_windows_installer.sh and commit it."; exit 1; }
@@ -123,7 +154,7 @@ jobs:
 
       - name: Release notes come from the CHANGELOG, or they disagree with it
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           python3 - "$VERSION" <<'PY' > /tmp/notes.md
           import sys
@@ -149,7 +180,7 @@ jobs:
       - name: Create the tag and publish
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.v.outputs.version }}
         run: |
           if gh release view "v${VERSION}" >/dev/null 2>&1; then
             echo "::error::v${VERSION} is already released. A published version is immutable; cut a new one."
