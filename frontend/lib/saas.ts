@@ -1,4 +1,5 @@
 /** SaaS API client: auth, projects, tiers, costs, jobs, PDF reports. */
+import { apiFetch, HEAVY_TIMEOUT_MS } from './api';
 
 export interface User {
   id: number;
@@ -74,7 +75,10 @@ export function authHeaders(): Record<string, string> {
 }
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const resp = await fetch(url, {
+  // Through apiFetch, so an account call cannot hang forever on a dropped
+  // connection: a bare fetch never settles, and the sign-in dialog would sit
+  // on "Working…" with no error and no way back except a reload.
+  const resp = await apiFetch(url, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...authHeaders(), ...init?.headers },
   });
@@ -160,8 +164,8 @@ export async function eraseAccount(password: string): Promise<EraseReceipt> {
 export async function uploadLogo(file: File): Promise<void> {
   const form = new FormData();
   form.append('file', file);
-  const resp = await fetch('/api/auth/logo', {
-    method: 'POST', body: form, headers: authHeaders() });
+  const resp = await apiFetch('/api/auth/logo', {
+    method: 'POST', body: form, headers: authHeaders() }, HEAVY_TIMEOUT_MS);
   if (!resp.ok) {
     let detail = resp.statusText;
     try { detail = (await resp.json()).detail ?? detail; } catch { /* non-JSON */ }
@@ -237,11 +241,11 @@ export async function awaitJob(jobId: string,
 
 // ---------------------------------------------------------------- reports
 export async function downloadReportPdf(body: Record<string, unknown>): Promise<void> {
-  const resp = await fetch('/api/saas/report.pdf', {
+  const resp = await apiFetch('/api/saas/report.pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
     body: JSON.stringify(body),
-  });
+  }, HEAVY_TIMEOUT_MS);
   if (!resp.ok) {
     let detail = resp.statusText;
     try { detail = (await resp.json()).detail ?? detail; } catch { /* non-JSON */ }

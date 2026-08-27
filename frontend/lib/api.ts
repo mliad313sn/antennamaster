@@ -31,6 +31,55 @@ export function friendlyError(detail: string): string {
   return detail;
 }
 
+/** Nothing may hang forever.
+ *
+ *  Every call here was a bare `fetch`, which has no timeout: on a field
+ *  tablet that walks out of coverage mid-study the promise simply never
+ *  settles, so the UI sits on "Simulating…" with no error, no result and no
+ *  way back except a reload. A request that cannot finish must fail, and say
+ *  why, so the user can retry or change the parameters.
+ *
+ *  Two budgets, because 30 s is generous for a preset list and far too short
+ *  for a full-resolution sweep.
+ */
+export const API_TIMEOUT_MS = 30_000;
+export const HEAVY_TIMEOUT_MS = 180_000;
+
+export async function apiFetch(url: string, init: RequestInit = {},
+  timeoutMs: number = API_TIMEOUT_MS): Promise<Response> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(new Error('timeout')), timeoutMs);
+  // Compose with a caller's own signal rather than replacing it, so a
+  // deliberate cancel is not silently turned into a timeout.
+  const external = init.signal;
+  const relay = () => ctl.abort(external?.reason);
+  if (external) {
+    if (external.aborted) relay();
+    else external.addEventListener('abort', relay, { once: true });
+  }
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } catch (e) {
+    if (external?.aborted) throw e;              // the user stopped it
+    if ((e as Error)?.name === 'AbortError') {
+      throw new Error(
+        `The request took longer than ${Math.round(timeoutMs / 1000)}s and was `
+        + 'stopped. The server may be busy — try again, or reduce the radius '
+        + 'or resolution.');
+    }
+    // fetch rejects with TypeError for a dropped connection or a DNS
+    // failure; "Failed to fetch" tells a field engineer nothing.
+    if (e instanceof TypeError) {
+      throw new Error('Could not reach the server. Check the connection and '
+        + 'try again — nothing was lost.');
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    external?.removeEventListener('abort', relay);
+  }
+}
+
 async function jsonOrThrow<T>(resp: Response): Promise<T> {
   if (!resp.ok) {
     let detail = resp.statusText;
@@ -46,17 +95,18 @@ async function jsonOrThrow<T>(resp: Response): Promise<T> {
 export async function uploadDxf(file: File): Promise<UploadResponse> {
   const form = new FormData();
   form.append('file', file);
-  return jsonOrThrow(await fetch('/api/dxf/upload', { method: 'POST', body: form }));
+  return jsonOrThrow(await apiFetch('/api/dxf/upload', { method: 'POST', body: form },
+    HEAVY_TIMEOUT_MS));
 }
 
 export async function georeference(
   dxfId: string, req: GeorefRequest,
 ): Promise<GeorefResponse> {
-  return jsonOrThrow(await fetch(`/api/dxf/${dxfId}/georeference`, {
+  return jsonOrThrow(await apiFetch(`/api/dxf/${dxfId}/georeference`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(req),
-  }));
+  }, HEAVY_TIMEOUT_MS));
 }
 
 export async function fetchProfile(params: {
@@ -86,17 +136,17 @@ export async function fetchProfile(params: {
   if (params.clutterPct) q.set('clutter_pct', String(params.clutterPct));
   if (params.surface) q.set('surface', 'true');
   if (params.clutterSource) q.set('clutter_source', params.clutterSource);
-  return jsonOrThrow(await fetch(`/api/terrain/profile?${q.toString()}`));
+  return jsonOrThrow(await apiFetch(`/api/terrain/profile?${q.toString()}`));
 }
 
 export async function fetchTechnologies(): Promise<Technology[]> {
   const body = await jsonOrThrow<{ technologies: Technology[] }>(
-    await fetch('/api/rf/technologies'));
+    await apiFetch('/api/rf/technologies'));
   return body.technologies ?? [];
 }
 
 export async function fetchModels(): Promise<ModelInfo[]> {
-  const body = await jsonOrThrow<{ models: ModelInfo[] }>(await fetch('/api/rf/models'));
+  const body = await jsonOrThrow<{ models: ModelInfo[] }>(await apiFetch('/api/rf/models'));
   return body.models ?? [];
 }
 
@@ -118,11 +168,11 @@ export interface CoverageParams {
 }
 
 export async function simulateCoverage(params: CoverageParams): Promise<CoverageResponse> {
-  return jsonOrThrow(await fetch('/api/rf/coverage', {
+  return jsonOrThrow(await apiFetch('/api/rf/coverage', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(coverageBody(params)),
-  }));
+  }, HEAVY_TIMEOUT_MS));
 }
 
 /** Request body shared by the synchronous and the queued coverage paths, so
@@ -212,14 +262,14 @@ export interface CoveragePoint {
 export async function coveragePointValue(
   coverageId: string, lat: number, lon: number,
 ): Promise<CoveragePoint> {
-  return jsonOrThrow(await fetch(
+  return jsonOrThrow(await apiFetch(
     `/api/rf/coverage/${coverageId}/at?lat=${lat}&lon=${lon}`));
 }
 
 /** Restore a georeferenced DXF's map state (footprint/overlay) by id —
  *  used to rebuild the session after a page reload. */
 export async function fetchDxfState(dxfId: string): Promise<GeorefResponse> {
-  return jsonOrThrow(await fetch(`/api/dxf/${dxfId}/state`));
+  return jsonOrThrow(await apiFetch(`/api/dxf/${dxfId}/state`));
 }
 
 /** URL of the CSV export matching the given profile query (same params). */
@@ -270,19 +320,19 @@ export function profileKmlUrl(params: {
 // ------------------------------------------------ indoor / underground
 export async function fetchMaterials(): Promise<Material[]> {
   const body = await jsonOrThrow<{ materials: Material[] }>(
-    await fetch('/api/indoor/materials'));
+    await apiFetch('/api/indoor/materials'));
   return body.materials ?? [];
 }
 
 export async function fetchUndergroundPresets(): Promise<UndergroundPresets> {
-  return jsonOrThrow(await fetch('/api/indoor/presets'));
+  return jsonOrThrow(await apiFetch('/api/indoor/presets'));
 }
 
 /** Floor-plan preview PNG + its DXF-unit bounds (from the response header). */
 export async function fetchPlanPreview(
   dxfId: string, layers: string[],
 ): Promise<{ url: string; bounds: [number, number, number, number] }> {
-  const resp = await fetch(
+  const resp = await apiFetch(
     `/api/indoor/${dxfId}/preview.png?layers=${encodeURIComponent(layers.join(','))}`);
   if (!resp.ok) {
     let detail = resp.statusText;
@@ -302,7 +352,7 @@ export async function simulateIndoorCoverage(params: {
   txPowerDbm?: number; rxSensitivityDbm?: number;
   floorsCrossed?: number; floorLossDb?: number;
 }): Promise<IndoorCoverageResponse> {
-  return jsonOrThrow(await fetch('/api/indoor/coverage', {
+  return jsonOrThrow(await apiFetch('/api/indoor/coverage', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -314,7 +364,7 @@ export async function simulateIndoorCoverage(params: {
       floors_crossed: params.floorsCrossed,
       floor_loss_db: params.floorLossDb,
     }),
-  }));
+  }, HEAVY_TIMEOUT_MS));
 }
 
 export async function fetchTunnelStudy(params: {
@@ -328,7 +378,7 @@ export async function fetchTunnelStudy(params: {
     tx_gain_dbi: String(params.txGainDbi),
     rx_sensitivity_dbm: String(params.rxSensitivityDbm),
   });
-  return jsonOrThrow(await fetch(`/api/indoor/tunnel?${q}`));
+  return jsonOrThrow(await apiFetch(`/api/indoor/tunnel?${q}`));
 }
 
 export async function fetchTteStudy(params: {
@@ -340,19 +390,20 @@ export async function fetchTteStudy(params: {
     earth: params.earth, tx_power_dbm: String(params.txPowerDbm),
     rx_sensitivity_dbm: String(params.rxSensitivityDbm),
   });
-  return jsonOrThrow(await fetch(`/api/indoor/tte?${q}`));
+  return jsonOrThrow(await apiFetch(`/api/indoor/tte?${q}`));
 }
 
 // ------------------------------------------------ antennas & multi-site
 export async function uploadAntenna(file: File): Promise<AntennaInfo> {
   const form = new FormData();
   form.append('file', file);
-  return jsonOrThrow(await fetch('/api/rf/antenna', { method: 'POST', body: form }));
+  return jsonOrThrow(await apiFetch('/api/rf/antenna', { method: 'POST', body: form },
+    HEAVY_TIMEOUT_MS));
 }
 
 export async function fetchAntennas(): Promise<AntennaInfo[]> {
   const body = await jsonOrThrow<{ antennas: AntennaInfo[] }>(
-    await fetch('/api/rf/antennas'));
+    await apiFetch('/api/rf/antennas'));
   return body.antennas ?? [];
 }
 
@@ -370,14 +421,14 @@ export interface SiteCsvParse {
 export async function parseSitesCsv(file: File): Promise<SiteCsvParse> {
   const form = new FormData();
   form.append('file', file);
-  return jsonOrThrow(await fetch('/api/rf/sites/parse-csv',
+  return jsonOrThrow(await apiFetch('/api/rf/sites/parse-csv',
     { method: 'POST', body: form }));
 }
 
 /** The lossless inverse: the estate back out as a spreadsheet, per-site
  *  radio overrides included. */
 export async function exportSitesCsv(sites: SiteEntry[]): Promise<string> {
-  const resp = await fetch('/api/rf/sites/export-csv', {
+  const resp = await apiFetch('/api/rf/sites/export-csv', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(sites),
   });
@@ -412,7 +463,7 @@ export async function simulateMultiCoverage(params: {
   clutterPct?: number; surface?: boolean; clutterSource?: string;
   txPowerDbm?: number; rxSensitivityDbm?: number;
 }): Promise<CoverageResponse> {
-  return jsonOrThrow(await fetch('/api/rf/coverage/multi', {
+  return jsonOrThrow(await apiFetch('/api/rf/coverage/multi', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -430,13 +481,13 @@ export async function simulateMultiCoverage(params: {
       tx_power_dbm: params.txPowerDbm,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
     }),
-  }));
+  }, HEAVY_TIMEOUT_MS));
 }
 
 /** Whether the backend has a surface model (DSM) tile source configured. */
 export async function fetchSurfaceAvailable(): Promise<boolean> {
   try {
-    const r = await fetch('/api/ready');
+    const r = await apiFetch('/api/ready');
     const body = await r.json();
     return Boolean(body?.checks?.surface_model_configured);
   } catch {
@@ -452,7 +503,7 @@ export async function batchReceivers(params: {
   foliageDepthM?: number; rainRateMmH?: number; clutterPct?: number;
   surface?: boolean; hBsM?: number;
 }): Promise<BatchResponse> {
-  return jsonOrThrow(await fetch('/api/rf/batch', {
+  return jsonOrThrow(await apiFetch('/api/rf/batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -465,16 +516,16 @@ export async function batchReceivers(params: {
       surface: params.surface || undefined,
       h_bs_m: params.hBsM,
     }),
-  }));
+  }, HEAVY_TIMEOUT_MS));
 }
 
 /** CSV download of a batch run (same body, format=csv). */
 export async function batchReceiversCsv(body: object): Promise<Blob> {
-  const r = await fetch('/api/rf/batch?format=csv', {
+  const r = await apiFetch('/api/rf/batch?format=csv', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, HEAVY_TIMEOUT_MS);
   if (!r.ok) throw new Error(await r.text());
   return r.blob();
 }
@@ -494,7 +545,8 @@ export async function optimizeHeights(params: {
   if (params.technology) q.set('technology', params.technology);
   if (params.dxfId) q.set('dxf_id', params.dxfId);
   if (params.surface) q.set('surface', 'true');
-  return jsonOrThrow(await fetch(`/api/terrain/optimize-heights?${q}`));
+  return jsonOrThrow(await apiFetch(`/api/terrain/optimize-heights?${q}`,
+    {}, HEAVY_TIMEOUT_MS));
 }
 
 export async function searchBestSite(params: {
@@ -503,7 +555,7 @@ export async function searchBestSite(params: {
   clutterPct?: number; shadowMarginDb?: number;
   dxfId?: string | null; surface?: boolean; hBsM?: number;
 }): Promise<{ candidates: SiteCandidate[] }> {
-  return jsonOrThrow(await fetch('/api/rf/site-search', {
+  return jsonOrThrow(await apiFetch('/api/rf/site-search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -517,30 +569,30 @@ export async function searchBestSite(params: {
       surface: params.surface || undefined,
       h_bs_m: params.hBsM,
     }),
-  }));
+  }, HEAVY_TIMEOUT_MS));
 }
 
 // ------------------------------------------------- Simple Mode scenarios
 export async function fetchScenarios(): Promise<Scenario[]> {
   const body = await jsonOrThrow<{ scenarios: Scenario[] }>(
-    await fetch('/api/rf/scenarios'));
+    await apiFetch('/api/rf/scenarios'));
   return body.scenarios ?? [];
 }
 
 export async function resolveScenario(id: string): Promise<ScenarioResolved> {
-  return jsonOrThrow(await fetch(`/api/rf/scenarios/${encodeURIComponent(id)}`));
+  return jsonOrThrow(await apiFetch(`/api/rf/scenarios/${encodeURIComponent(id)}`));
 }
 
 // ------------------------------------------------- hardware catalog
 export async function fetchEquipment(): Promise<{ equipment: Equipment[]; categories: string[] }> {
   const body = await jsonOrThrow<{ equipment: Equipment[]; categories: string[] }>(
-    await fetch('/api/rf/equipment'));
+    await apiFetch('/api/rf/equipment'));
   return { equipment: body.equipment ?? [], categories: body.categories ?? [] };
 }
 
 // ------------------------------------------------- advanced studies
 async function postJson<T>(path: string, body: object): Promise<T> {
-  return jsonOrThrow<T>(await fetch(path, {
+  return jsonOrThrow<T>(await apiFetch(path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   }));
@@ -560,7 +612,7 @@ export async function emfCompliance(body: object): Promise<any> {
 export async function itmStudy(params: Record<string, string | number>): Promise<any> {
   const q = new URLSearchParams(
     Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])));
-  return jsonOrThrow(await fetch(`/api/terrain/itm?${q.toString()}`));
+  return jsonOrThrow(await apiFetch(`/api/terrain/itm?${q.toString()}`));
 }
 
 // Copilot engine-driven link diagnosis.
@@ -631,10 +683,10 @@ export async function indoorStack(body: object): Promise<any> {
 
 // Ready-to-file EMF dossier (PDF blob).
 export async function emfReportPdf(body: object): Promise<Blob> {
-  const r = await fetch('/api/rf/compliance/report.pdf', {
+  const r = await apiFetch('/api/rf/compliance/report.pdf', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-  });
+  }, HEAVY_TIMEOUT_MS);
   if (!r.ok) throw new Error(await r.text());
   return r.blob();
 }
@@ -650,12 +702,14 @@ export async function uploadLidar(file: File, epsg?: string, cellM = 2): Promise
   form.append('file', file);
   if (epsg) form.append('epsg', epsg);
   form.append('cell_m', String(cellM));
-  return jsonOrThrow(await fetch('/api/lidar/upload', { method: 'POST', body: form }));
+  return jsonOrThrow(await apiFetch('/api/lidar/upload', { method: 'POST', body: form },
+    HEAVY_TIMEOUT_MS));
 }
 
 // Profile whose diffraction is computed against the surveyed 3D surface.
 export async function lidarProfile(dsmId: string, params: Record<string, string | number>): Promise<any> {
   const q = new URLSearchParams(
     Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])));
-  return jsonOrThrow(await fetch(`/api/lidar/${dsmId}/profile?${q.toString()}`));
+  return jsonOrThrow(await apiFetch(`/api/lidar/${dsmId}/profile?${q.toString()}`,
+    {}, HEAVY_TIMEOUT_MS));
 }

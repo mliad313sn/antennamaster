@@ -40,6 +40,19 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Fixed — a request could hang forever with nothing on screen
+
+- **Every API call was a bare `fetch`, which has no timeout.** On the
+  hardware this is used on — a tablet that walks out of coverage mid-study —
+  the promise simply never settles: the UI sat on "Simulating…" with no
+  result, no error and no way back except a reload. All 35 call sites now go
+  through one wrapper with an `AbortController` budget (30 s for metadata,
+  180 s for a full-resolution sweep or an upload), and the failure says what
+  to do — "try again, or reduce the radius or resolution" rather than
+  `AbortError`. A dropped connection reports as one instead of
+  "Failed to fetch", and a deliberate cancel is passed through rather than
+  being relabelled a timeout.
+
 ### Added — the cluster study can finally be edited, imported and exported
 
 - **A site could be added and removed but never corrected.** A mistyped
