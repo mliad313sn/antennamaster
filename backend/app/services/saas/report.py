@@ -71,6 +71,82 @@ def _png(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
+def plain_summary(study: dict | None, rf: dict | None,
+                  distance_m: float | None,
+                  coverage_stats: dict | None) -> list[str]:
+    """The report in sentences, for the person who signs it.
+
+    This document is read by a mine manager, a municipality, a client's
+    procurement lead — and it opened straight into a table of dB. Those
+    readers cannot tell a 14 dB margin from a 4 dB one, which is the whole
+    question, so the first thing on the page is now the answer in words.
+
+    Every sentence is derived from the SAME figures the tables below print;
+    nothing is recomputed here. A summary that could disagree with its own
+    appendix would be worse than none. A figure that is absent produces no
+    sentence rather than a sentence built on a zero.
+    """
+    out: list[str] = []
+
+    if study and study.get("margin_db") is not None:
+        margin = float(study["margin_db"])
+        served = bool(study.get("served"))
+        where = (f" over the {distance_m / 1000:.1f} km path"
+                 if distance_m else "")
+        if not served:
+            out.append(
+                f"<b>This link does not close{where}.</b> The received signal "
+                f"is {abs(margin):.0f} dB below what the equipment needs to "
+                "work at all, so it would not carry traffic as designed.")
+        elif margin < 6.0:
+            # Below roughly a fade margin, a link that "works" on paper stops
+            # working in rain, in summer foliage, or when a lorry parks in it.
+            out.append(
+                f"<b>This link closes{where}, but only just</b> — "
+                f"{margin:.0f} dB of headroom. That is less than the "
+                "allowance normally kept for rain, seasonal foliage and "
+                "everyday obstructions, so expect interruptions in bad "
+                "conditions.")
+        elif margin < 15.0:
+            out.append(
+                f"<b>This link closes{where}</b> with {margin:.0f} dB of "
+                "headroom — enough for normal weather and seasonal changes.")
+        else:
+            out.append(
+                f"<b>This link closes comfortably{where}</b>: {margin:.0f} dB "
+                "of headroom, well beyond what weather and vegetation "
+                "typically take.")
+
+    if rf is not None and rf.get("line_of_sight_clear") is not None:
+        if rf["line_of_sight_clear"]:
+            out.append("The two ends can see each other over the terrain.")
+        else:
+            out.append(
+                "The terrain blocks the direct line between the two ends, so "
+                "the signal has to bend over it — the loss that costs is "
+                "already included above.")
+
+    if coverage_stats:
+        served_frac = coverage_stats.get("served_area_fraction")
+        if served_frac is not None:
+            pct = float(served_frac) * 100.0
+            verdict = ("almost the whole area" if pct >= 95 else
+                       "most of the area" if pct >= 75 else
+                       "about half the area" if pct >= 40 else
+                       "only part of the area")
+            out.append(
+                f"Across the mapped area, <b>{pct:.0f}% is covered</b> — "
+                f"{verdict}. The colours on the map show how much headroom "
+                "each place has, not merely whether it is covered.")
+
+    if out:
+        out.append(
+            "These figures are a prediction from terrain and equipment data, "
+            "not a measurement. They assume the antenna heights, power and "
+            "margins listed below; changing any of them changes the answer.")
+    return out
+
+
 def build_report(*, title: str, org_name: str, logo_png: bytes | None,
                  study: dict | None, profile_points: list[dict] | None,
                  rf: dict | None, distance_m: float | None,
@@ -105,6 +181,17 @@ def build_report(*, title: str, org_name: str, logo_png: bytes | None,
     flow.append(Paragraph(time.strftime("Generated %Y-%m-%d %H:%M UTC",
                                         time.gmtime()), muted))
     flow.append(Spacer(1, 6))
+
+    # ---------------------------------------------------- what it means
+    # First on the page, before any table: this document is signed by people
+    # who cannot read dB, and the tables below are the appendix that backs it.
+    summary = plain_summary(study, rf, distance_m, coverage_stats)
+    if summary:
+        flow.append(Paragraph("Summary", h2))
+        for line in summary:
+            flow.append(Paragraph(line, body))
+            flow.append(Spacer(1, 3))
+        flow.append(Spacer(1, 4))
 
     # -------------------------------------------------------- link budget
     if study:
