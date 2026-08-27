@@ -1,48 +1,70 @@
 # Cutting a release
 
-The repository's CI is the gate: a release is cut from a commit whose CI run
-is green, never from a local build. `dist/AntennaMaster-Setup-<version>.exe`
-is committed, so the artefact in the release is byte-identical to the one in
-the tree at that commit.
+Releases are published by the repository itself, through
+`.github/workflows/release.yml`, with a `contents: write` token scoped to that
+job and nothing else. Nobody uploads an installer by hand.
 
-## 1. Verify
+`dist/AntennaMaster-Setup-<version>.exe` is committed, so the artefact on the
+release page is byte-identical to the one in the tree at the released commit.
 
-```bash
-./start.sh --check          # backend, frontend, e2e and benchmark gates
-```
-and confirm the commit's CI run is green on GitHub — all six jobs, including
-**Browser end-to-end (real stack)**.
+## Release it
 
-## 2. Rebuild the installer if anything changed since the version bump
+1. **Bump the version** in all four places the workflow checks —
+   `packaging/windows/antennamaster.nsi`, `frontend/package.json`,
+   `backend/app/services/saas/study_record.py` (`APP_VERSION`) and a
+   `## <version> — <date>` section in `CHANGELOG.md`.
 
-An installer built before the last commit ships a different payload under the
-same version name. Rebuild and verify what is actually inside it:
+   `APP_VERSION` is stamped into every filed study of record, so a version
+   that disagrees with the release would make studies cite a build that was
+   never published. That is why it is checked, not assumed.
 
-```bash
-./tools/build_windows_installer.sh
-7z x -o/tmp/exe-check -y dist/AntennaMaster-Setup-<version>.exe
-grep -m1 APP_VERSION /tmp/exe-check/backend/app/services/saas/study_record.py
-sha256sum dist/AntennaMaster-Setup-<version>.exe
-```
+2. **Rebuild the installer** and commit it:
 
-## 3. Tag and publish
+   ```bash
+   ./tools/build_windows_installer.sh
+   ```
 
-```bash
-git tag -a v<version> -m "AntennaMaster <version>"
-git push origin v<version>
-gh release create v<version> \
-  --title "AntennaMaster <version>" \
-  --notes-file <(sed -n '/^## <version>/,/^## /p' CHANGELOG.md | head -n -1) \
-  dist/AntennaMaster-Setup-<version>.exe
-```
+   Do this even if "nothing much" changed since the bump. An installer built
+   two commits ago ships a different payload under the same version name —
+   this repository did exactly that once, and only caught it by extracting
+   the `.exe`. The workflow now extracts it too and refuses a mismatch.
 
-The release notes come from `CHANGELOG.md` so the published text and the
-repository never disagree about what shipped.
+3. **Push the commit and wait for CI to go green.** All six jobs, including
+   *Browser end-to-end (real stack)*.
 
-## Note on automation
+4. **Trigger the release**, either way:
 
-A Claude Code session can create branches but **cannot push tags or create
-releases**: tag pushes are refused with 403 by the session's git credentials,
-and the GitHub MCP server exposes only read operations for releases. Steps 1
-and 2 can be automated; step 3 is run by a human or by a workflow with
-`contents: write`.
+   ```bash
+   git push origin HEAD:refs/heads/release/v<version>    # branch push
+   ```
+
+   or, from the Actions tab, run **Release** and give it the version.
+
+   Both run the same job. The branch push exists because an automated session
+   can push branches but cannot dispatch workflows (`actions: write`) or push
+   tags — both return 403. The branch name carries the version; the workflow
+   creates the tag itself.
+
+5. **Delete the release branch** once the run is green. The tag is the record.
+
+## What the workflow refuses
+
+Each check is a mistake that is easy, silent, and expensive once the artefact
+is downloadable:
+
+| Refusal | Why |
+|---|---|
+| CI on the commit is not green | a release cut from a red commit is a guess about what works (`allow_red_ci` overrides, and says so in a warning) |
+| the version disagrees with the tree | four sources, one number; `APP_VERSION` ends up inside filed studies |
+| no installer for that version | nothing to release |
+| the installer's payload is stale | one version name, two payloads — verified by extracting the `.exe`, not by trusting its filename |
+| no `## <version>` section in the CHANGELOG | notes come from the CHANGELOG so the published text and the repository cannot disagree |
+| the version is already released | a published version is immutable; cut a new one |
+
+## Note on the default branch
+
+The repository's default branch is still an old `claude/*` branch, so
+`release.yml` is duplicated there purely to register `workflow_dispatch` —
+GitHub only exposes that trigger for workflows on the default branch. Once
+the default is switched to `main` in the repository settings, that copy can
+be deleted.
