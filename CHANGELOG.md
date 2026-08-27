@@ -4,6 +4,41 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.5 — 2026-08-27
+
+### Fixed — a signed-in user could not see or download their own coverage
+
+This is the product's central output, and it was broken for exactly the
+people who had signed in. Anonymous self-hosted use kept working, which is
+why nothing caught it.
+
+- Coverage results are owner-scoped: a result id is not a capability, because
+  it travels in share links, PDF footers, audit fields and proxy logs, and
+  treating it as authorisation leaked other tenants' georeferenced site
+  footprints. The backend answers 404 to anyone who is not the owner —
+  correctly. **The gap was on the browser side:** the raster is loaded as an
+  `<img>` (Leaflet's ImageOverlay, Cesium's single tile) and the exports were
+  `<a download href>`. Neither can carry a header, and the token lives in
+  localStorage rather than a cookie, so a signed-in user's request for their
+  own result arrived unauthenticated and was refused.
+- Measured on a freshly computed study while signed in: **`.png`, `.tif` and
+  `.kmz` all 404 as the interface loaded them, and all 200 with the bearer
+  token.** The coverage overlay sat in the DOM with `naturalWidth: 0` — a
+  broken image, nothing painted — and each export button saved the body of a
+  404 under the right filename: a `coverage.kmz` Google Earth refuses to
+  open, with no error shown anywhere.
+- These artefacts are now fetched with the account's credentials and handed
+  to the browser as blobs. **The token deliberately does not move into the
+  query string** — the backend's own note on this says these URLs end up in
+  proxy logs and share links, and a bearer token there is strictly worse than
+  the id it was protecting.
+- Applies to the 2D map overlay, the georeferenced DXF hillshade, the 3D
+  globe's draped coverage, and the PNG / GeoTIFF / KMZ exports. Verified in
+  the browser signed in: the raster paints (`naturalWidth: 512`) and the
+  three exports save 13.9 kB, 11.2 kB and 13.7 kB of real file.
+- Anonymous deployments send no header and get the same bytes, so this is not
+  a SaaS-only path.
+
 ## 1.3.4 — 2026-08-27
 
 ### Fixed — the tactical view claimed to be online when nothing was reachable

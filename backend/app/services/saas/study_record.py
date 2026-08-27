@@ -35,7 +35,7 @@ import json
 # The PRODUCT version (the installer / release line), not the API
 # version in main.py: a study record answers "which build made this",
 # and the answer a reader can check against a release note is this one.
-APP_VERSION = "1.3.4"
+APP_VERSION = "1.3.5"
 RECORD_FORMAT = "antennamaster.study-record/1"
 
 

@@ -16,6 +16,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useAuthedAsset } from '@/lib/authedAsset';
 
 type LatLng = { lat: number; lng: number };
 type PPoint = { d: number; lat: number; lon: number; elev: number; los: number; fresnel_lower: number };
@@ -67,6 +68,7 @@ export default function Globe3D(
   const viewerRef = useRef<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const coverageSrc = useAuthedAsset(coverage?.png_url);
 
   useEffect(() => {
     let disposed = false;
@@ -119,9 +121,13 @@ export default function Globe3D(
     viewer.imageryLayers.length > 1 && viewer.imageryLayers.remove(viewer.imageryLayers.get(1));
 
     // Coverage heatmap draped over the 3D terrain.
-    if (coverage?.png_url && coverage.bounds) {
+    // coverageSrc, not coverage.png_url: the raster is owner-scoped and
+    // Cesium fetches a single tile as an image, which cannot carry the
+    // bearer token. Signed in, that request came back 404 and the 3D view
+    // showed bare terrain with no coverage draped on it. See lib/authedAsset.
+    if (coverageSrc && coverage?.bounds) {
       const [[s, w], [n, e]] = coverage.bounds;
-      Cesium.SingleTileImageryProvider.fromUrl(coverage.png_url, {
+      Cesium.SingleTileImageryProvider.fromUrl(coverageSrc, {
         rectangle: Cesium.Rectangle.fromDegrees(w, s, e, n),
       }).then((p: any) => {
         const layer = viewer.imageryLayers.addImageryProvider(p);
@@ -207,7 +213,7 @@ export default function Globe3D(
     const Cesium = window.Cesium;
     if (ready && Cesium && viewerRef.current) drawScene(Cesium, viewerRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tx?.lat, tx?.lng, rx?.lat, rx?.lng, freqMhz, txHeight, rxHeight, coverage?.png_url, ready]);
+  }, [tx?.lat, tx?.lng, rx?.lat, rx?.lng, freqMhz, txHeight, rxHeight, coverageSrc, ready]);
 
   return (
     <div className="globe3d-wrap">

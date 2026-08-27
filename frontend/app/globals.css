@@ -207,10 +207,15 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
 .header-search { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 .header-search input { width: 240px; }
 
+/* Also applied to <button>: the owner-scoped exports had to stop being
+   anchors, since an <a download> cannot send the bearer token. The resets
+   below keep a button visually identical to the link it replaced. */
 .download-link {
   display: inline-block; margin-top: 6px; font-size: 12px; font-weight: 600;
   color: var(--accent); text-decoration: none; padding: 4px 8px;
   border: 1px solid var(--hairline); border-radius: 6px;
+  background: transparent; font-family: inherit; line-height: normal;
+  cursor: pointer;
 }
 .download-link:hover { background: var(--accent-soft); }
 

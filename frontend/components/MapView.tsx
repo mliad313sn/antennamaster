@@ -15,6 +15,7 @@ import {
   TileLayer, useMap, useMapEvents,
 } from 'react-leaflet';
 import { coveragePointValue, type CoveragePoint } from '@/lib/api';
+import { useAuthedAsset } from '@/lib/authedAsset';
 import type { CoverageResponse, GeorefResponse, LatLng } from '@/lib/types';
 
 /**
@@ -346,6 +347,11 @@ export default function MapView({
   const { t } = useTranslation();
   const view = useMemo(initialView, []);
   const [basemapOffline, setBasemapOffline] = useState(false);
+  // Owner-scoped rasters: fetched with the account's credentials and handed
+  // to Leaflet as blobs, because an <img> cannot send an Authorization
+  // header and the token is not a cookie. See lib/authedAsset.
+  const coverageSrc = useAuthedAsset(coverage?.png_url);
+  const georefSrc = useAuthedAsset(showOverlay ? georef?.overlay_url : null);
   const overlayBounds = useMemo(() => {
     if (!georef) return null;
     const [[s, w], [n, e]] = georef.overlay_bounds;
@@ -412,10 +418,16 @@ export default function MapView({
         <ViewPersist />
         <OfflineFallback onDegraded={setBasemapOffline} />
 
-        {/* RF coverage raster (signal-strength classes; transparent = unserved). */}
-        {coverage && coverageBounds && (
+        {/* RF coverage raster (signal-strength classes; transparent = unserved).
+            Loaded through useAuthedAsset, not by URL: results are owner-scoped
+            and an <img> cannot carry the bearer token, so a signed-in user's
+            request for their OWN raster arrived unauthenticated and was
+            refused 404. Measured: the overlay sat in the DOM with
+            naturalWidth 0 — the study's central output, invisible. */}
+        {coverage && coverageBounds && coverageSrc && (
           <ImageOverlay
-            url={coverage.png_url}
+            key={coverageSrc}
+            url={coverageSrc}
             bounds={coverageBounds}
             opacity={1 /* alpha baked into the PNG */}
             zIndex={380}
@@ -423,9 +435,10 @@ export default function MapView({
         )}
 
         {/* Semi-transparent hillshade of the georeferenced DXF terrain. */}
-        {georef && overlayBounds && showOverlay && (
+        {georef && overlayBounds && showOverlay && georefSrc && (
           <ImageOverlay
-            url={georef.overlay_url}
+            key={georefSrc}
+            url={georefSrc}
             bounds={overlayBounds}
             opacity={1 /* alpha is baked into the PNG */}
             zIndex={400}

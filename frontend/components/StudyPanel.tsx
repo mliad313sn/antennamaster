@@ -16,6 +16,7 @@ import {
   throughputMap,
   uploadAntenna,
 } from '@/lib/api';
+import { downloadAsset } from '@/lib/authedAsset';
 import Help from '@/components/Help';
 import SiteList from '@/components/SiteList';
 import type {
@@ -96,6 +97,17 @@ export default function StudyPanel(props: StudyPanelProps) {
   // Set while a queued study is in flight so the user can stop it.
   const [cancelRun, setCancelRun] = useState<(() => void) | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  /** Save an owner-scoped export, surfacing a failure instead of silently
+   *  writing a 404 body to the user's Downloads folder. */
+  async function grab(url: string) {
+    setError(null);
+    try {
+      await downloadAsset(url);
+    } catch (e) {
+      setError(friendlyError((e as Error).message));
+    }
+  }
   // Spoken status for assistive technology (WCAG 4.1.3). A coverage sweep can
   // take half a minute; without this the user gets no signal that it started,
   // finished, or what it found.
@@ -989,16 +1001,24 @@ export default function StudyPanel(props: StudyPanelProps) {
                       {t('study.staleExports')}
                     </span>
                   ) : (<>
-                  <a className="download-link" href={props.coverage.png_url} download>⤓ PNG</a>
-                  <a className="download-link"
-                    href={props.coverage.png_url.replace(/\.png$/, '.tif')} download
+                  {/* Buttons, not <a download href>. These artefacts are
+                      owner-scoped and an anchor cannot carry the bearer
+                      token, so for a signed-in user each one saved the body
+                      of a 404 under the right filename - a "coverage.kmz"
+                      that Google Earth refuses to open, with no error
+                      anywhere. Measured: .png/.tif/.kmz all 404 without the
+                      header, all 200 with it. */}
+                  <button className="download-link" type="button"
+                    onClick={() => grab(props.coverage!.png_url)}>⤓ PNG</button>
+                  <button className="download-link" type="button"
+                    onClick={() => grab(props.coverage!.png_url.replace(/\.png$/, '.tif'))}
                     title="Georeferenced GeoTIFF (EPSG:4326) for QGIS / ArcGIS / Atoll">
                     ⤓ GeoTIFF
-                  </a>
-                  <a className="download-link"
-                    href={props.coverage.png_url.replace(/\.png$/, '.kmz')} download>
+                  </button>
+                  <button className="download-link" type="button"
+                    onClick={() => grab(props.coverage!.png_url.replace(/\.png$/, '.kmz'))}>
                     ⤓ KMZ (Google Earth)
-                  </a>
+                  </button>
                   </>)}
                 </div>
                 <div style={{ marginTop: 4 }}>
