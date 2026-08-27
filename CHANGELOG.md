@@ -40,6 +40,28 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Added — the cluster study can finally be edited, imported and exported
+
+- **A site could be added and removed but never corrected.** A mistyped
+  coordinate or a wrong azimuth meant deleting the row and re-clicking the
+  map, which on a twelve-site estate is how people give up on a tool. Each
+  site now expands into an editor for its name, coordinates, azimuth and
+  downtilt.
+- **The per-site radio overrides existed only in the API.** The backend has
+  accepted per-transmitter `freq_mhz`, power, gains, losses, sensitivity,
+  heights and beamwidth since the cluster-study work — but the UI cloned one
+  preset across every site and `simulateMultiCoverage` *stripped the fields
+  on the way to the wire*, so an 800 MHz macro layer next to a 3.5 GHz
+  capacity layer still ran as one preset. The editor exposes all nine, blank
+  meaning inherit (a field pre-filled with the inherited number reads as a
+  decision someone made), a badge marks which sites differ from the study,
+  and the serializer is now shared so a new caller cannot drop them again.
+- **CSV import and export are wired up.** `POST /api/rf/sites/parse-csv` and
+  its lossless inverse were reachable only by curl. An OSS export now loads
+  straight into a study, and every rejected row is listed with its line
+  number and reason — a planner who imports 40 sites and studies 38 has to
+  be told which two.
+
 ### Fixed — a compliance PDF could be rewritten by the site name typed into it
 
 - **User text reached ReportLab's markup parser unescaped.** A `Paragraph`

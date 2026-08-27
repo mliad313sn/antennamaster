@@ -3,8 +3,9 @@ import type {
   BatchResponse, Equipment, OptimizeHeightsResponse, Scenario, ScenarioResolved, SiteCandidate,
   AntennaInfo, CoverageResponse, GeorefRequest, GeorefResponse,
   IndoorCoverageResponse, Material, ModelInfo, ProfileResponse, Technology,
-  TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
+  SiteEntry, TteResponse, TunnelResponse, UndergroundPresets, UploadResponse,
 } from './types';
+import { SITE_RADIO_FIELDS } from './types';
 
 /**
  * Turn a backend diagnostic into advice a planner can act on.
@@ -355,9 +356,56 @@ export async function fetchAntennas(): Promise<AntennaInfo[]> {
   return body.antennas ?? [];
 }
 
+export interface SiteCsvParse {
+  sites: SiteEntry[];
+  count: number;
+  skipped: { line: number; reason: string }[];
+  columns: string[];
+}
+
+/** Turn an OSS/spreadsheet export into the `sites` array a cluster study
+ *  takes. The backend is tolerant on input and explicit about what it
+ *  rejected, so the caller can show the user which rows did not make it
+ *  rather than silently planning a smaller network than they meant. */
+export async function parseSitesCsv(file: File): Promise<SiteCsvParse> {
+  const form = new FormData();
+  form.append('file', file);
+  return jsonOrThrow(await fetch('/api/rf/sites/parse-csv',
+    { method: 'POST', body: form }));
+}
+
+/** The lossless inverse: the estate back out as a spreadsheet, per-site
+ *  radio overrides included. */
+export async function exportSitesCsv(sites: SiteEntry[]): Promise<string> {
+  const resp = await fetch('/api/rf/sites/export-csv', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sites),
+  });
+  if (!resp.ok) return jsonOrThrow(resp);      // raises with the API detail
+  return resp.text();
+}
+
+/** One site as the API takes it.
+ *
+ *  This used to inline four fields and drop the rest, which silently threw
+ *  away every per-site radio override on the way to the wire: the UI could
+ *  show an 800 MHz macro next to a 3.5 GHz small cell and the backend would
+ *  still run one preset across both. `undefined` is what the API reads as
+ *  "inherit", so a null override must not be sent as null. */
+export function siteBody(s: SiteEntry): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    lat: s.lat, lon: s.lon, name: s.name,
+    antenna_azimuth_deg: s.antenna_azimuth_deg ?? undefined,
+    downtilt_deg: s.downtilt_deg ?? 0,
+  };
+  for (const f of SITE_RADIO_FIELDS) {
+    if (s[f] != null) out[f] = s[f];
+  }
+  return out;
+}
+
 export async function simulateMultiCoverage(params: {
-  sites: { lat: number; lon: number; name?: string;
-           antenna_azimuth_deg?: number | null; downtilt_deg?: number }[];
+  sites: SiteEntry[];
   technology: string; radiusKm: number; dxfId: string | null;
   antennaId?: string | null; model?: string | null; environment?: string | null;
   shadowMarginDb?: number; hBsM?: number;
@@ -368,11 +416,7 @@ export async function simulateMultiCoverage(params: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      sites: params.sites.map((s) => ({
-        lat: s.lat, lon: s.lon, name: s.name,
-        antenna_azimuth_deg: s.antenna_azimuth_deg ?? undefined,
-        downtilt_deg: s.downtilt_deg ?? 0,
-      })),
+      sites: params.sites.map(siteBody),
       technology: params.technology, radius_km: params.radiusKm,
       dxf_id: params.dxfId ?? undefined,
       antenna_id: params.antennaId ?? undefined,

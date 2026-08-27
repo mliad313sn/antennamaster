@@ -594,6 +594,22 @@ button.danger {
   border-color: var(--status-critical-border);
 }
 button.danger:disabled { opacity: 0.5; }
+/* ---- cluster-study site inventory ---- */
+.site-row.open { background: var(--accent-soft); border-radius: 8px; padding: 4px 6px; }
+.site-editor { padding: 4px 0 8px; }
+/* Nine numeric overrides need to be scannable, not a wall: three columns on
+   the sidebar's width, one on a phone. */
+.site-overrides { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+@media (max-width: 800px) { .site-overrides { grid-template-columns: 1fr; } }
+.site-overrides label { font-size: 11px; }
+.site-overrides .unit { color: var(--ink-muted); font-weight: 400; }
+/* A button that reads as a disclosure control, not a form submit. */
+.link-btn {
+  background: none; border: none; padding: 0; font: inherit; cursor: pointer;
+  color: inherit; text-align: left;
+}
+.link-btn:hover { text-decoration: underline; }
+
 .cp-grid { display: grid; grid-template-columns: repeat(4, 1fr) 32px; gap: 6px; align-items: end; margin-bottom: 6px; }
 .cp-grid button { padding: 6px 4px; }
 

@@ -238,13 +238,37 @@ export interface AntennaInfo {
   electrical_tilt_deg?: number;
 }
 
+/** One transmitter in a cluster study.
+ *
+ *  Every radio field is optional and means "inherit": omitted, the site falls
+ *  back to the study-level value and then to the technology preset. That is
+ *  what makes a real estate expressible — an 800 MHz macro layer, a 3.5 GHz
+ *  capacity layer and a 400 MHz PMR overlay in one study — instead of one
+ *  preset cloned across every site.
+ */
 export interface SiteEntry {
   lat: number;
   lon: number;
   name: string;
   antenna_azimuth_deg?: number | null;
   downtilt_deg?: number;
+  antenna_beamwidth_deg?: number | null;
+  freq_mhz?: number | null;
+  tx_power_dbm?: number | null;
+  tx_gain_dbi?: number | null;
+  rx_gain_dbi?: number | null;
+  losses_db?: number | null;
+  rx_sensitivity_dbm?: number | null;
+  h_bs_m?: number | null;
+  h_ut_m?: number | null;
 }
+
+/** The per-site radio overrides, in the order the editor and the CSV use. */
+export const SITE_RADIO_FIELDS = [
+  'freq_mhz', 'tx_power_dbm', 'tx_gain_dbi', 'rx_gain_dbi', 'losses_db',
+  'rx_sensitivity_dbm', 'h_bs_m', 'h_ut_m', 'antenna_beamwidth_deg',
+] as const;
+export type SiteRadioField = typeof SITE_RADIO_FIELDS[number];
 
 export interface BatchReceiverRow {
   name: string;

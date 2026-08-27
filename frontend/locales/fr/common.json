@@ -731,5 +731,34 @@
     "erasedResults": "{{n}} résultat(s) de couverture supprimé(s)",
     "erasedAudit": "{{n}} entrée(s) d'audit anonymisée(s)",
     "done": "Terminé"
+  },
+  "sites": {
+    "import": "Importer un CSV…",
+    "export": "Exporter en CSV",
+    "imported": "{{count}} site(s) importé(s).",
+    "skippedRow": "Ligne {{line}}",
+    "remove": "Retirer {{name}}",
+    "name": "Nom",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "azimuth": "Azimut",
+    "omni": "omni",
+    "downtilt": "Tilt",
+    "inherit": "hérité",
+    "overrides": "{{count}} valeur(s) forcée(s)",
+    "overridesHint": "Cet émetteur utilise ses propres paramètres radio, pas ceux de l'étude.",
+    "overrideHelp": "Radio propre à l'émetteur. Laissez un champ vide pour hériter de l'étude, puis du préréglage technologique — c'est ainsi qu'une même étude peut contenir une couche macro 800 MHz et une couche de capacité 3,5 GHz.",
+    "clearOverrides": "Effacer {{count}} valeur(s) forcée(s)",
+    "field": {
+      "freq_mhz": "Fréquence",
+      "tx_power_dbm": "Puissance TX",
+      "tx_gain_dbi": "Gain TX",
+      "rx_gain_dbi": "Gain RX",
+      "losses_db": "Pertes",
+      "rx_sensitivity_dbm": "Sensibilité RX",
+      "h_bs_m": "Hauteur TX",
+      "h_ut_m": "Hauteur RX",
+      "antenna_beamwidth_deg": "Ouverture"
+    }
   }
 }

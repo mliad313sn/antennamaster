@@ -17,6 +17,7 @@ import {
   uploadAntenna,
 } from '@/lib/api';
 import Help from '@/components/Help';
+import SiteList from '@/components/SiteList';
 import type {
   AntennaInfo, CoverageResponse, Equipment, LatLng, ModelInfo, ScenarioResolved,
   SiteEntry, StudyResult,
@@ -725,20 +726,17 @@ export default function StudyPanel(props: StudyPanelProps) {
                   }]))}>
                 {t('study.addSite', { count: sites.length })}
               </button>
-              {sites.map((s, i) => (
-                <div key={i} className="stat-line">
-                  <span className="k">{s.name}</span>
-                  <span className="v">
-                    {s.lat.toFixed(4)}, {s.lon.toFixed(4)}
-                    <button style={{ marginLeft: 6, padding: '0 6px' }}
-                      aria-label={`Remove ${s.name}`}
-                      onClick={() => { setFreqPlan(null); setTpRaw(null); setMcRaw(null);
-                        setSites((prev) => prev.filter((_, j) => j !== i)); }}>
-                      −
-                    </button>
-                  </span>
-                </div>
-              ))}
+              {/* Editing, not just add/remove: a mistyped coordinate used to
+                  mean deleting the row and re-clicking the map, and the
+                  per-site radio overrides that let one study describe a real
+                  multi-layer estate existed only in the API. Any change
+                  invalidates the derived plans, which were computed for the
+                  previous inventory. */}
+              <SiteList sites={sites} disabled={busy}
+                onChange={(next) => {
+                  setFreqPlan(null); setTpRaw(null); setMcRaw(null);
+                  setSites(next);
+                }} />
               {sites.length >= 2 && (
                 <button className="primary" style={{ width: '100%', marginTop: 4 }}
                   disabled={busy} onClick={runMultiCoverage}>

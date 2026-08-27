@@ -731,5 +731,34 @@
     "erasedResults": "{{n}} coverage result(s) deleted",
     "erasedAudit": "{{n}} audit entr(y/ies) anonymised",
     "done": "Done"
+  },
+  "sites": {
+    "import": "Import CSV…",
+    "export": "Export CSV",
+    "imported": "{{count}} site(s) imported.",
+    "skippedRow": "Row {{line}}",
+    "remove": "Remove {{name}}",
+    "name": "Name",
+    "lat": "Latitude",
+    "lon": "Longitude",
+    "azimuth": "Azimuth",
+    "omni": "omni",
+    "downtilt": "Downtilt",
+    "inherit": "inherit",
+    "overrides": "{{count}} override(s)",
+    "overridesHint": "This transmitter runs on its own radio parameters, not the study defaults.",
+    "overrideHelp": "Per-transmitter radio. Leave a field blank to inherit it from the study, then from the technology preset — that is how one study can hold an 800 MHz macro layer and a 3.5 GHz capacity layer at once.",
+    "clearOverrides": "Clear {{count}} override(s)",
+    "field": {
+      "freq_mhz": "Frequency",
+      "tx_power_dbm": "TX power",
+      "tx_gain_dbi": "TX gain",
+      "rx_gain_dbi": "RX gain",
+      "losses_db": "Losses",
+      "rx_sensitivity_dbm": "RX sensitivity",
+      "h_bs_m": "TX height",
+      "h_ut_m": "RX height",
+      "antenna_beamwidth_deg": "Beamwidth"
+    }
   }
 }
