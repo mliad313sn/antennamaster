@@ -20,6 +20,7 @@ from reportlab.platypus import (HRFlowable, Paragraph, SimpleDocTemplate,
                                 Spacer, Table, TableStyle)
 
 from ..rf.compliance import assess_exposure
+from .pdf_text import esc
 
 BRAND = colors.HexColor("#0d366b")
 MUTED = colors.HexColor("#5b6675")
@@ -35,7 +36,10 @@ _SMALL = ParagraphStyle("s", fontName="Helvetica", fontSize=8, leading=11,
 
 
 def _kv_table(rows: list[tuple[str, str]]) -> Table:
-    t = Table([[Paragraph(f"<b>{k}</b>", _BODY), Paragraph(v, _BODY)]
+    # Values are user text (site name, operator, notes): escaped, or the
+    # Paragraph parser eats "<north>" out of a mast name and honours a
+    # "<font color=white>" someone typed into it.
+    t = Table([[Paragraph(f"<b>{esc(k)}</b>", _BODY), Paragraph(esc(v), _BODY)]
                for k, v in rows], colWidths=[4.5 * cm, 11.5 * cm])
     t.setStyle(TableStyle([
         ("GRID", (0, 0), (-1, -1), 0.3, RULE),

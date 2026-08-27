@@ -40,6 +40,34 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Fixed — a compliance PDF could be rewritten by the site name typed into it
+
+- **User text reached ReportLab's markup parser unescaped.** A `Paragraph`
+  parses a small HTML dialect, so every site name, operator, note, project
+  title and organisation on a report header was markup. An ordinary mast
+  name like `Mast A & B <north>` rendered as `Mast A & B` — the parser
+  swallowed `<north>` as an unknown tag, putting the wrong structure on a
+  document that gets signed and filed — and some inputs raised a hard
+  `ValueError` from the parser instead of producing a report at all. Worse,
+  the input could restyle the page: `<font color="white">` hides text and
+  `<img src=...>` pulls in a local file, on a dossier whose whole purpose is
+  to state a compliance distance to a regulator. All of it is escaped now,
+  through one shared function rather than a habit.
+
+### Hardened — CI supply chain
+
+- **`permissions: contents: read`** on the workflow. The default was
+  whatever the repository setting says, historically read/write on
+  everything, so any step — or anything one of them installed — could push
+  to the repo or edit releases. No job here writes to GitHub.
+- **The ITU-R reference engines are pinned by commit** in CI and in both
+  installers. They are third-party sources with no signature and no
+  lockfile, and they *are* the implementations our accuracy claims are
+  measured against: an unpinned `git+https://…` ran whatever HEAD was when
+  CI happened to fire, so an upstream change could have moved the numbers we
+  validate against — or run arbitrary `setup.py` code — with no diff on our
+  side.
+
 ### Fixed — a gated preset was only gated on one router
 
 - **`/api/terrain/*` never checked preset entitlements.** `/api/rf/coverage`

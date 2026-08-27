@@ -212,14 +212,26 @@ if [[ -n "$PYBIN" ]]; then
 
     # ---- Official ITU-R reference engines (exactness tier, non-fatal) ----
     step "3b/4  ITU-R official reference engines (P.1812 / P.452 / P.2001)"
+    # Pinned by commit, matching .github/workflows/ci.yml. These are
+    # third-party sources installed with no signature and no lockfile, and
+    # they are the very implementations our accuracy claims are measured
+    # against - an unpinned branch install would let an upstream change move
+    # those numbers, or run arbitrary setup.py code, with nothing on our side
+    # to show for it. Keep the two lists in step when bumping.
+    ITU_REFS=(
+      "Py1812:a5205e6a65db27391a8ba79bd5a365e5391f9fdf"
+      "Py452:c047331990d35288300d0865802c98123aa21d3c"
+      "Py2001:a4d61a056bad606d1147ff0c441511762ee9fb24"
+    )
     itu_ok=1
-    for pkg in Py1812 Py452 Py2001; do
+    for entry in "${ITU_REFS[@]}"; do
+      pkg="${entry%%:*}"; ref="${entry##*:}"
       if "$VENV_PY" -m pip show "$pkg" >/dev/null 2>&1; then ok "$pkg already installed"; continue; fi
-      if command -v git >/dev/null 2>&1 && "$VENV_PY" -m pip install "git+https://github.com/eeveetza/$pkg" >/dev/null 2>&1; then
-        ok "$pkg installed"
-      elif "$VENV_PY" -m pip install "https://github.com/eeveetza/$pkg/archive/refs/heads/master.zip" >/dev/null 2>&1 \
-        || "$VENV_PY" -m pip install "https://github.com/eeveetza/$pkg/archive/refs/heads/main.zip" >/dev/null 2>&1; then
-        ok "$pkg installed"
+      if command -v git >/dev/null 2>&1 \
+         && "$VENV_PY" -m pip install "$pkg @ git+https://github.com/eeveetza/$pkg@$ref" >/dev/null 2>&1; then
+        ok "$pkg installed (pinned ${ref:0:7})"
+      elif "$VENV_PY" -m pip install "https://github.com/eeveetza/$pkg/archive/$ref.zip" >/dev/null 2>&1; then
+        ok "$pkg installed (pinned ${ref:0:7})"
       else
         warn "$pkg could not be installed (offline?) — exact $pkg studies stay disabled"; itu_ok=0
       fi

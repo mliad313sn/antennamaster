@@ -227,22 +227,31 @@ if ($PyBin) {
     # planner works without them; the P.1812/P.452/P.2001 studies then
     # report "engine not installed" until this step is re-run.
     Step "3b/4  ITU-R official reference engines (P.1812 / P.452 / P.2001)"
+    # Pinned by commit, matching .github/workflows/ci.yml and install.sh.
+    # These third-party sources ARE the reference implementations our accuracy
+    # claims are measured against, installed with no signature and no
+    # lockfile: an unpinned branch install would let an upstream change move
+    # those numbers, or run arbitrary setup.py code, with nothing on our side
+    # to show for it. Keep the three lists in step when bumping.
+    $ituRefs = [ordered]@{
+      'Py1812' = 'a5205e6a65db27391a8ba79bd5a365e5391f9fdf'
+      'Py452'  = 'c047331990d35288300d0865802c98123aa21d3c'
+      'Py2001' = 'a4d61a056bad606d1147ff0c441511762ee9fb24'
+    }
     $ituOk = $true
-    foreach ($pkg in @('Py1812', 'Py452', 'Py2001')) {
+    foreach ($pkg in $ituRefs.Keys) {
+      $ref = $ituRefs[$pkg]
       & $VenvPy -m pip show $pkg 2>$null | Out-Null
       if ($LASTEXITCODE -eq 0) { OK "$pkg already installed"; continue }
-      # Three routes, most reliable first: git clone (if git exists), then
-      # the GitHub source archives (work without git).
+      # Two routes, most reliable first: git clone (if git exists), then the
+      # GitHub source archive for that exact commit (works without git).
       if (Have git) {
-        & $VenvPy -m pip install "git+https://github.com/eeveetza/$pkg" 2>$null
+        & $VenvPy -m pip install "$pkg @ git+https://github.com/eeveetza/$pkg@$ref" 2>$null
       } else { $global:LASTEXITCODE = 1 }
       if ($LASTEXITCODE -ne 0) {
-        & $VenvPy -m pip install "https://github.com/eeveetza/$pkg/archive/refs/heads/master.zip" 2>$null
+        & $VenvPy -m pip install "https://github.com/eeveetza/$pkg/archive/$ref.zip"
       }
-      if ($LASTEXITCODE -ne 0) {
-        & $VenvPy -m pip install "https://github.com/eeveetza/$pkg/archive/refs/heads/main.zip"
-      }
-      if ($LASTEXITCODE -eq 0) { OK "$pkg installed" }
+      if ($LASTEXITCODE -eq 0) { OK "$pkg installed (pinned $($ref.Substring(0,7)))" }
       else { Warn "$pkg could not be installed (offline?) — exact $pkg studies stay disabled"; $ituOk = $false }
     }
     if ($ituOk) {

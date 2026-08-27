@@ -14,9 +14,20 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for GITHUB_TOKEN. The default is whatever the repository
+# setting says, historically read/write on everything - so any step here, or
+# anything one of them installs, could push to the repo or edit releases. No
+# job in this workflow writes to GitHub; they only read the checkout.
+permissions:
+  contents: read
+
 env:
   PYTHON_VERSION: '3.11'
   NODE_VERSION: '20'
+  # ITU-R reference implementations, pinned by commit (see the install step).
+  PY1812_REF: 'a5205e6a65db27391a8ba79bd5a365e5391f9fdf'
+  PY452_REF: 'c047331990d35288300d0865802c98123aa21d3c'
+  PY2001_REF: 'a4d61a056bad606d1147ff0c441511762ee9fb24'
 
 jobs:
   backend:
@@ -62,10 +73,19 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: Install the ITU-R reference engines and digital maps
         working-directory: backend
+        # Pinned to commits, not branches. These are the *reference*
+        # implementations our accuracy claims are measured against, installed
+        # straight from a third-party repository with no signature and no
+        # lockfile: an unpinned `git+https://...` runs whatever HEAD is at
+        # the moment CI happens to fire, so an upstream change could move the
+        # numbers we validate against - or ship arbitrary setup.py code into
+        # the job - with no diff on our side. Bump these deliberately, and
+        # re-read the validation deltas when you do.
         run: |
-          pip install "git+https://github.com/eeveetza/Py1812" \
-                      "git+https://github.com/eeveetza/Py452" \
-                      "git+https://github.com/eeveetza/Py2001"
+          pip install \
+            "Py1812 @ git+https://github.com/eeveetza/Py1812@${PY1812_REF}" \
+            "Py452 @ git+https://github.com/eeveetza/Py452@${PY452_REF}" \
+            "Py2001 @ git+https://github.com/eeveetza/Py2001@${PY2001_REF}"
           python -m tools.fetch_itu_maps
       - name: Validation suite must RUN, not skip, and must PASS
         working-directory: backend

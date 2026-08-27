@@ -20,6 +20,8 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (Image as RLImage, Paragraph, SimpleDocTemplate,
                                 Spacer, Table, TableStyle)
 
+from .pdf_text import esc
+
 ACCENT = colors.HexColor("#2a78d6")
 INK = colors.HexColor("#0b0b0b")
 MUTED = colors.HexColor("#52514e")
@@ -94,11 +96,12 @@ def build_report(*, title: str, org_name: str, logo_png: bytes | None,
     if logo_png:
         header_cells.append(RLImage(io.BytesIO(logo_png), width=34 * mm,
                                     height=14 * mm, kind="proportional"))
+    # org_name and title are user text and land in a markup-parsing sink.
     header_cells.append(Paragraph(
-        f"<b>{org_name or 'AntennaMaster'}</b> — RF Coverage Study", muted))
+        f"<b>{esc(org_name or 'AntennaMaster')}</b> — RF Coverage Study", muted))
     flow.append(Table([header_cells], colWidths=None,
                       style=TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE")])))
-    flow.append(Paragraph(title, h1))
+    flow.append(Paragraph(esc(title), h1))
     flow.append(Paragraph(time.strftime("Generated %Y-%m-%d %H:%M UTC",
                                         time.gmtime()), muted))
     flow.append(Spacer(1, 6))
