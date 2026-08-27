@@ -315,7 +315,7 @@ credential/audit DB 0600. Full posture: `SECURITY_COMPLIANCE.md`.
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
 | Audit | centralized middleware → append-only `audit.log` (0600) + tenant-scoped DB, stamped with user id + client IP |
-| Tests | 172 test functions / 182 cases (fake DEM world; physics reference values hand-checked incl. anchored ITM/knife-edge/reciprocity invariants; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit regression; planning, two-way, leaky-feeder, auto-placement, compliance, calibration, copilot; API workflows) |
+| Tests | **380 backend test functions / 398 cases** + **80 frontend unit tests** + **8 browser end-to-end** (3 desktop, 5 on a real phone viewport) + 9 benchmark gates (fake DEM world; physics reference values hand-checked incl. anchored ITM/knife-edge/reciprocity invariants; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit + GDPR + rate-limit + offline-cache-isolation regression; planning, two-way, leaky-feeder, auto-placement, compliance, calibration, copilot; API workflows) |
 
 ## 7. SaaS & workspace layer
 

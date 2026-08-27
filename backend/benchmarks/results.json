@@ -1,63 +1,63 @@
 [
  {
   "name": "profile 256 samples + study (Deygout per-sample)",
-  "ms": 27,
+  "ms": 25,
   "peak_mb": 0.1,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "profile 2048 samples + study",
-  "ms": 249,
+  "ms": 217,
   "peak_mb": 0.4,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage default 180x100 @10km",
-  "ms": 149,
+  "ms": 151,
   "peak_mb": 21.2,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km (SRTM)",
-  "ms": 3859,
+  "ms": 3717,
   "peak_mb": 103.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km FUSED DXF grid",
-  "ms": 3966,
+  "ms": 3766,
   "peak_mb": 103.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage ITM 180x100 @10km (one Longley-Rice run per sample)",
-  "ms": 2423,
+  "ms": 2350,
   "peak_mb": 22.9,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "multi-site 4x (120x80 @10km) + composite",
-  "ms": 335,
+  "ms": 338,
   "peak_mb": 42.3,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "indoor multi-wall 400px grid, 200 walls",
-  "ms": 450,
+  "ms": 433,
   "peak_mb": 16.9,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "executive PDF (profile chart + tables)",
-  "ms": 90,
+  "ms": 86,
   "peak_mb": 2.0,
   "ok": true,
   "budget_s": 5.0

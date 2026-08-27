@@ -32,7 +32,10 @@ from __future__ import annotations
 import hashlib
 import json
 
-APP_VERSION = "2.0.0"
+# The PRODUCT version (the installer / release line), not the API
+# version in main.py: a study record answers "which build made this",
+# and the answer a reader can check against a release note is this one.
+APP_VERSION = "1.2.0"
 RECORD_FORMAT = "antennamaster.study-record/1"
 
 

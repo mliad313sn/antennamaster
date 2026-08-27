@@ -4,7 +4,7 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
-## Unreleased
+## 1.2.0 — 2026-08-27
 
 Driven by a deep review: an expert-and-user committee assessed the product
 while the running server was probed empirically for behaviour and defects.

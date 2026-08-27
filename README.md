@@ -241,6 +241,12 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/rf/erlang` · `POST /api/rf/throughput-map` | Erlang B/C dimensioning + SINR→MCS→Mbit/s capacity & saturation |
 | `POST /api/indoor/das` · `POST /api/indoor/stack` | DAS component-tree solver + whole-building multi-floor study |
 | `POST /api/rf/compliance/report.pdf` | ready-to-file EMF dossier (ICNIRP/FCC) |
+| `POST /api/rf/coverage` with `model="itm"` | **ITM as an area engine** — one Longley-Rice run per sample, with the reliability quantile a licence application is written on |
+| `GET /api/rf/coverage/{id}/record` | the **study of record**: the complete input set, the provenance and a citable digest |
+| `POST /api/rf/coverage/{id}/rerun` | re-run a filed study on its own recorded inputs and report whether the answer moved |
+| `POST /api/rf/calibrations` · `GET /api/rf/calibrations` | named, reusable model tunings with the measurements that justify them |
+| `POST /api/rf/sites/parse-csv` · `POST /api/rf/sites/export-csv` | a site inventory in and out of a spreadsheet, per-site radio included |
+| `GET /api/auth/export` · `DELETE /api/auth/account` | GDPR subject access (art. 15/20) and erasure (art. 17), self-serve |
 
 Precision is **proven, not claimed**: see [`PRECISION_BENCHMARK.md`](PRECISION_BENCHMARK.md)
 (regenerated in CI — exact-ITM deviation 0.0 dB; field-accuracy section gated
