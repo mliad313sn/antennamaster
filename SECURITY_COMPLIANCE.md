@@ -60,12 +60,20 @@ cannot read another's data by guessing an id:
   (not 403) to a stranger, so ids are not an existence oracle.
 - **Projects**: get/update/delete/share/duplicate all check `user_id`; shared
   links strip the owner id and the capability token from the response.
-- **Known limitation — Live Ops telemetry** (`/api/telemetry/*`) is an
-  unauthenticated, single-tenant feature backed by one process-global engine:
-  ingested asset positions are visible to anyone who can reach the endpoint.
-  It is intended for a single-operator/on-prem deployment, **not** shared
-  multi-tenant SaaS; front it with network ACLs or a reverse-proxy auth layer
-  if exposed. (Tenant-scoping it is tracked as future work.)
+- **Live Ops telemetry** (`/api/telemetry/*`) is now authenticated and
+  tenant-scoped. Live asset positions are the most sensitive data the product
+  handles — the real-time locations of responders, mine crews and field staff —
+  and every telemetry route was previously unauthenticated against one
+  process-global engine, so anyone who could reach the backend could read
+  another operator's fleet and inject forged pings into it. In SaaS mode each
+  organisation gets its own isolated engine and an unauthenticated caller is
+  refused (401; the WebSocket closes with 1008). A self-hosted single-tenant
+  deployment keeps the shared engine and stays open, the same rule the DXF and
+  coverage-result guards follow. Regression:
+  `test_telemetry_requires_auth_and_is_tenant_scoped_in_saas`.
+  *Note:* the SSE stream additionally accepts `?token=` because `EventSource`
+  cannot set headers; a token in a URL reaches proxy logs and browser history,
+  so every other route should use the `Authorization` header.
 
 ### Authentication
 - Passwords: **PBKDF2-HMAC-SHA256, 200k iterations**, per-user salt, constant-

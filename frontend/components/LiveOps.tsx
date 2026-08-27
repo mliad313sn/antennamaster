@@ -14,6 +14,7 @@ import L from 'leaflet';
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, Marker, Polyline, TileLayer } from 'react-leaflet';
 import { useTranslation } from 'react-i18next';
+import { authHeaders, getToken } from '@/lib/saas';
 
 type Asset = {
   asset_id: string; lat: number; lon: number; name: string;
@@ -68,9 +69,11 @@ export default function LiveOps() {
       if (poll) return;
       poll = setInterval(async () => {
         try {
-          const s = await fetch('/api/telemetry/state').then((r) => r.json());
+          const s = await fetch('/api/telemetry/state',
+            { headers: authHeaders() }).then((r) => r.json());
           setAssets(s.assets ?? []);
-          const ev = await fetch(`/api/telemetry/events?since=${cursor}`).then((r) => r.json());
+          const ev = await fetch(`/api/telemetry/events?since=${cursor}`,
+            { headers: authHeaders() }).then((r) => r.json());
           if (ev.events?.length) {
             cursor = ev.event_seq;
             setEvents((prev) => [...ev.events, ...prev].slice(0, 40));
@@ -79,7 +82,11 @@ export default function LiveOps() {
       }, 1500);
     };
     try {
-      es = new EventSource('/api/telemetry/stream');
+      // EventSource cannot set headers, so in multi-tenant mode the token
+      // travels as a query parameter (the backend accepts either).
+      const tok = getToken();
+      es = new EventSource('/api/telemetry/stream'
+        + (tok ? `?token=${encodeURIComponent(tok)}` : ''));
       es.addEventListener('state', (e) => {
         try { setAssets(JSON.parse((e as MessageEvent).data).assets ?? []); }
         catch { /* ignore a malformed frame; the next one recovers */ }
@@ -97,7 +104,7 @@ export default function LiveOps() {
 
   async function bindCoverage() {
     await fetch('/api/telemetry/coverage-context', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ tx_lat: +txLat, tx_lon: +txLon, technology: tech }),
     });
     setCtxSet(true);
@@ -119,7 +126,8 @@ export default function LiveOps() {
       }
       const lon = +txLon + step * 0.03;
       await fetch('/api/telemetry/ingest', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ pings: [{ asset_id: 'demo-truck', name: 'Demo Truck', lat: +txLat, lon }] }),
       }).catch(() => {});
     }, 900);

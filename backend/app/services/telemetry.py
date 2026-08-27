@@ -152,5 +152,34 @@ class TelemetryEngine:
             self.coverage_context = None
 
 
-# Process-wide singleton (the live operations state).
+# Process-wide singleton: the live-operations state of the DEFAULT tenant,
+# which is the only one a self-hosted single-tenant deployment ever uses.
 ENGINE = TelemetryEngine()
+
+# One engine per tenant.  Live asset positions are among the most sensitive
+# data this product touches - they are the real-time locations of responders,
+# mine crews and field staff - so in multi-tenant mode they must not share a
+# registry.  A single global engine meant any caller could read another
+# operator's fleet and inject forged pings into it.
+_ENGINES: dict[str, TelemetryEngine] = {"local": ENGINE}
+_ENGINES_LOCK = threading.Lock()
+
+
+def engine_for(tenant: str) -> TelemetryEngine:
+    """The telemetry engine for one tenant, created on first use.
+
+    ``"local"`` is the shared engine used by anonymous/self-hosted
+    deployments, so single-tenant behaviour is exactly as it was.
+    """
+    with _ENGINES_LOCK:
+        eng = _ENGINES.get(tenant)
+        if eng is None:
+            eng = _ENGINES[tenant] = TelemetryEngine()
+        return eng
+
+
+def reset_engines() -> None:
+    """Drop every non-default tenant engine (tests)."""
+    with _ENGINES_LOCK:
+        _ENGINES.clear()
+        _ENGINES["local"] = ENGINE

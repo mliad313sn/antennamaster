@@ -113,3 +113,57 @@ def test_websocket_ingest(client):
         assert reply["asset"]["asset_id"] == "ws1"
     assert any(a["asset_id"] == "ws1"
                for a in client.get("/api/telemetry/state").json()["assets"])
+
+
+# ------------------------------------------------ multi-tenant isolation
+def test_telemetry_is_open_when_self_hosted(client):
+    """A single-tenant self-hosted deployment stays exactly as it was: no
+    account needed, one shared live-operations view."""
+    r = client.post("/api/telemetry/ingest", json={"pings": [
+        {"asset_id": "truck-1", "lat": 47.0, "lon": 15.0, "name": "Truck 1"}]})
+    assert r.status_code == 200
+    assert client.get("/api/telemetry/state").status_code == 200
+
+
+def test_telemetry_requires_auth_and_is_tenant_scoped_in_saas(client, monkeypatch):
+    """Live asset positions are the real-time locations of responders, mine
+    crews and field staff.
+
+    Regression: every telemetry route was unauthenticated against ONE
+    process-global engine, so anyone who could reach the backend could read
+    another operator's fleet and inject forged pings into it.
+    """
+    import time as _t
+    from app.services.telemetry import reset_engines
+    reset_engines()
+
+    def _reg(email, org):
+        r = client.post("/api/auth/register", json={
+            "email": email, "password": "hunter22secure", "org_name": org})
+        assert r.status_code == 200, r.text
+        return {"Authorization": f"Bearer {r.json()['token']}"}
+
+    a = _reg(f"a{_t.time_ns()}@x.io", f"AlphaFleet{_t.time_ns()}")
+    b = _reg(f"b{_t.time_ns()}@x.io", f"BravoFleet{_t.time_ns()}")
+    monkeypatch.setenv("AM_SAAS_MODE", "1")
+
+    # Anonymous access is refused outright.
+    assert client.get("/api/telemetry/state").status_code == 401
+    assert client.post("/api/telemetry/ingest", json={"pings": [
+        {"asset_id": "x", "lat": 47.0, "lon": 15.0}]}).status_code == 401
+
+    # Tenant A tracks a crew member.
+    assert client.post("/api/telemetry/ingest", json={"pings": [
+        {"asset_id": "crew-7", "lat": 47.0, "lon": 15.0, "name": "Crew 7"}]},
+        headers=a).status_code == 200
+    mine = client.get("/api/telemetry/state", headers=a).json()
+    assert any(x["asset_id"] == "crew-7" for x in mine["assets"])
+
+    # Tenant B sees none of it, and cannot inject into A's fleet.
+    theirs = client.get("/api/telemetry/state", headers=b).json()
+    assert not any(x["asset_id"] == "crew-7" for x in theirs["assets"])
+    client.post("/api/telemetry/ingest", json={"pings": [
+        {"asset_id": "forged", "lat": 0.0, "lon": 0.0}]}, headers=b)
+    still_mine = client.get("/api/telemetry/state", headers=a).json()
+    assert not any(x["asset_id"] == "forged" for x in still_mine["assets"])
+    reset_engines()

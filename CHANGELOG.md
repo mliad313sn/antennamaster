@@ -28,6 +28,18 @@ while the running server was probed empirically for behaviour and defects.
   was a bare `<div onClick>`: not focusable, not announced, unusable without a
   pointer. It is now a proper `radiogroup` with `aria-checked` and Enter/Space.
 
+### Fixed — live telemetry was world-readable and world-writable
+
+- **Every `/api/telemetry/*` route was unauthenticated against one
+  process-global engine.** Live asset positions are the real-time locations of
+  responders, mine crews and field staff, so anyone who could reach the backend
+  could read another operator's fleet and inject forged pings into it. In SaaS
+  mode telemetry now requires an authenticated caller and each organisation
+  gets its own isolated engine (the WebSocket closes with 1008 rather than
+  silently accepting). A self-hosted single-tenant deployment keeps the shared
+  engine and stays open — the same rule the DXF and coverage-result guards
+  already follow, so the local Live Ops demo is unaffected.
+
 ### Added — a cluster study can finally describe a real network
 
 - **Per-transmitter radio parameters.** `/coverage/multi` (and the frequency
