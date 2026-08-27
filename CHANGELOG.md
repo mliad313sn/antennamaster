@@ -40,6 +40,31 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Fixed — the offline cache handed one account's data to the next
+
+- **The PWA cached every API response in a single URL-keyed bucket.** The
+  Cache API matches on URL and `Vary`, never on `Authorization`, and nothing
+  cleared it at sign-out — so on the hardware this product is actually
+  deployed on, a shared rugged tablet passed between a field crew, technician
+  A could sign in and open their projects and the org audit log, sign out,
+  and the next person to lose signal would be served A's studies and every
+  colleague's email and client IP by the offline fallback. Each identity now
+  gets its own cache bucket (named by a truncated hash of the bearer token,
+  never the token itself), `/api/auth/*` and `/api/telemetry/*` are never
+  cached at all, and signing out purges every API bucket — while keeping the
+  public basemap tiles a field tablet needs at the bottom of a pit.
+
+### Added — share links that expire and can be taken back
+
+- **A share link was permanent and irrevocable.** It opens a saved study —
+  site coordinates, customer name, the whole design — to anyone holding the
+  URL with no login, and once minted there was no way to withdraw it: a link
+  mailed during a tender still opened years later, and forwarding it to a
+  competitor could not be undone. New links now expire in 30 days (the owner
+  may opt out explicitly), re-sharing rotates the token so the old link dies,
+  and there is a Revoke button. An expired link answers 404 with the same
+  wording as an unknown one, so it never confirms the project exists.
+
 ### Added — users can get their data out, and get themselves deleted
 
 - **Account & privacy (GDPR art. 15, 17, 20), self-serve.** There was no

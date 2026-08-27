@@ -60,6 +60,17 @@ cannot read another's data by guessing an id:
   (not 403) to a stranger, so ids are not an existence oracle.
 - **Projects**: get/update/delete/share/duplicate all check `user_id`; shared
   links strip the owner id and the capability token from the response.
+- **Share links expire and are revocable.** A link opens a saved study — site
+  coordinates, customer name, the whole design — to anyone holding the URL,
+  with no login. It used to be minted once and live forever with no way to
+  withdraw it, so a link mailed during a tender still opened years later and
+  forwarding it was irreversible. A new link now expires in **30 days**
+  (`POST /api/projects/{id}/share`, `expires_days: null` opts out
+  explicitly, max 365); re-sharing **rotates** the token so the previous link
+  dies; `DELETE /api/projects/{id}/share` revokes immediately. An expired
+  link answers **404 with the same detail as an unknown one**, so it is not
+  an oracle confirming that the project exists and used to be shared.
+  Regression: `backend/tests/test_share_links.py`.
 - **Live Ops telemetry** (`/api/telemetry/*`) is now authenticated and
   tenant-scoped. Live asset positions are the most sensitive data the product
   handles — the real-time locations of responders, mine crews and field staff —
@@ -220,6 +231,22 @@ tightening is best-effort and no-ops on filesystems without POSIX modes.
   fixed allow-list.
 - Backend errors are wrapped (DEM/parse failures → 502/422 with a short
   message); full tracebacks are logged server-side only, never returned.
+
+### Offline cache isolation (PWA)
+The service worker's API cache is **partitioned per identity** and purged at
+sign-out. The Cache API matches on URL and `Vary`, never on `Authorization`,
+so the previous single bucket returned whatever was stored last to whoever
+asked — and nothing cleared it on logout. On the hardware this product is
+deployed on (a shared rugged tablet passed between a field crew) that meant
+technician A's projects and their organisation's audit log were served to
+technician B the moment B lost signal. Each bearer token now gets its own
+bucket, named by a truncated SHA-256 of the header (never the token itself —
+cache names are readable by any script on the origin); `/api/auth/*` and
+`/api/telemetry/*` are **never cached at all** (a stale identity or a stale
+"live" asset position is worse than none); and signing out deletes every API
+bucket while leaving the public basemap tiles a field tablet still needs.
+The cache version bump retires the old unpartitioned bucket on upgrade.
+Regression: `frontend/tests/service-worker-isolation.test.ts`.
 
 ### Deployment isolation
 Run the backend as a **non-root** user (the Docker image and the systemd unit

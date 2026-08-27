@@ -16,6 +16,8 @@ export interface Project {
   kind: string;
   data: Record<string, unknown>;
   share_token: string | null;
+  /** Epoch seconds, or null for a link the owner chose never to expire. */
+  share_expires_at: number | null;
   created_at: number;
   updated_at: number;
 }
@@ -56,6 +58,14 @@ export function setToken(t: string | null): void {
     if (t) localStorage.setItem(TOKEN_KEY, t);
     else localStorage.removeItem(TOKEN_KEY);
   } catch { /* unavailable */ }
+  // Dropping the token is not enough on a shared field tablet: the service
+  // worker's offline cache still holds this account's studies and projects,
+  // and the next person to lose signal would be handed them. Tell it to
+  // purge. Best-effort — no SW, no problem, there is then nothing cached.
+  if (!t) {
+    try { navigator.serviceWorker?.controller?.postMessage({ type: 'am-signout' }); }
+    catch { /* not registered */ }
+  }
 }
 
 export function authHeaders(): Record<string, string> {
@@ -175,9 +185,20 @@ export async function duplicateProject(id: number): Promise<Project> {
   return (await call<{ project: Project }>(`/api/projects/${id}/duplicate`,
     { method: 'POST' })).project;
 }
-export async function shareProject(id: number): Promise<string> {
-  return (await call<{ share_token: string }>(`/api/projects/${id}/share`,
-    { method: 'POST' })).share_token;
+export interface ShareLink { share_token: string; expires_at: number | null; }
+
+/** Mint a share link. Calling it again rotates the token, which is how an
+ *  owner cuts off a link that has already been forwarded too far.
+ *  `expiresDays: null` opts out of expiry explicitly. */
+export async function shareProject(id: number, expiresDays: number | null = 30):
+Promise<ShareLink> {
+  return call<ShareLink>(`/api/projects/${id}/share`, {
+    method: 'POST', body: JSON.stringify({ expires_days: expiresDays }) });
+}
+
+/** Revoke the link: a forwarded copy stops working immediately. */
+export async function unshareProject(id: number): Promise<void> {
+  await call(`/api/projects/${id}/share`, { method: 'DELETE' });
 }
 export async function deleteProject(id: number): Promise<void> {
   await call(`/api/projects/${id}`, { method: 'DELETE' });

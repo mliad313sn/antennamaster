@@ -35,6 +35,10 @@ CRITICAL_RULES: list[tuple[str, str, str]] = [
     ("POST", "/api/rf/antenna", "antenna_upload"),
     ("POST", "/api/projects", "project_create"),
     ("PUT", "/api/projects/", "project_update"),
+    # Order matters: classify() returns the FIRST match, and revoking a share
+    # is `DELETE /api/projects/{id}/share`, which the project_delete rule
+    # would otherwise swallow and mislabel as a deletion.
+    ("DELETE", "/share", "project_unshare"),
     ("DELETE", "/api/projects/", "project_delete"),
     ("POST", "/duplicate", "project_duplicate"),
     ("POST", "/share", "project_share"),

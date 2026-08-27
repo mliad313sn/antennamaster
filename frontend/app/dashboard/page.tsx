@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import DashNav from '@/components/DashNav';
 import {
   deleteProject, duplicateProject, fetchAudit, fetchCosts, fetchMe,
-  listProjects, setTier, shareProject, uploadLogo,
+  listProjects, setTier, shareProject, unshareProject, uploadLogo,
   type CostEstimate, type Project, type User,
 } from '@/lib/saas';
 
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [costs, setCosts] = useState<CostEstimate | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareNote, setShareNote] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMe().then((u) => {
@@ -95,12 +96,29 @@ export default function Dashboard() {
                   }}>{t('dashboard.duplicate')}</button>
                   <button onClick={async () => {
                     try {
-                      const t = await shareProject(p.id);
+                      const link = await shareProject(p.id);
                       // A real app link the recipient can open (no auth): the
                       // planner reads ?shared=<token> via the public endpoint.
-                      setShareUrl(`${location.origin}/?shared=${t}`);
+                      setShareUrl(`${location.origin}/?shared=${link.share_token}`);
+                      setShareNote(link.expires_at
+                        ? t('dashboard.shareExpires', {
+                            date: new Date(link.expires_at * 1000).toLocaleDateString() })
+                        : t('dashboard.shareNoExpiry'));
+                      setProjects(await listProjects());
                     } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
-                  }}>{t('dashboard.share')}</button>
+                  }}>{p.share_token ? t('dashboard.reshare') : t('dashboard.share')}</button>
+                  {/* Revoking is only offered when there is something to
+                      revoke, and it is the only way to take back a link that
+                      has already been forwarded. */}
+                  {p.share_token && (
+                    <button onClick={async () => {
+                      try {
+                        await unshareProject(p.id);
+                        setShareUrl(null); setShareNote(t('dashboard.shareRevoked'));
+                        setProjects(await listProjects());
+                      } catch (e) { setShareUrl(`Error: ${(e as Error).message}`); }
+                    }}>{t('dashboard.revoke')}</button>
+                  )}
                   <button onClick={async () => {
                     try {
                       await deleteProject(p.id);
@@ -110,9 +128,10 @@ export default function Dashboard() {
                 </span>
               </div>
             ))}
-            {shareUrl && (
-              <p className="hint" style={{ wordBreak: 'break-all' }}>
-                Share link (read-only): {shareUrl}
+            {(shareUrl || shareNote) && (
+              <p className="hint" style={{ wordBreak: 'break-all' }} role="status">
+                {shareUrl && <>{t('dashboard.shareLink')}: {shareUrl}<br /></>}
+                {shareNote}
               </p>
             )}
           </section>

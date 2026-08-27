@@ -123,7 +123,13 @@
     "logoOnFile": "✓ Logo on file — reports are branded.",
     "auditLog": "OT/IT compliance log",
     "noActivity": "No activity recorded yet.",
-    "anonymous": "anonymous"
+    "anonymous": "anonymous",
+    "reshare": "New link",
+    "revoke": "Revoke",
+    "shareLink": "Share link (read-only)",
+    "shareExpires": "This link expires on {{date}}. Sharing again replaces it; Revoke kills it now.",
+    "shareNoExpiry": "This link never expires. Sharing again replaces it; Revoke kills it now.",
+    "shareRevoked": "Share link revoked — any copy already sent no longer opens."
   },
   "mode": {
     "simple": "Simple",

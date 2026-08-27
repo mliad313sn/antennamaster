@@ -46,6 +46,11 @@ CREATE TABLE IF NOT EXISTS projects (
     kind TEXT NOT NULL DEFAULT 'coverage',
     data_json TEXT NOT NULL DEFAULT '{}',
     share_token TEXT UNIQUE,
+    -- A share link is an unauthenticated capability to a study that carries
+    -- site coordinates and customer names.  It expires by default, because a
+    -- link mailed to a client in 2024 should not still open in 2027; NULL
+    -- means the owner deliberately chose a link that never expires.
+    share_expires_at REAL,
     created_at REAL NOT NULL,
     updated_at REAL NOT NULL
 );
@@ -104,6 +109,11 @@ def init_db() -> None:
             c.execute("ALTER TABLE audit_log ADD COLUMN subject TEXT")
         if "org_name" not in cols:
             c.execute("ALTER TABLE audit_log ADD COLUMN org_name TEXT")
+        pcols = {r[1] for r in c.execute("PRAGMA table_info(projects)").fetchall()}
+        if "share_expires_at" not in pcols:
+            # Existing links stay valid: silently expiring a customer's live
+            # share on upgrade would be a data-loss surprise, not a fix.
+            c.execute("ALTER TABLE projects ADD COLUMN share_expires_at REAL")
     prune_audit()                       # enforce retention on every boot
     # The database holds password hashes, tokens and audit records — restrict
     # it to the owning account (OT/IT data-at-rest requirement).
@@ -268,10 +278,21 @@ def get_project(project_id: int) -> dict | None:
 
 
 def get_project_by_share_token(token: str) -> dict | None:
+    """Resolve a share link, honouring its expiry.
+
+    An expired link is indistinguishable from an unknown one to the caller —
+    the endpoint answers 404 either way — so a stale link is not an oracle
+    telling a stranger that the project exists and used to be shared.
+    """
     with _conn() as c:
         row = c.execute("SELECT * FROM projects WHERE share_token=?",
                         (token,)).fetchone()
-    return _proj(row) if row else None
+    if row is None:
+        return None
+    expires = row["share_expires_at"]
+    if expires is not None and time.time() > expires:
+        return None
+    return _proj(row)
 
 
 def list_projects(user_id: int) -> list[dict]:
@@ -303,12 +324,33 @@ def delete_project(project_id: int) -> None:
         c.execute("DELETE FROM projects WHERE id=?", (project_id,))
 
 
-def share_project(project_id: int) -> str:
+# How long a new share link lives unless the owner says otherwise. Long
+# enough to survive a client's review cycle, short enough that a link mailed
+# out once does not stay open forever.
+SHARE_TTL_DAYS = 30
+
+
+def share_project(project_id: int, expires_days: int | None = SHARE_TTL_DAYS) -> dict:
+    """Mint a NEW share link, replacing any previous one.
+
+    Re-sharing rotates the token on purpose: it is the only way an owner can
+    cut off a link that has already been forwarded somewhere they did not
+    intend.  ``expires_days=None`` opts out of expiry explicitly.
+    """
     token = secrets.token_urlsafe(12)
+    expires = None if expires_days is None else time.time() + expires_days * 86_400.0
     with _conn() as c:
-        c.execute("UPDATE projects SET share_token=? WHERE id=?",
-                  (token, project_id))
-    return token
+        c.execute("UPDATE projects SET share_token=?, share_expires_at=? WHERE id=?",
+                  (token, expires, project_id))
+    return {"share_token": token, "expires_at": expires}
+
+
+def unshare_project(project_id: int) -> None:
+    """Revoke the link. The token is cleared, so a forwarded copy stops
+    working immediately and cannot be brute-forced back into existence."""
+    with _conn() as c:
+        c.execute("UPDATE projects SET share_token=NULL, share_expires_at=NULL "
+                  "WHERE id=?", (project_id,))
 
 
 def _proj(row: sqlite3.Row) -> dict:

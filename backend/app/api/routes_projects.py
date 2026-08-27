@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from ..services.saas import db
+from ..services.saas.db import SHARE_TTL_DAYS
 from ..services.saas.tiers import PROJECT_QUOTA
 from .routes_auth import required_user
 
@@ -17,6 +18,11 @@ class ProjectIn(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     kind: str = Field("coverage", max_length=40)
     data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ShareIn(BaseModel):
+    """`null` means "never expires" — an explicit choice, not the default."""
+    expires_days: int | None = Field(SHARE_TTL_DAYS, ge=1, le=365)
 
 
 class ProjectUpdate(BaseModel):
@@ -82,10 +88,25 @@ def duplicate(project_id: int, user: dict = Depends(required_user)) -> dict:
 
 
 @router.post("/{project_id}/share")
-def share(project_id: int, user: dict = Depends(required_user)) -> dict:
+def share(project_id: int, body: ShareIn | None = None,
+          user: dict = Depends(required_user)) -> dict:
+    """Mint a share link. Expires in 30 days unless told otherwise.
+
+    Calling this again rotates the token, which is how an owner cuts off a
+    link that has already been forwarded further than they meant.
+    """
     _owned(project_id, user)
-    token = db.share_project(project_id)
-    return {"share_token": token, "url": f"/api/projects/shared/{token}"}
+    days = SHARE_TTL_DAYS if body is None else body.expires_days
+    out = db.share_project(project_id, expires_days=days)
+    return {**out, "url": f"/api/projects/shared/{out['share_token']}"}
+
+
+@router.delete("/{project_id}/share")
+def unshare(project_id: int, user: dict = Depends(required_user)) -> dict:
+    """Revoke the link immediately — a forwarded copy stops working."""
+    _owned(project_id, user)
+    db.unshare_project(project_id)
+    return {"shared": False}
 
 
 @router.delete("/{project_id}")

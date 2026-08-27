@@ -123,7 +123,13 @@
     "logoOnFile": "✓ Logo enregistré — les rapports sont personnalisés.",
     "auditLog": "Journal de conformité OT/IT",
     "noActivity": "Aucune activité enregistrée pour le moment.",
-    "anonymous": "anonyme"
+    "anonymous": "anonyme",
+    "reshare": "Nouveau lien",
+    "revoke": "Révoquer",
+    "shareLink": "Lien de partage (lecture seule)",
+    "shareExpires": "Ce lien expire le {{date}}. Un nouveau partage le remplace ; Révoquer l'annule immédiatement.",
+    "shareNoExpiry": "Ce lien n'expire jamais. Un nouveau partage le remplace ; Révoquer l'annule immédiatement.",
+    "shareRevoked": "Lien de partage révoqué — toute copie déjà envoyée ne s'ouvre plus."
   },
   "mode": {
     "simple": "Simple",
