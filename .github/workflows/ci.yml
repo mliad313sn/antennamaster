@@ -144,6 +144,17 @@ jobs:
             frontend/.next
             !frontend/.next/cache
           retention-days: 1
+          # `.next` is a DOT directory, and upload-artifact@v4 skips hidden
+          # files by default (a sensible guard against shipping .git/.env).
+          # So this upload silently matched nothing, no artifact was created,
+          # and the e2e job below failed on download - while this step stayed
+          # green, because the default for an empty match is `warn`.
+          # Result: the browser suite had never actually run in CI. That is
+          # precisely the failure this workflow was written to end, so the
+          # empty case is now an ERROR, not a warning: a gate that quietly
+          # uploads nothing must never again read as a gate that passed.
+          include-hidden-files: true
+          if-no-files-found: error
 
   e2e:
     name: Browser end-to-end (real stack)
