@@ -25,6 +25,19 @@ Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
   cache would feed the trigger from the very layer the fallback installs and
   the state could never clear.
 
+### Fixed — the live fleet list grew without bound
+
+- **An asset silent for an hour now leaves the live twin.** Sharing the
+  telemetry state in 1.3.1 also made it durable, and durable turned a
+  harmless quirk into a leak: an asset was flagged as no longer transmitting
+  at 30 s and then stayed in the fleet list forever, where before a restart
+  cleared it. The panel an operator scans during an incident filled with
+  vehicles that stopped mattering days ago. The two thresholds answer
+  different questions and cannot be one number — 30 s means "this radio just
+  dropped", an hour means "this is not part of the live fleet". The
+  disconnect stays in the event log, which is the record; the asset list is
+  the *live* picture.
+
 ### Fixed — Ctrl-C left both servers running
 
 - `start.sh` ended on a bare `wait`, so the signal reached the shell and the

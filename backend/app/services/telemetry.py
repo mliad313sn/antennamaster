@@ -31,6 +31,9 @@ ServedFn = Callable[[float, float], "tuple[bool, float]"]
 
 MAX_TRACK = 50          # positions retained per asset
 MAX_EVENTS = 500        # ring buffer of correlation events
+# How long an asset may be silent before it leaves the live twin. Far longer
+# than the 30 s disconnect threshold on purpose - see TelemetryEngine.sweep.
+RETIRE_AFTER_S = 3600.0
 
 
 @dataclass
@@ -119,10 +122,26 @@ class TelemetryEngine:
             return a.as_dict()
 
     # ---------------------------------------------------------------- sweep
-    def sweep(self, now: float, timeout_s: float = 30.0) -> list[dict]:
+    def sweep(self, now: float, timeout_s: float = 30.0,
+              retire_after_s: float = RETIRE_AFTER_S) -> list[dict]:
         """Mark assets that have not pinged within ``timeout_s`` as no longer
         transmitting and log an RF-disconnect correlation event (with whether
-        the last position was a predicted dead zone).  Returns new events."""
+        the last position was a predicted dead zone).  Returns new events.
+
+        Assets silent for ``retire_after_s`` leave the live twin entirely.
+        The two thresholds answer different questions and cannot be one
+        number: 30 s means "this radio just dropped", which an operator needs
+        to see immediately and which is the whole point of the correlation;
+        an hour means "this is not part of the live fleet any more".
+
+        Retiring did not matter while the twin lived in a process and a
+        restart emptied it. It does now that the state is shared and durable:
+        without it the fleet list is every vehicle that ever pinged, grey
+        forever, and the panel an operator scans during an incident fills
+        with things that stopped mattering days ago. The disconnect stays in
+        the event log, which is the record; the asset list is the *live*
+        picture, and a radio silent for an hour is not in it.
+        """
         with self._lock:
             fired: list[dict] = []
             for a in self.assets.values():
@@ -134,6 +153,10 @@ class TelemetryEngine:
                                correlation=("predicted-dead-zone" if a.in_dead_zone
                                             else "coverage-was-ok"))
                     fired.append(self._events[-1])
+            if retire_after_s > 0:
+                for aid in [aid for aid, a in self.assets.items()
+                            if (now - a.last_seen) > retire_after_s]:
+                    del self.assets[aid]
             return fired
 
     # ------------------------------------------------------------- snapshot

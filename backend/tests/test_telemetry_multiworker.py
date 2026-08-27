@@ -143,6 +143,36 @@ def test_two_independent_sessions_see_the_same_world(client):
         assert [a.name for a in eng.assets.values()] == ["Probe"]
 
 
+def test_a_long_silent_asset_leaves_the_live_twin(client):
+    """Sharing the state made it durable, and durable made this a leak.
+
+    While the twin lived in one process, a restart emptied it. Now nothing
+    does: an asset is flagged `transmitting=False` at 30 s and then stays in
+    the fleet list forever, so the panel an operator scans during an incident
+    fills with vehicles that stopped mattering days ago. The disconnect
+    belongs in the event log - which keeps it - not in the *live* picture.
+    """
+    from app.services.telemetry import RETIRE_AFTER_S
+
+    client.post("/api/telemetry/ingest", json=PING)
+    with store.shared("local", write=False) as eng:
+        assert len(eng.assets) == 1
+
+    # Half an hour of silence: disconnected, but still the fleet's business.
+    with store.shared("local") as eng:
+        eng.sweep(time.time() + 1800.0)
+        assert [a.transmitting for a in eng.assets.values()] == [False]
+
+    with store.shared("local") as eng:
+        eng.sweep(time.time() + RETIRE_AFTER_S + 60.0)
+    with store.shared("local", write=False) as eng:
+        assert eng.assets == {}, "a radio silent for over an hour is not live"
+
+    # The record survives where it belongs: the event log.
+    body = client.get("/api/telemetry/events?since=0").json()
+    assert any(e["type"] == "rf_disconnect" for e in body["events"])
+
+
 def test_tenants_stay_separate_in_the_shared_store(client):
     """Sharing the state must not undo the tenant isolation it sits inside:
     live asset positions are the locations of real crews."""
