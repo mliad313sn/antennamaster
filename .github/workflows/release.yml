@@ -112,6 +112,15 @@ jobs:
             "$(python3 -c 'import json;print(json.load(open("frontend/package.json"))["version"])')"
           check "backend study record APP_VERSION" "$VERSION" \
             "$(sed -n 's/^APP_VERSION = "\(.*\)"/\1/p' backend/app/services/saas/study_record.py)"
+          # The install guide names the .exe by hand. It rotted once already:
+          # it still pointed at the previous installer after a version bump,
+          # which sends every new user to a file that is no longer in the tree.
+          if ! grep -q "AntennaMaster-Setup-${VERSION}\.exe" INSTALL_GUIDE.md; then
+            echo "::error::INSTALL_GUIDE.md does not name AntennaMaster-Setup-${VERSION}.exe - it is pointing users at a different installer"
+            fail=1
+          else
+            echo "ok  INSTALL_GUIDE.md names the $VERSION installer"
+          fi
           if ! grep -q "^## $VERSION " CHANGELOG.md; then
             echo "::error::CHANGELOG.md has no '## $VERSION' section - a release with no notes is a release nobody can read"
             fail=1
