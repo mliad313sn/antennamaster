@@ -101,7 +101,8 @@
     "peakDbm": "peak dBm",
     "heatmapAlt": "{{label}} coverage heatmap",
     "costs": "CAPEX ${{capex}}k · OPEX ${{opex}}k/yr · TCO₅ ${{tco}}k",
-    "roiAssumption": "Payback assumes revenue is earned only where there is coverage: {{pct}}% of the area served → ${{earned}}/mo of the figure above."
+    "roiAssumption": "Payback assumes revenue is earned only where there is coverage: {{pct}}% of the area served → ${{earned}}/mo of the figure above.",
+    "pdfNeedsPro": "Branded PDF reports are part of the Pro plan."
   },
   "dashboard": {
     "loading": "Loading your workspace…",

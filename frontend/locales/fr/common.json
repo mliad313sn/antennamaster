@@ -101,7 +101,8 @@
     "peakDbm": "crête dBm",
     "heatmapAlt": "Carte de couverture {{label}}",
     "costs": "CAPEX {{capex}} k$ · OPEX {{opex}} k$/an · TCO₅ {{tco}} k$",
-    "roiAssumption": "Le retour suppose un revenu perçu uniquement là où il y a de la couverture : {{pct}} % de la zone desservie → {{earned}} $/mois sur le montant saisi."
+    "roiAssumption": "Le retour suppose un revenu perçu uniquement là où il y a de la couverture : {{pct}} % de la zone desservie → {{earned}} $/mois sur le montant saisi.",
+    "pdfNeedsPro": "Les rapports PDF personnalisés font partie du plan Pro."
   },
   "dashboard": {
     "loading": "Chargement de votre espace de travail…",

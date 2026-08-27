@@ -98,6 +98,13 @@ export interface Technology {
   rx_sensitivity_dbm: number;
   h_bs_m: number;
   h_ut_m: number;
+  /** The plan this preset needs, or null when it is ungated. Optional so an
+   *  older backend still typechecks. */
+  requires_plan?: string | null;
+  /** Whether the CURRENT caller may run it. The UI could not tell before, so
+   *  it offered every preset identically and the boundary only appeared as a
+   *  402 after the study was launched. */
+  available?: boolean;
 }
 
 export interface ModelInfo {

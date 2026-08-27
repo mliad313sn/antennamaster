@@ -9,11 +9,12 @@ import Link from 'next/link';
 import { useEffect, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  awaitJob, downloadReportPdf, fetchCosts, startAsyncCoverage,
+  awaitJob, downloadReportPdf, fetchCosts, fetchMe, startAsyncCoverage,
   type CostEstimate,
 } from '@/lib/saas';
 import { fetchTechnologies } from '@/lib/api';
 import { roi } from '@/lib/roi';
+import { useAuthedAsset } from '@/lib/authedAsset';
 import type { Technology } from '@/lib/types';
 import DashNav from '@/components/DashNav';
 import SignalLegend from '@/components/SignalLegend';
@@ -46,8 +47,35 @@ export default function Pitch() {
   const [sites, setSites] = useState(3);
   const [revenuePerMonth, setRevenuePerMonth] = useState(8000);
   const [error, setError] = useState<string | null>(null);
+  // What this account may do, straight from the gate that enforces it, so a
+  // capability it lacks is named rather than offered and then refused.
+  const [canPdf, setCanPdf] = useState(true);
+  // Owner-scoped rasters: an <img> cannot carry the bearer token, so a
+  // signed-in user's own heatmap came back 404 and painted nothing. Hooks at
+  // component level because `card` below is a render helper called twice.
+  const aSrc = useAuthedAsset(a.result?.png_url);
+  const bSrc = useAuthedAsset(b.result?.png_url);
 
-  useEffect(() => { fetchTechnologies().then(setTechs).catch(() => {}); }, []);
+  useEffect(() => {
+    fetchMe().then((u) => setCanPdf(u?.features?.pdf_export !== false))
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    fetchTechnologies().then((list) => {
+      setTechs(list);
+      // Default to something this account can actually run. Option A shipped
+      // pointing at Private LTE B48, which needs the Enterprise plan - so a
+      // new basic account's very first action on the screen built for showing
+      // a customer failed with "Upgrade to continue", while the dropdown was
+      // full of presets it could have run.
+      const usable = (k: string) => list.find((t) => t.key === k)?.available !== false;
+      const firstUsable = list.find((t) => t.available !== false)?.key;
+      if (firstUsable) {
+        setA((s) => (usable(s.technology) ? s : { ...s, technology: firstUsable, result: null }));
+        setB((s) => (usable(s.technology) ? s : { ...s, technology: firstUsable, result: null }));
+      }
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     fetchCosts(a.technology, sites).then(setCostsA).catch(() => {});
     fetchCosts(b.technology, sites).then(setCostsB).catch(() => {});
@@ -79,24 +107,39 @@ export default function Pitch() {
 
   async function exportPdf(sc: Scenario) {
     try {
+      // The headline figures are NOT sent. The report endpoint reads them
+      // from the stored study behind `coverage_id`, because a signed document
+      // whose served-area number came from the client is a fabrication
+      // vector — so those two fields were removed from its schema, which
+      // rejects unknown keys. This screen kept sending them, so every
+      // Executive PDF export answered 422 and the button did nothing but put
+      // a validation error in the box. Measured: 0 of 4 attempts produced a
+      // file, on both a basic and an enterprise account.
       await downloadReportPdf({
         title: `${sc.label} — ${sc.technology} @ ${lat}, ${lon}`,
         technology: sc.technology, sites,
         coverage_id: sc.result?.png_url.split('/').pop()?.replace('.png', ''),
-        served_area_fraction: sc.result?.served ?? undefined,
-        max_rx_power_dbm: sc.result?.peak,
       });
     } catch (e) { setError((e as Error).message); }
   }
 
   const card = (sc: Scenario, set: (s: Scenario) => void, which: 'a' | 'b',
-                costs: CostEstimate | null) => (
+                costs: CostEstimate | null, src: string | null) => (
     <section className="panel" style={{ flex: 1, minWidth: 0 }}>
       <h3>{sc.label}</h3>
       <label htmlFor={`${_uid}-0`}>{t('pitch.technology')}</label>
       <select id={`${_uid}-0`} value={sc.technology}
         onChange={(e) => set({ ...sc, technology: e.target.value, result: null })}>
-        {techs.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+        {/* A preset the account cannot run is named as such rather than
+            looking identical to the rest and failing on submit. Still
+            selectable: seeing the boundary is the point, and the error that
+            follows a deliberate choice is informative rather than baffling. */}
+        {techs.map((t) => (
+          <option key={t.key} value={t.key}>
+            {t.label}{t.available === false && t.requires_plan
+              ? ` — ${t.requires_plan} plan` : ''}
+          </option>
+        ))}
       </select>
       <div className="row" style={{ marginTop: 6 }}>
         <div>
@@ -118,10 +161,10 @@ export default function Pitch() {
         <div className="progress"><div className="progress-fill"
           style={{ width: `${sc.progress * 100}%` }} /></div>
       )}
-      {sc.result && (
+      {sc.result && src && (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={sc.result.png_url} alt={t('pitch.heatmapAlt', { label: sc.label })}
+          <img src={src} alt={t('pitch.heatmapAlt', { label: sc.label })}
             style={{ width: '100%', marginTop: 8, borderRadius: 8,
                      border: '1px solid var(--hairline)',
                      background: 'var(--page)' }} />
@@ -140,8 +183,9 @@ export default function Pitch() {
             </p>
           )}
           <SignalLegend peakDbm={sc.result.peak} />
-          <button style={{ width: '100%' }} onClick={() => exportPdf(sc)}>
-            ⤓ Executive PDF
+          <button style={{ width: '100%' }} onClick={() => exportPdf(sc)}
+            title={canPdf ? undefined : t('pitch.pdfNeedsPro')}>
+            ⤓ Executive PDF{canPdf ? '' : ' — pro plan'}
           </button>
         </>
       )}
@@ -181,8 +225,8 @@ export default function Pitch() {
               }} /></div>
         </div>
         <div style={{ display: 'flex', gap: 14, marginTop: 10, flexWrap: 'wrap' }}>
-          {card(a, setA, 'a', costsA)}
-          {card(b, setB, 'b', costsB)}
+          {card(a, setA, 'a', costsA, aSrc)}
+          {card(b, setB, 'b', costsB, bSrc)}
         </div>
         {error && <div className="error-box" role="alert">{error}</div>}
       </main>

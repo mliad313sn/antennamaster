@@ -57,9 +57,26 @@ def required_user(user: dict | None = Depends(current_user)) -> dict:
 
 
 def _public(user: dict) -> dict:
+    """The account as the client may see it, including what it may DO.
+
+    `features` exists because the interface previously had no way to know:
+    it offered every capability identically and the plan boundary only
+    appeared as a 402 after the user acted. That produced two real defects —
+    the pitch screen defaulted to an Enterprise-only technology, so a new
+    account's first click there failed, and its Executive PDF button was
+    offered to accounts without `pdf_export`. A boundary the user can see
+    before they hit it is a better experience and a better upsell than an
+    error message afterwards.
+
+    Derived from the same `has_feature` the gate itself calls, so the two
+    cannot drift: anything listed true here is something the endpoint will
+    actually allow.
+    """
+    from ..services.saas.tiers import FEATURES, has_feature
     return {k: user[k] for k in ("id", "email", "name", "role", "tier",
                                  "org_name") if k in user} | {
-        "has_logo": bool(user.get("logo_path"))}
+        "has_logo": bool(user.get("logo_path")),
+        "features": {f: has_feature(user, f) for f in FEATURES}}
 
 
 # ---------------------------------------------------------------- schemas

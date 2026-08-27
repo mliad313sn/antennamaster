@@ -10,6 +10,11 @@ export interface User {
   tier: 'basic' | 'pro' | 'enterprise';
   org_name: string;
   has_logo: boolean;
+  /** What this account may DO, keyed by capability, derived server-side from
+   *  the same check the endpoints enforce. Optional so an older backend still
+   *  typechecks; absent means "assume allowed", which is how it behaved
+   *  before and keeps self-hosted installs unencumbered. */
+  features?: Record<string, boolean>;
 }
 
 export interface Project {

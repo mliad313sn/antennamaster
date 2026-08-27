@@ -12,7 +12,8 @@ from ..services.rf import antenna as antenna_store
 from ..services.rf.models import MODEL_INFO
 from ..services.rf.technologies import TECHNOLOGIES, get_technology
 from ..services.saas import db, jobs, study_record
-from ..services.saas.tiers import check_preset_allowed, require_feature
+from ..services.saas.tiers import (FEATURES, PRESET_FEATURES, check_preset_allowed,
+                                   has_feature, require_feature)
 from ..services.terrain import coverage as coverage_mod
 from ..services.terrain.coverage import CoverageEngine, composite_best_server
 from .routes_auth import current_user
@@ -96,9 +97,28 @@ class CoverageRequest(BaseModel):
 
 
 @router.get("/technologies")
-def list_technologies() -> dict:
-    """All radio-study presets (2G/3G/4G/5G, PMR, broadcast, WLAN, IoT, PtP)."""
-    return {"technologies": [{"key": k, **v} for k, v in TECHNOLOGIES.items()]}
+def list_technologies(user: dict | None = Depends(current_user)) -> dict:
+    """All radio-study presets (2G/3G/4G/5G, PMR, broadcast, WLAN, IoT, PtP).
+
+    Each carries the plan it needs and whether THIS caller has it, because the
+    interface could not tell before and so offered choices it had no way to
+    mark. Four presets are gated - PtP backhaul (Pro) and the three private
+    LTE/5G ones (Enterprise) - and the only way to discover that was to run a
+    study and be refused 402. The pitch screen defaulted to one of them, so a
+    new account's very first action on the screen built for showing a customer
+    failed with an upgrade notice.
+
+    `requires_plan` is null for an ungated preset, and `available` is what the
+    caller can act on: in a self-hosted install with no account everything is
+    available, which is the same rule the gate itself applies.
+    """
+    out = []
+    for k, v in TECHNOLOGIES.items():
+        need = PRESET_FEATURES.get(k)
+        out.append({"key": k, **v,
+                    "requires_plan": FEATURES.get(need) if need else None,
+                    "available": has_feature(user, need) if need else True})
+    return {"technologies": out}
 
 
 @router.get("/models")

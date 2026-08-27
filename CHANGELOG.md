@@ -4,6 +4,48 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.7 — 2026-08-27
+
+### Fixed — the branded PDF never came out
+
+- **Every Executive PDF export failed with 422.** The report endpoint
+  deliberately removed `served_area_fraction` and `max_rx_power_dbm` from its
+  schema — the figures printed in a signed document are read from the *stored*
+  study, because a headline number supplied by the client is a fabrication
+  vector — and it rejects unknown keys so that a stale client gets a loud
+  refusal rather than silence. That reasoning is right; the pitch screen was
+  simply never updated and kept sending both. Measured in the browser: **0 of
+  4 attempts produced a file**, on a basic account and an enterprise one
+  alike, on the screen whose own text promises "then export the branded PDF".
+  Now 4 of 4. The hardening is untouched: sending those fields is still
+  refused, and a test pins both halves.
+
+### Fixed — the interface could not see the plan boundary
+
+- **Presets now say which plan they need and whether you have it.**
+  `/api/rf/technologies` gained `requires_plan` and `available`, derived from
+  the same check the gate enforces so the two cannot drift. Four presets are
+  gated — PtP backhaul (Pro) and the three private LTE/5G ones (Enterprise) —
+  and nothing in the API said so, so the interface offered them identically
+  and the boundary appeared only as a 402 after the study was launched.
+- **The pitch screen defaulted to one of them.** Option A shipped pointing at
+  Private LTE B48, so a new basic account's very first action on the screen
+  built for showing a customer failed with "Upgrade to continue" — while the
+  dropdown was full of presets it could have run. The default now falls back
+  to the first preset the account can run (an Enterprise account still opens
+  on Private LTE B48), and gated entries are named "— enterprise plan" rather
+  than looking identical and failing on submit.
+- **`/api/auth/me` now reports the account's capabilities**, so any screen can
+  mark what it cannot do instead of offering it and being refused. The
+  Executive PDF button says "— pro plan" for an account without `pdf_export`.
+  A boundary the user can see before they hit it is a better experience, and
+  a better upsell, than an error message afterwards.
+
+### Fixed
+
+- The pitch heatmap was the last raster still loaded by raw URL, so it was a
+  broken image for signed-in users — the 1.3.5 sweep missed this one file.
+
 ## 1.3.6 — 2026-08-27
 
 ### Fixed — the planner's own API calls carried no credentials
