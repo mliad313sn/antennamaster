@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, Up
 from pydantic import BaseModel, EmailStr, Field
 
 from ..config import DATA_DIR
-from ..services.saas import db
+from ..services.saas import db, gdpr
 from ..services.saas.tiers import TIER_INFO, require_feature, saas_mode
 
 router = APIRouter(prefix="/api/auth", tags=["saas"])
@@ -78,6 +78,14 @@ class LoginIn(BaseModel):
 
 class TierIn(BaseModel):
     tier: str = Field(pattern="^(basic|pro|enterprise)$")
+
+
+class EraseIn(BaseModel):
+    """Erasure is re-authenticated: a stolen or borrowed session must not be
+    able to destroy someone's account, and a bearer token is exactly what an
+    unlocked laptop hands over."""
+    password: str
+    confirm: str = Field(pattern="^DELETE$")
 
 
 # --------------------------------------------------------------- endpoints
@@ -187,6 +195,42 @@ async def upload_logo(file: UploadFile = File(...),
     path.write_bytes(raw)
     db.update_user(user["id"], logo_path=str(path))
     return {"ok": True}
+
+
+@router.get("/export")
+def export_account(request: Request, user: dict = Depends(required_user)) -> dict:
+    """Right of access / portability (GDPR art. 15 & 20): everything the
+    platform holds about the caller, as one JSON document."""
+    request.state.audit_detail = "self"
+    return gdpr.export_account(user)
+
+
+@router.delete("/account")
+def erase_account(request: Request, body: EraseIn,
+                  user: dict = Depends(required_user)) -> dict:
+    """Right to erasure (GDPR art. 17).
+
+    Destroys the account and every artefact it owns — projects, uploaded
+    DXF drawings, antenna patterns, rendered rasters, white-label logo — and
+    pseudonymises its audit trail.  There is no undo and no grace period,
+    which is why it takes the password and a literal ``confirm: "DELETE"``.
+    """
+    if not db.verify_password(body.password, user["password_hash"]):
+        _login_failed(user["email"])
+        raise HTTPException(401, "Password does not match")
+    org = user.get("org_name") or None
+    receipt = gdpr.erase_account(user)
+    # The erasure is itself auditable, but recording it under the email would
+    # put the identity straight back into the table it was just removed from.
+    # It goes in under the same opaque subject the person's history now
+    # carries, so the organisation's trail stays continuous and readable.
+    request.state.audit_subject = receipt.get("subject")
+    request.state.audit_org = org
+    request.state.audit_detail = (
+        f"projects={receipt['projects']} dxf={receipt['dxf']} "
+        f"antennas={receipt['antennas']} results={receipt['results']} "
+        f"audit_pseudonymised={receipt['audit_pseudonymised']}")
+    return {"ok": True, "erased": receipt}
 
 
 @router.get("/audit")

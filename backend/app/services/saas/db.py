@@ -54,7 +54,17 @@ CREATE TABLE IF NOT EXISTS audit_log (
     user_id INTEGER,
     action TEXT NOT NULL,
     detail TEXT NOT NULL DEFAULT '',
-    ts REAL NOT NULL
+    ts REAL NOT NULL,
+    -- Set when the acting account has been erased (GDPR art. 17): the row
+    -- keeps its forensic value (an action happened, by one consistent actor)
+    -- while ceasing to identify a person.  Never set for a live account.
+    subject TEXT,
+    -- Tenant the erased actor belonged to.  Live rows resolve the tenant by
+    -- joining users; erased rows have no user to join, and without this the
+    -- trail would silently vanish from its own organisation's audit view the
+    -- moment someone closed their account.  An org name identifies a company,
+    -- not a person, so keeping it does not re-identify the erased actor.
+    org_name TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_projects_user ON projects(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts);
@@ -90,6 +100,11 @@ def init_db() -> None:
         cols = {r[1] for r in c.execute("PRAGMA table_info(audit_log)").fetchall()}
         if "ip" not in cols:
             c.execute("ALTER TABLE audit_log ADD COLUMN ip TEXT")
+        if "subject" not in cols:
+            c.execute("ALTER TABLE audit_log ADD COLUMN subject TEXT")
+        if "org_name" not in cols:
+            c.execute("ALTER TABLE audit_log ADD COLUMN org_name TEXT")
+    prune_audit()                       # enforce retention on every boot
     # The database holds password hashes, tokens and audit records — restrict
     # it to the owning account (OT/IT data-at-rest requirement).
     try:
@@ -160,6 +175,32 @@ def org_exists(org_name: str) -> bool:
             "SELECT 1 FROM users WHERE TRIM(org_name) = ? COLLATE NOCASE "
             "LIMIT 1", (name,)).fetchone()
     return row is not None
+
+
+def delete_user(user_id: int) -> str | None:
+    """Erase an account (GDPR art. 17) and return the pseudonym its audit
+    rows were re-attributed to, or None if there was no such account.
+
+    Tokens and projects go with the row (ON DELETE CASCADE, and foreign keys
+    are enabled per connection).  The audit trail is NOT deleted: an operator
+    still has to be able to answer "who changed this site's power?" after a
+    contractor's account is closed, and art. 17(3)(b)/(e) leaves room for
+    that.  What must go is the *identification*, so the rows are re-attributed
+    to a random opaque subject id — stable across that person's history so the
+    sequence of actions still reads as one actor, unlinkable back to them
+    because nothing anywhere maps the pseudonym to the account.  The client IP
+    is dropped for the same reason: it is personal data on its own.
+    """
+    with _conn() as c:
+        if c.execute("SELECT 1 FROM users WHERE id=?", (user_id,)).fetchone() is None:
+            return None
+        subject = "erased-" + secrets.token_hex(8)
+        org = c.execute("SELECT org_name FROM users WHERE id=?",
+                        (user_id,)).fetchone()[0] or None
+        c.execute("UPDATE audit_log SET user_id=NULL, subject=?, ip=NULL, "
+                  "org_name=? WHERE user_id=?", (subject, org, user_id))
+        c.execute("DELETE FROM users WHERE id=?", (user_id,))
+    return subject
 
 
 def update_user(user_id: int, **fields) -> None:
@@ -277,11 +318,70 @@ def _proj(row: sqlite3.Row) -> dict:
 
 
 # -------------------------------------------------------------- audit log
+_last_prune = 0.0
+
+
 def log_action(user_id: int | None, action: str, detail: str = "",
-               ip: str | None = None) -> None:
+               ip: str | None = None, subject: str | None = None,
+               org_name: str | None = None) -> None:
+    """Append one audit row.
+
+    ``subject``/``org_name`` are for actions whose actor no longer has a user
+    row to join against — today that is account erasure, which must still show
+    up in its own organisation's trail.
+    """
+    global _last_prune
+    now = time.time()
     with _conn() as c:
-        c.execute("INSERT INTO audit_log (user_id, action, detail, ip, ts) "
-                  "VALUES (?,?,?,?,?)", (user_id, action, detail, ip, time.time()))
+        c.execute("INSERT INTO audit_log (user_id, action, detail, ip, ts, "
+                  "subject, org_name) VALUES (?,?,?,?,?,?,?)",
+                  (user_id, action, detail, ip, now, subject, org_name))
+    # Retention cannot depend on the process being restarted: a server that
+    # stays up for two years would keep two years of logs whatever the policy
+    # says.  Sweep at most hourly so this stays off the request hot path.
+    if now - _last_prune > 3600.0:
+        _last_prune = now
+        prune_audit(now)
+
+
+def list_audit_for_user(user_id: int, limit: int = 5000) -> list[dict]:
+    """One account's own audit rows — the subject-access half of GDPR art. 15.
+    Unlike :func:`list_audit` this needs no role: it returns only the caller's
+    own activity, which they are entitled to by law."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT id, action, detail, ip, ts FROM audit_log WHERE user_id=? "
+            "ORDER BY ts DESC LIMIT ?", (user_id, max(1, min(limit, 50_000)))
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+# Audit rows are personal data (email via the join, client IP directly), so
+# they may not be kept forever "just in case" — GDPR art. 5(1)(e) wants a
+# stated limit.  A year covers the annual audit cycle these deployments are
+# bought for; operators with a longer regulatory obligation raise it, and 0
+# disables pruning for the air-gapped installs that archive out of band.
+AUDIT_RETENTION_DAYS = 365
+
+
+def _retention_days() -> int:
+    import os
+    try:
+        return max(0, int(os.environ.get("AM_AUDIT_RETENTION_DAYS",
+                                         AUDIT_RETENTION_DAYS)))
+    except ValueError:
+        return AUDIT_RETENTION_DAYS
+
+
+def prune_audit(now: float | None = None) -> int:
+    """Delete audit rows older than the retention window; returns the count."""
+    days = _retention_days()
+    if not days:
+        return 0
+    cutoff = (now if now is not None else time.time()) - days * 86_400.0
+    with _conn() as c:
+        cur = c.execute("DELETE FROM audit_log WHERE ts < ?", (cutoff,))
+        return cur.rowcount or 0
 
 
 def list_audit(limit: int = 200, org_name: str | None = None) -> list[dict]:
@@ -291,9 +391,13 @@ def list_audit(limit: int = 200, org_name: str | None = None) -> list[dict]:
     limit = min(max(limit, 1), 1000)
     with _conn() as c:
         if org_name is not None:
+            # COALESCE, not a plain join on users: an erased account has no
+            # user row left, and its actions still belong to this tenant's
+            # trail (pseudonymised, via audit_log.org_name).
             rows = c.execute(
-                "SELECT a.*, u.email FROM audit_log a JOIN users u "
-                "ON u.id = a.user_id WHERE u.org_name = ? "
+                "SELECT a.*, u.email FROM audit_log a LEFT JOIN users u "
+                "ON u.id = a.user_id "
+                "WHERE COALESCE(u.org_name, a.org_name) = ? "
                 "ORDER BY a.ts DESC LIMIT ?", (org_name, limit)).fetchall()
         else:
             rows = c.execute(

@@ -125,6 +125,28 @@ export async function fetchAudit(): Promise<AuditEntry[]> {
   return (await call<{ entries: AuditEntry[] }>('/api/auth/audit')).entries;
 }
 
+/** Right of access / portability (GDPR art. 15 & 20). Returns the whole
+ *  account dump so the caller can offer it as a download. */
+export async function exportAccount(): Promise<Record<string, unknown>> {
+  return call<Record<string, unknown>>('/api/auth/export');
+}
+
+export interface EraseReceipt {
+  projects: number; dxf: number; antennas: number; results: number;
+  logo: boolean; audit_pseudonymised: number; subject: string | null;
+}
+
+/** Right to erasure (GDPR art. 17). Irreversible: the caller must have
+ *  collected the password and an explicit confirmation first. */
+export async function eraseAccount(password: string): Promise<EraseReceipt> {
+  const body = await call<{ erased: EraseReceipt }>('/api/auth/account', {
+    method: 'DELETE',
+    body: JSON.stringify({ password, confirm: 'DELETE' }),
+  });
+  setToken(null);
+  return body.erased;
+}
+
 export async function uploadLogo(file: File): Promise<void> {
   const form = new FormData();
   form.append('file', file);

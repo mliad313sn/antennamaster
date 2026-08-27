@@ -40,6 +40,32 @@ while the running server was probed empirically for behaviour and defects.
   engine and stays open — the same rule the DXF and coverage-result guards
   already follow, so the local Live Ops demo is unaffected.
 
+### Added — users can get their data out, and get themselves deleted
+
+- **Account & privacy (GDPR art. 15, 17, 20), self-serve.** There was no
+  delete path at all — closing an account meant asking an operator to run SQL
+  — and no way to obtain a copy of your own data. `GET /api/auth/export`
+  returns the profile, every saved project *with its full study payload* and
+  the caller's own audit rows as one JSON file; `DELETE /api/auth/account`
+  (password **and** a typed `DELETE`, because a bearer token is what an
+  unlocked laptop hands over) destroys the account and everything it owns.
+  That deliberately means more than the user row: the uploaded site CAD, the
+  rendered coverage rasters and their `.npz` sidecars, private antenna
+  patterns and the white-label logo are all unlinked, along with the
+  in-process raster cache that would otherwise keep serving a deleted file.
+  The response is a receipt of what went, not a bare 204.
+- **The audit trail is pseudonymised rather than deleted.** An operator must
+  still be able to answer "who changed this site's power?" after a
+  contractor leaves, so the rows survive under a random opaque `subject`
+  (stable across that person's history, unlinkable back to them) with the
+  client IP nulled. They keep the *organisation* name — an org identifies a
+  company, not a person — or the whole history would have silently vanished
+  from its own manager's audit view the moment someone closed their account.
+- **Audit retention.** `audit_log` had no TTL and no pruning, so a deployment
+  accumulated emails and client IPs indefinitely with no stated policy. Rows
+  older than `AM_AUDIT_RETENTION_DAYS` (default 365) are now pruned on boot
+  and at most hourly on the write path; `0` opts an air-gapped install out.
+
 ### Added — a cluster study can finally describe a real network
 
 - **Per-transmitter radio parameters.** `/coverage/multi` (and the frequency

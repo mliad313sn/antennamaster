@@ -702,5 +702,28 @@
     "hide": "Masquer le panneau",
     "show": "Afficher le panneau",
     "hint": "Glissez la poignée ⠿ pour réordonner (ou sélectionnez-la et appuyez sur ↑ / ↓) ; cliquez sur l’œil pour masquer un panneau."
+  },
+  "account": {
+    "title": "Compte et confidentialité",
+    "close": "Fermer les paramètres du compte",
+    "exportTitle": "Télécharger vos données",
+    "exportHelp": "Tout ce que nous conservons sur votre compte, dans un seul fichier JSON : votre profil, chaque projet enregistré avec l'intégralité de son étude, et votre propre journal d'activité. Les plans importés et les rasters calculés sont listés plutôt qu'intégrés — chacun reste téléchargeable depuis sa propre page.",
+    "exportBtn": "Télécharger mes données (JSON)",
+    "exportDone": "Vos données ont été téléchargées.",
+    "deleteTitle": "Supprimer ce compte",
+    "deleteHelp": "Supprime définitivement votre compte, vos projets enregistrés, vos plans de site et diagrammes d'antenne importés, vos résultats de couverture calculés et votre logo. Vos entrées dans le journal d'audit de l'organisation sont conservées mais cessent de vous identifier.",
+    "deleteBtn": "Supprimer mon compte…",
+    "deleteConfirmHelp": "Cette action est irréversible. Confirmez avec votre mot de passe et saisissez DELETE.",
+    "password": "Mot de passe",
+    "typeDelete": "Saisissez DELETE pour confirmer",
+    "deleteForever": "Supprimer définitivement",
+    "cancel": "Annuler",
+    "erasedDone": "Votre compte et vos données ont été supprimés.",
+    "erasedProjects": "{{n}} projet(s) supprimé(s)",
+    "erasedDxf": "{{n}} plan(s) de site supprimé(s)",
+    "erasedAntennas": "{{n}} diagramme(s) d'antenne supprimé(s)",
+    "erasedResults": "{{n}} résultat(s) de couverture supprimé(s)",
+    "erasedAudit": "{{n}} entrée(s) d'audit anonymisée(s)",
+    "done": "Terminé"
   }
 }

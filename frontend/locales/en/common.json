@@ -702,5 +702,28 @@
     "hide": "Hide panel",
     "show": "Show panel",
     "hint": "Drag the ⠿ handle to reorder (or focus it and press ↑ / ↓); click the eye to hide a panel."
+  },
+  "account": {
+    "title": "Account & privacy",
+    "close": "Close account settings",
+    "exportTitle": "Download your data",
+    "exportHelp": "Everything we hold about your account, as one JSON file: your profile, every saved project with its full study data, and your own activity log. Uploaded drawings and rendered rasters are listed rather than embedded — each stays downloadable from its own page.",
+    "exportBtn": "Download my data (JSON)",
+    "exportDone": "Your data has been downloaded.",
+    "deleteTitle": "Delete this account",
+    "deleteHelp": "Permanently removes your account, your saved projects, your uploaded site drawings and antenna patterns, your rendered coverage results and your logo. Your entries in the organisation's audit log are kept but stop identifying you.",
+    "deleteBtn": "Delete my account…",
+    "deleteConfirmHelp": "This cannot be undone. Confirm with your password and type DELETE.",
+    "password": "Password",
+    "typeDelete": "Type DELETE to confirm",
+    "deleteForever": "Delete permanently",
+    "cancel": "Cancel",
+    "erasedDone": "Your account and its data have been deleted.",
+    "erasedProjects": "{{n}} project(s) deleted",
+    "erasedDxf": "{{n}} site drawing(s) deleted",
+    "erasedAntennas": "{{n}} antenna pattern(s) deleted",
+    "erasedResults": "{{n}} coverage result(s) deleted",
+    "erasedAudit": "{{n}} audit entr(y/ies) anonymised",
+    "done": "Done"
   }
 }

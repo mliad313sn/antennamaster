@@ -25,6 +25,10 @@ CRITICAL_RULES: list[tuple[str, str, str]] = [
     ("POST", "/api/auth/tier", "tier_change"),
     ("POST", "/api/auth/api-token", "api_token_create"),
     ("POST", "/api/auth/logo", "logo_upload"),
+    # GDPR: both the subject-access export and the erasure are themselves
+    # events an operator must be able to evidence.
+    ("GET", "/api/auth/export", "account_export"),
+    ("DELETE", "/api/auth/account", "account_erase"),
     ("POST", "/api/dxf/upload", "dxf_upload"),
     ("POST", "/georeference", "dxf_georeference"),
     ("DELETE", "/api/dxf/", "dxf_delete"),
@@ -78,16 +82,23 @@ def classify(method: str, path: str) -> str | None:
 
 
 def record(action: str, *, user_id: int | None, email: str | None,
-           ip: str | None, status: int, detail: str = "") -> None:
-    """Write one audit record to the file log and the database."""
+           ip: str | None, status: int, detail: str = "",
+           subject: str | None = None, org_name: str | None = None) -> None:
+    """Write one audit record to the file log and the database.
+
+    ``subject`` replaces the identity for an actor that must not be named —
+    an account erasure, whose whole point is that the email stops being
+    stored.  The action is still evidenced, against an opaque id.
+    """
     log = _configure()
     log.info("action=%s user_id=%s email=%s ip=%s status=%s detail=%s",
              action, user_id if user_id is not None else "-",
-             email or "-", ip or "-", status, detail or "-")
+             email or subject or "-", ip or "-", status, detail or "-")
     # Persist to the DB (tenant-scoped queries read this); never let an audit
     # write break the request path.
     try:
         from .saas import db
-        db.log_action(user_id, action, detail, ip=ip)
+        db.log_action(user_id, action, detail, ip=ip, subject=subject,
+                      org_name=org_name)
     except Exception:  # noqa: BLE001
         log.warning("audit db write failed for action=%s", action)

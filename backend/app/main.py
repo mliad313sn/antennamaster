@@ -184,10 +184,19 @@ async def audit_middleware(request, call_next):
                     pass
         detail = getattr(request.state, "audit_detail",
                          f"{request.method} {request.url.path}")
+        # An endpoint may declare that its actor must not be named — account
+        # erasure records that it happened, under an opaque subject id, with
+        # no email and no client IP, or the record would re-create the very
+        # personal data the request destroyed.
+        subject = getattr(request.state, "audit_subject", None)
+        org_name = getattr(request.state, "audit_org", None)
+        if subject is not None:
+            email, user_id = None, None
         try:
             audit.record(action, user_id=user_id, email=email,
-                         ip=_client_ip(request), status=response.status_code,
-                         detail=detail)
+                         ip=None if subject else _client_ip(request),
+                         status=response.status_code, detail=detail,
+                         subject=subject, org_name=org_name)
         except Exception:  # noqa: BLE001 - auditing must never break a request
             pass
     return response

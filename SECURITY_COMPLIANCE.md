@@ -127,13 +127,72 @@ token yet, so the endpoint stamps identity via `request.state`).
    semi-public, appearing on exported reports), and invite tokens are not yet
    implemented — a second member must currently be added out of band.
 
+### How long it is kept
+Audit rows carry an email (via the join) and a client IP, so "keep forever"
+is not a retention policy. Rows older than **`AM_AUDIT_RETENTION_DAYS`
+(default 365)** are pruned — on every boot and, because a long-lived server
+would otherwise never sweep, at most hourly on the write path. Set the
+variable to `0` on an air-gapped deployment that archives the trail out of
+band, so nothing silently deletes a regulator-mandated record.
+
 Auditing is best-effort with respect to request handling: an audit-write
 failure is caught and logged, never propagated, so it cannot break a user
 request.
 
 ---
 
-## 3. Data handling & isolation
+## 3. Data-subject rights (GDPR)
+
+Both rights are **self-serve** (Account & privacy, from the user chip);
+neither requires an operator to run SQL.
+
+### Access & portability — `GET /api/auth/export` (art. 15 & 20)
+Returns one JSON document with the account profile, every saved project
+**including its full study payload**, and the caller's own audit rows. Binary
+artefacts (DXF drawings, rendered rasters, logo) are *listed* with their ids
+rather than inlined — they are megabytes each and every one of them is
+downloadable through its own endpoint. The export is scoped to the caller: it
+never contains another account's projects, emails or activity, and no
+password material ever leaves the server.
+
+### Erasure — `DELETE /api/auth/account` (art. 17)
+**Re-authenticated**: the body must carry the current password *and*
+`confirm: "DELETE"`. A bearer token alone is not enough — that is exactly
+what an unlocked laptop hands over — and a wrong password counts toward the
+login lockout.
+
+Erasure reaches every owner-tagged store, not just the account row, because
+the account row is the small part: the personal data of value here is the
+uploaded site CAD (a customer's floor plan), the rendered coverage rasters
+(where their assets are), proprietary antenna patterns, and the white-label
+logo. All four are deleted from disk — including the in-process raster cache,
+which would otherwise keep serving an unlinked file — along with the user
+row, its session/API tokens and its projects (FK cascade).
+
+**The audit trail is pseudonymised, not deleted.** An operator still has to be
+able to answer "who changed this site's transmit power?" after a contractor's
+account closes, which art. 17(3) leaves room for; what must go is the
+identification. Each of the person's rows is re-attributed to a random opaque
+`subject` (stable across their history, so the sequence still reads as one
+actor; unlinkable, because nothing anywhere maps it back), and the client IP
+is nulled. The rows keep the **organisation name** so the tenant-scoped audit
+view stays continuous — an org identifies a company, not a person, and
+without it the trail would vanish from its own manager's view the moment
+someone closed their account. The erasure itself is audited under that same
+subject, with no email and no IP.
+
+The response is a receipt (`projects`, `dxf`, `antennas`, `results`, `logo`,
+`audit_pseudonymised`), because a data-protection request has to be
+answerable with *what* was destroyed, not a bare 204. Regressions:
+`backend/tests/test_gdpr.py`, `frontend/tests/account-privacy.test.tsx`.
+
+*Known gap:* results and DXF files owned by an **anonymous** self-hosted
+session have no owner to erase them by; they age out through the existing
+retention cap (200 results) instead.
+
+---
+
+## 4. Data handling & isolation
 
 ### Storage layout (single data root)
 All state lives under `AM_DATA_DIR` (a Docker volume or a bare-metal path):
@@ -169,7 +228,7 @@ proxy; set `AM_CORS_ORIGINS` to your domain. See `DEPLOYMENT_GUIDE.md`.
 
 ---
 
-## 4. Offline / air-gapped data handling
+## 5. Offline / air-gapped data handling
 
 For remote or secure industrial sites with no internet:
 - **Container images** ship as a `.tar` (`deploy/package_offline.sh`) and load
@@ -187,7 +246,7 @@ For remote or secure industrial sites with no internet:
 
 ---
 
-## 5. Verification
+## 6. Verification
 
 The security posture is covered by automated regression tests
 (`backend/tests/`):

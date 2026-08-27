@@ -18,6 +18,7 @@ import { useCallback, useEffect, useRef, useState, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import AdvancedStudies from '@/components/AdvancedStudies';
 import AuthPanel from '@/components/AuthPanel';
+import AccountPanel from '@/components/AccountPanel';
 import BatchPanel from '@/components/BatchPanel';
 import DxfWizard from '@/components/DxfWizard';
 import Help from '@/components/Help';
@@ -105,6 +106,7 @@ export default function Home() {
   const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
   const [user, setUser] = useState<User | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const flySeq = useRef(1);
 
@@ -442,6 +444,7 @@ export default function Home() {
             <span className="user-chip">
               {user.name || user.email}
               <span className="tier-badge">{user.tier}</span>
+              <button onClick={() => setAccountOpen(true)}>{t('nav.account')}</button>
               <button onClick={() => { setToken(null); setUser(null); }}>{t('nav.signOut')}</button>
             </span>
           ) : (
@@ -791,6 +794,10 @@ export default function Home() {
         />
       )}
       {authOpen && <AuthPanel onClose={() => setAuthOpen(false)} onUser={setUser} />}
+      {accountOpen && user && (
+        <AccountPanel user={user} onClose={() => setAccountOpen(false)}
+          onErased={() => { setAccountOpen(false); setUser(null); }} />
+      )}
     </div>
   );
 }

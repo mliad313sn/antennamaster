@@ -581,6 +581,19 @@ label { color: var(--ink-secondary); font-size: 12px; display: block; margin-bot
   background: var(--status-critical-bg); color: var(--status-critical); border: 1px solid var(--status-critical-border);
   border-radius: 8px; padding: 10px; font-size: 12px; margin-top: 10px;
 }
+.ok-box {
+  background: var(--status-good-bg, var(--accent-soft));
+  color: var(--status-good, var(--accent-soft-ink));
+  border: 1px solid var(--status-good-border, transparent);
+  border-radius: 8px; padding: 10px; font-size: 12px; margin-top: 10px;
+}
+/* Irreversible actions (account erasure) read as destructive before the
+   click, not after it. */
+button.danger {
+  background: var(--status-critical); color: #fff;
+  border-color: var(--status-critical-border);
+}
+button.danger:disabled { opacity: 0.5; }
 .cp-grid { display: grid; grid-template-columns: repeat(4, 1fr) 32px; gap: 6px; align-items: end; margin-bottom: 6px; }
 .cp-grid button { padding: 6px 4px; }
 
