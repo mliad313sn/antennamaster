@@ -238,12 +238,22 @@ class CoverageEngine:
         # ---- 2) fused terrain along every ray -----------------------------
         elev_flat, _w = self.fusion.fused_elevations(
             np.asarray(lats), np.asarray(lons), grid, georef)
-        elev = elev_flat.reshape(n_radials, n_steps)
+        bare_elev = elev_flat.reshape(n_radials, n_steps)
+        elev = bare_elev
+        clutter_h = None
         if clutter_heights_fn is not None:
-            ch = np.asarray(clutter_heights_fn(np.asarray(lats),
-                                               np.asarray(lons)),
-                            dtype=np.float64).reshape(n_radials, n_steps)
-            elev = elev + ch
+            clutter_h = np.asarray(clutter_heights_fn(np.asarray(lats),
+                                                      np.asarray(lons)),
+                                   dtype=np.float64).reshape(n_radials, n_steps)
+            # Our own diffraction bends over the cluttered surface, so the
+            # heights are added to the terrain here.  P.1812 is different: the
+            # Recommendation takes representative clutter as its OWN input R
+            # alongside bare ground, and folding it into h as well would apply
+            # the same canopy twice - see the p1812 branch below, which uses
+            # `bare_elev` and passes `clutter_h` through.
+            elev = bare_elev + clutter_h
+        ray_lats = np.asarray(lats).reshape(n_radials, n_steps)
+        ray_lons = np.asarray(lons).reshape(n_radials, n_steps)
         tx_elev = float(self.fusion.fused_elevations(
             np.array([lat]), np.array([lon]), grid, georef)[0][0])
 
@@ -263,6 +273,22 @@ class CoverageEngine:
                 reliability_pct=float(tech.get("itm_reliability_pct", 50.0)),
                 confidence_pct=float(tech.get("itm_confidence_pct", 50.0)),
                 climate=int(tech.get("itm_climate", 5)),
+                progress_cb=progress_cb)
+            diff_loss = np.zeros_like(pl)
+        elif tech["model"] == "p1812":
+            # The official ITU-R Study Group 3 reference implementation, run
+            # per sample. Same rule as ITM: it derives the terrain effect
+            # itself, so no Deygout term goes on top. Unlike ITM it takes the
+            # representative clutter height as its own input R next to bare
+            # ground, which is the Recommendation's own clutter mechanism -
+            # fed here by real 10 m WorldCover land cover when enabled.
+            from ..rf.itm_exact import p1812_loss_grid
+            pl, warnings = p1812_loss_grid(
+                bare_elev, dist, ray_lats, ray_lons, lat, lon, tx_elev,
+                h_bs, h_ut, freq,
+                time_pct=float(tech.get("p1812_time_pct", 50.0)),
+                location_pct=float(tech.get("p1812_location_pct", 50.0)),
+                clutter_heights=clutter_h,
                 progress_cb=progress_cb)
             diff_loss = np.zeros_like(pl)
         else:

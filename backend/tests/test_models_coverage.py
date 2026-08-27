@@ -53,13 +53,16 @@ def test_path_loss_dispatch_and_warnings():
         path_loss_db("nope", np.array([1.0]), 900, 30, 1.5)
     assert set(MODEL_INFO) == {"fspl", "okumura_hata", "cost231_hata",
                                "tr38901_rma", "tr38901_uma", "tr38901_umi",
-                               "itm"}
-    # ITM is in the registry so it appears in the model picker, but it is a
-    # terrain algorithm, not a distance curve: asking for it here means a
-    # caller reached the empirical dispatcher with a model that needs a
-    # profile, and a silent fallback to Hata would be worse than an error.
-    with pytest.raises(ValueError, match="terrain profile"):
-        path_loss_db("itm", np.array([1000.0]), 450, 30, 1.5)
+                               "itm", "p1812"}
+    # ITM and P.1812 are in the registry so they appear in the model picker,
+    # but they are terrain algorithms, not distance curves: reaching the
+    # empirical dispatcher with one means a caller asked for a model that
+    # needs a profile, and a silent fallback to Hata would be worse than an
+    # error - it would file a study under the name of an engine that never
+    # ran.
+    for terrain_model in ("itm", "p1812"):
+        with pytest.raises(ValueError, match="terrain profile"):
+            path_loss_db(terrain_model, np.array([1000.0]), 450, 30, 1.5)
 
 
 def test_deygout_multi_edge():

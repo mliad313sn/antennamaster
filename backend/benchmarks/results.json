@@ -1,63 +1,71 @@
 [
  {
   "name": "profile 256 samples + study (Deygout per-sample)",
-  "ms": 25,
+  "ms": 24,
   "peak_mb": 0.1,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "profile 2048 samples + study",
-  "ms": 217,
+  "ms": 215,
   "peak_mb": 0.4,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage default 180x100 @10km",
-  "ms": 151,
+  "ms": 146,
   "peak_mb": 21.2,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km (SRTM)",
-  "ms": 3717,
+  "ms": 3728,
   "peak_mb": 103.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage MAX 720x400 @50km FUSED DXF grid",
-  "ms": 3766,
+  "ms": 3779,
   "peak_mb": 103.0,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "coverage ITM 180x100 @10km (one Longley-Rice run per sample)",
-  "ms": 2350,
+  "ms": 2325,
   "peak_mb": 22.9,
   "ok": true,
   "budget_s": 5.0
  },
  {
+  "name": "coverage P.1812 (ITU digital maps not installed)",
+  "ms": null,
+  "peak_mb": null,
+  "ok": true,
+  "skipped": true,
+  "budget_s": null
+ },
+ {
   "name": "multi-site 4x (120x80 @10km) + composite",
-  "ms": 338,
+  "ms": 353,
   "peak_mb": 42.3,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "indoor multi-wall 400px grid, 200 walls",
-  "ms": 433,
+  "ms": 426,
   "peak_mb": 16.9,
   "ok": true,
   "budget_s": 5.0
  },
  {
   "name": "executive PDF (profile chart + tables)",
-  "ms": 86,
+  "ms": 88,
   "peak_mb": 2.0,
   "ok": true,
   "budget_s": 5.0

@@ -278,7 +278,11 @@
     "itmRel50": "50% — median",
     "itmRel90": "90% — design",
     "itmRel95": "95% — committed",
-    "record": "Study of record"
+    "record": "Study of record",
+    "p1812Location": "Locations covered",
+    "p1812Loc50": "50% — median",
+    "p1812Loc90": "90% — design",
+    "p1812Loc95": "95% — committed"
   },
   "batch": {
     "title": "Batch receivers",
@@ -393,7 +397,8 @@
     "gain": "Antenna gain (dBi): how much an antenna concentrates its energy in a direction versus radiating everywhere equally. Higher gain means more reach but a narrower beam.",
     "txpower": "Transmit power (dBm): how much power the radio puts out. More power reaches further, but regulators cap it and it is only one part of the budget.",
     "itmReliability": "ITM answers “the level exceeded at X% of locations and time”, not a bare median. 50% is the median a link budget gives; a coverage commitment is written on 90–95%, which over real terrain roughness costs around 10–15 dB.",
-    "studyRecord": "The reference for this exact study: a digest over its complete input set and the build that produced it. It is printed on the exported PDF, and it can be quoted back to retrieve every assumption behind the map — or to re-run the study on its recorded inputs and see whether it still says the same thing."
+    "studyRecord": "The reference for this exact study: a digest over its complete input set and the build that produced it. It is printed on the exported PDF, and it can be quoted back to retrieve every assumption behind the map — or to re-run the study on its recorded inputs and see whether it still says the same thing.",
+    "p1812Location": "ITU-R P.1812 states its answer as “the level not exceeded at X% of locations”, which is the form a coverage obligation is written in. 50% is the median; 95% is the level you can commit to almost everywhere in a pixel, and over real terrain that costs materially more margin."
   },
   "gis": {
     "exportTitle": "Export to GIS",

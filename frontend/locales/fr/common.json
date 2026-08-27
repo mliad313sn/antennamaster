@@ -278,7 +278,11 @@
     "itmRel50": "50 % — médiane",
     "itmRel90": "90 % — dimensionnement",
     "itmRel95": "95 % — engagement",
-    "record": "Étude de référence"
+    "record": "Étude de référence",
+    "p1812Location": "Emplacements couverts",
+    "p1812Loc50": "50 % — médiane",
+    "p1812Loc90": "90 % — dimensionnement",
+    "p1812Loc95": "95 % — engagement"
   },
   "batch": {
     "title": "Récepteurs en lot",
@@ -393,7 +397,8 @@
     "gain": "Gain d'antenne (dBi) : à quel point une antenne concentre son énergie dans une direction plutôt que de rayonner partout. Un gain élevé donne plus de portée mais un faisceau plus étroit.",
     "txpower": "Puissance d'émission (dBm) : la puissance émise par la radio. Plus de puissance porte plus loin, mais la réglementation la limite et ce n'est qu'une partie du bilan.",
     "itmReliability": "ITM répond « le niveau dépassé à X % des emplacements et du temps », et non une simple médiane. 50 % correspond à la médiane d’un bilan de liaison ; un engagement de couverture s’écrit sur 90–95 %, ce qui coûte environ 10 à 15 dB sur un terrain réellement accidenté.",
-    "studyRecord": "La référence de cette étude précise : une empreinte calculée sur l’intégralité de ses paramètres d’entrée et sur la version qui l’a produite. Elle figure sur le PDF exporté et peut être citée pour retrouver toutes les hypothèses derrière la carte — ou pour relancer l’étude sur ses paramètres enregistrés et vérifier qu’elle dit toujours la même chose."
+    "studyRecord": "La référence de cette étude précise : une empreinte calculée sur l’intégralité de ses paramètres d’entrée et sur la version qui l’a produite. Elle figure sur le PDF exporté et peut être citée pour retrouver toutes les hypothèses derrière la carte — ou pour relancer l’étude sur ses paramètres enregistrés et vérifier qu’elle dit toujours la même chose.",
+    "p1812Location": "L’ITU-R P.1812 exprime son résultat comme « le niveau non dépassé à X % des emplacements », c’est-à-dire la forme même d’une obligation de couverture. 50 % correspond à la médiane ; 95 % est le niveau que l’on peut garantir presque partout dans un pixel, ce qui coûte nettement plus de marge sur un terrain réel."
   },
   "gis": {
     "exportTitle": "Exporter vers un SIG",

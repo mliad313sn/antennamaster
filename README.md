@@ -241,6 +241,7 @@ cd backend && python -m pytest tests/ -q
 | `GET /api/rf/erlang` · `POST /api/rf/throughput-map` | Erlang B/C dimensioning + SINR→MCS→Mbit/s capacity & saturation |
 | `POST /api/indoor/das` · `POST /api/indoor/stack` | DAS component-tree solver + whole-building multi-floor study |
 | `POST /api/rf/compliance/report.pdf` | ready-to-file EMF dossier (ICNIRP/FCC) |
+| `POST /api/rf/coverage` with `model="p1812"` | **ITU-R P.1812 as an area engine** — the official reference code per sample, with native time and location percentages and the Rec.'s own clutter input |
 | `POST /api/rf/coverage` with `model="itm"` | **ITM as an area engine** — one Longley-Rice run per sample, with the reliability quantile a licence application is written on |
 | `GET /api/rf/coverage/{id}/record` | the **study of record**: the complete input set, the provenance and a citable digest |
 | `POST /api/rf/coverage/{id}/rerun` | re-run a filed study on its own recorded inputs and report whether the answer moved |

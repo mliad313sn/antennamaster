@@ -50,6 +50,22 @@ def bench(name: str, fn, budget_s: float = TIME_GATE_S) -> dict:
             "ok": ok, "budget_s": budget_s}
 
 
+def _skipped(name: str) -> dict:
+    """Record a benchmark that could not run, and SAY so on stdout.
+
+    A gate that quietly disappears reads exactly like a gate that passed.
+    """
+    print(f"SKIP {name:52} — not measurable on this host")
+    return {"name": name, "ms": None, "peak_mb": None, "ok": True,
+            "skipped": True, "budget_s": None}
+
+
+def _p1812_ready() -> bool:
+    """Whether the official P.1812 engine AND its ITU maps are present."""
+    from app.services.rf.itm_exact import p1812_available
+    return p1812_available()
+
+
 def main() -> int:
     import tempfile
     tmp = Path(tempfile.mkdtemp())
@@ -99,6 +115,18 @@ def main() -> int:
               lambda: engine.simulate(47.0, 15.0, dict(tech, model="itm"),
                                       radius_m=10_000, n_radials=180,
                                       n_steps=100)),
+        # The official ITU reference implementation, one run per sample -
+        # about 3x ITM and sixty times an empirical model. Only measurable
+        # where the ITU digital maps are installed (integral ITU products,
+        # not redistributed), so it is skipped rather than faked elsewhere:
+        # a benchmark that silently measured something else would be worse
+        # than a missing one.
+        *([bench("coverage P.1812 72x60 @10km (official ITU reference)",
+                 lambda: engine.simulate(47.0, 15.0, dict(tech, model="p1812"),
+                                         radius_m=10_000, n_radials=72,
+                                         n_steps=60))]
+          if _p1812_ready() else
+          [_skipped("coverage P.1812 (ITU digital maps not installed)")]),
         bench("multi-site 4x (120x80 @10km) + composite",
               lambda: _multi(engine, tech)),
         bench("indoor multi-wall 400px grid, 200 walls",

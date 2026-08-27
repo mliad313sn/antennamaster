@@ -89,6 +89,12 @@ jobs:
           python -m tools.fetch_itu_maps
       - name: Validation suite must RUN, not skip, and must PASS
         working-directory: backend
+        # test_p1812_area_engine.py is in this list, not the plain backend
+        # job, for the same reason as the rest: two of its cases exercise the
+        # OFFICIAL P.1812 code against the area engine and skip without the
+        # ITU digital maps. Here the maps exist, so a skip means the install
+        # silently failed - and the area engine's agreement with the
+        # reference would go unproven.
         # `shell: bash` is required, not cosmetic: the GitHub default is
         # `bash -e {0}` WITHOUT pipefail, so `pytest | tee` exits with tee's
         # status (always 0) and a genuinely FAILING accuracy test would have
@@ -100,6 +106,7 @@ jobs:
             tests/test_itm_exact.py \
             tests/test_itu_validation.py \
             tests/test_precision_benchmark.py \
+            tests/test_p1812_area_engine.py \
             | tee /tmp/itu.log
           if grep -q "skipped" /tmp/itu.log; then
             echo "::error::ITU validation tests skipped - the reference"\

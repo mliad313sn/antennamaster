@@ -67,6 +67,12 @@ class CoverageRequest(BaseModel):
     # the number a licence application or an SLA is written on.
     itm_reliability_pct: float = Field(50.0, gt=0.1, lt=99.9)
     itm_confidence_pct: float = Field(50.0, gt=0.1, lt=99.9)
+    # ITU-R P.1812 quantiles, used only when model="p1812". Unlike ITM these
+    # are two separate native parameters: pT is the percentage of TIME and pL
+    # the percentage of LOCATIONS the level is not exceeded at, which is
+    # exactly the pair a coverage obligation is written in.
+    p1812_time_pct: float = Field(50.0, ge=1.0, le=99.0)
+    p1812_location_pct: float = Field(50.0, ge=1.0, le=99.0)
     # ITU-R P.2108 statistical man-made clutter: percentage of locations
     # not exceeded (0 = off, 50 = median urban clutter, 90 = conservative).
     clutter_pct: float = Field(0.0, ge=0, le=99.9)
@@ -153,9 +159,27 @@ def _resolve_tech(req: CoverageRequest) -> dict:
             tech[f] = v
     if tech["model"] not in MODEL_INFO:
         raise HTTPException(422, f"Unknown propagation model: {tech['model']!r}")
+    if tech["model"] == "p1812":
+        # The official ITU code needs the ITU digital refractivity maps, which
+        # are ITU integral products and are NOT redistributed with this
+        # repository. Saying so up front - with the command that installs
+        # them - beats a stack trace out of a third-party import, and beats
+        # silently substituting a different model for the one that was asked
+        # for on a study someone will file.
+        from ..services.rf.itm_exact import p1812_available
+        if not p1812_available():
+            raise HTTPException(
+                503,
+                "The ITU-R P.1812 reference engine is not installed on this "
+                "deployment. It needs the official Py1812 package and the ITU "
+                "digital maps (integral ITU products, not redistributable): "
+                "pip install 'Py1812 @ git+https://github.com/eeveetza/Py1812' "
+                "&& python -m tools.fetch_itu_maps. Use model=\"itm\" for a "
+                "terrain-derived study without them.")
     # ITM's quantiles ride on the tech dict so the engine, the async job and
     # the per-site overrides all carry them without a second plumbing path.
-    for f in ("itm_reliability_pct", "itm_confidence_pct"):
+    for f in ("itm_reliability_pct", "itm_confidence_pct",
+              "p1812_time_pct", "p1812_location_pct"):
         v = getattr(req, f, None)
         if v is not None:
             tech[f] = v

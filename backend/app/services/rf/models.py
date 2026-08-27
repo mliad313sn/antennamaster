@@ -69,6 +69,20 @@ MODEL_INFO: dict[str, dict] = {
     # sweep must NOT add its own diffraction term on top. Handled as a
     # special case in the coverage engine (see terrain/coverage.py), which is
     # why it carries no environments - the terrain IS the environment.
+    # Same rule as ITM: a terrain algorithm, no separate diffraction term,
+    # handled in the coverage engine. Needs the official Py1812 package AND
+    # the ITU digital refractivity maps, which are ITU integral products and
+    # are not redistributed - see tools/fetch_itu_maps.py.
+    "p1812": {
+        "label": "ITU-R P.1812 (official reference)",
+        "f_range_mhz": [30.0, 6_000.0],
+        "environments": [],
+        "description": "The Recommendation a European regulator's own "
+                       "coordination is based on: terrain-derived loss with "
+                       "native time and LOCATION percentages, and clutter as "
+                       "the Rec.'s own representative-height input. "
+                       "0.25-3000 km.",
+    },
     "itm": {
         "label": "ITM / Longley-Rice (NTIA, exact)",
         "f_range_mhz": [20.0, 20_000.0],
@@ -223,15 +237,16 @@ def path_loss_db(model: str, d_m: np.ndarray, f_mhz: float,
                  h_bs_m: float, h_ut_m: float, environment: str = "urban",
                  ) -> tuple[np.ndarray, list[str]]:
     """Dispatch to a model; returns (loss_db, warnings)."""
-    if model == "itm":
-        # ITM is a terrain algorithm, not a distance curve: it needs the
-        # profile, so it cannot be evaluated from range alone. The area
-        # engine calls itm_exact.itm_loss_grid directly, and the
-        # point-to-point endpoint calls itm_p2p_loss. Reaching here means a
-        # caller asked for ITM somewhere neither applies.
+    if model in ("itm", "p1812"):
+        # These are terrain algorithms, not distance curves: they need the
+        # profile, so they cannot be evaluated from range alone. The area
+        # engine calls itm_loss_grid / p1812_loss_grid directly, and the
+        # point-to-point endpoints call itm_p2p_loss / p1812_loss. Reaching
+        # here means a caller asked for one somewhere neither applies.
         raise ValueError(
-            "ITM needs a terrain profile and cannot be evaluated from "
-            "distance alone; use the coverage engine or /api/terrain/itm.")
+            f"{model} needs a terrain profile and cannot be evaluated from "
+            "distance alone; use the coverage engine or the point-to-point "
+            "endpoint (/api/terrain/itm, /api/terrain/p1812).")
     if model not in _MODEL_FUNCS:
         raise ValueError(f"Unknown propagation model: {model!r}")
     warnings: list[str] = []

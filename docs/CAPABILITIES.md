@@ -56,7 +56,7 @@ returns it (owner-scoped), the digest is printed on the exported PDF, and
 whether the answer moved, as a *new* study with its own id. The filed study is
 immutable by construction: nothing updates it.
 
-## 3. Propagation models (6 empirical + ITM)
+## 3. Propagation models (6 empirical + 2 reference-grade terrain engines)
 
 | Model | Range | Use |
 |---|---|---|
@@ -66,13 +66,21 @@ immutable by construction: nothing updates it.
 | 3GPP TR 38.901 RMa LOS/NLOS | 0.5–30 GHz | 4G/5G rural |
 | 3GPP TR 38.901 UMa LOS/NLOS | 0.5–100 GHz | 4G/5G urban macro |
 | 3GPP TR 38.901 UMi LOS/NLOS | 0.5–100 GHz | small cells, mmWave |
+| **ITU-R P.1812 (official reference)** | 30 MHz–6 GHz, 0.25–3000 km | **an area engine too**: selectable on any coverage study (`model="p1812"`) as well as point-to-point (`/api/terrain/p1812`). Native **time AND location** percentages — the pair a coverage obligation is written in — and clutter as the Recommendation's own representative-height input `R`, fed by 10 m WorldCover. Needs the ITU digital maps (integral ITU products, not redistributed): a deployment without them answers **503 naming the install command**, never a substituted model |
 | **Longley-Rice / ITM (exact NTIA)** | 20 MHz–20 GHz, 1–2000 km | **an area engine, not only a link tool**: selectable on any coverage study (`model="itm"`) as well as point-to-point (`/api/terrain/itm`). One full Longley-Rice run per sample over the profile out to it — the same recipe SPLAT! and Radio Mobile use — with the reliability quantile a licence application is written on |
 
 All floor-bounded by FSPL; out-of-validity inputs clamped with API warnings.
 
-**ITM is the exception to the line below.** It derives the terrain effect
-itself, so the sweep adds *no* diffraction term on top of it — doing so would
-count every ridge twice. Its variability mode is also different from the
+**ITM and P.1812 are the exceptions to the line below.** Both derive the
+terrain effect themselves, so the sweep adds *no* diffraction term on top —
+doing so would count every ridge twice. P.1812 differs from ITM in one more
+way that matters: it takes representative clutter as its **own input `R`**
+next to bare ground, so the canopy is *not* also folded into the terrain the
+way our Deygout path legitimately does. Its location percentage is native, so
+"the level exceeded at 95% of locations" is the Recommendation's statement
+rather than ours. Cost is ~0.5 ms per sample (≈10 s for a default 180×100
+sweep, three to four times ITM), which is why large P.1812 sweeps belong on
+the queued coverage path. Its variability mode is also different from the
 point-to-point one: an area study uses ITM's `mdvar=2` ("mobile"), where the
 receiver could be anywhere in the pixel, rather than the p2p mode that
 suppresses location variability because both terminals sit at known places.
@@ -315,7 +323,7 @@ credential/audit DB 0600. Full posture: `SECURITY_COMPLIANCE.md`.
 | Probes | `/api/health` (liveness) + `/api/ready` (data-dir writable, DEM cache state) |
 | Error policy | DEM failures → 502; validation errors → 4xx with actionable text; server logging at startup |
 | Audit | centralized middleware → append-only `audit.log` (0600) + tenant-scoped DB, stamped with user id + client IP |
-| Tests | **380 backend test functions / 398 cases** + **80 frontend unit tests** + **8 browser end-to-end** (3 desktop, 5 on a real phone viewport) + 9 benchmark gates (fake DEM world; physics reference values hand-checked incl. anchored ITM/knife-edge/reciprocity invariants; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit + GDPR + rate-limit + offline-cache-isolation regression; planning, two-way, leaky-feeder, auto-placement, compliance, calibration, copilot; API workflows) |
+| Tests | **390 backend test functions / 410 cases** + **80 frontend unit tests** + **8 browser end-to-end** (3 desktop, 5 on a real phone viewport) + 10 benchmark gates (fake DEM world; physics reference values hand-checked incl. anchored ITM/knife-edge/reciprocity invariants; restart & multi-worker simulation; security/tier + consumer-path IDOR + audit + GDPR + rate-limit + offline-cache-isolation regression; planning, two-way, leaky-feeder, auto-placement, compliance, calibration, copilot; API workflows) |
 
 ## 7. SaaS & workspace layer
 

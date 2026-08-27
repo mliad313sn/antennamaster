@@ -356,3 +356,98 @@ def itm_loss_grid(elev: np.ndarray, dist: np.ndarray, tx_elev_m: float,
             "flag below that.")
     _ = step
     return out, warnings
+
+
+# --------------------------------------- P.1812 as an AREA coverage engine
+# P.1812's stated validity starts at 250 m (and runs to 3000 km). Below that
+# the Recommendation simply does not apply, so the study says free space
+# rather than extrapolating the official code outside its own range.
+P1812_MIN_RANGE_M = 250.0
+
+
+def p1812_loss_grid(elev: np.ndarray, dist: np.ndarray,
+                    lats: np.ndarray, lons: np.ndarray,
+                    tx_lat: float, tx_lon: float, tx_elev_m: float,
+                    h_bs_m: float, h_ut_m: float, freq_mhz: float,
+                    time_pct: float = 50.0, location_pct: float = 50.0,
+                    clutter_heights: np.ndarray | None = None,
+                    polarization: int = 1,
+                    progress_cb=None) -> tuple[np.ndarray, list[str]]:
+    """Total path loss over a whole radial fan, one P.1812 run per sample.
+
+    Why this belongs next to the ITM area engine rather than replacing it:
+    ITM is what the incumbent planning tools run, so a study made with it can
+    be checked by a reviewer in their own tool; P.1812 is what a European
+    regulator's own coordination is based on, so a study made with it is
+    checkable against the Recommendation itself. A consultant wants both
+    available, and wants to be told which one produced a given number.
+
+    Two structural differences from the ITM grid, both of them substantive:
+
+    * **Clutter is a separate input, not added to the ground.** The
+      Recommendation takes representative clutter height as its own ``R``
+      array alongside bare terrain; folding the canopy into ``h`` as well,
+      the way our Deygout path legitimately does, would apply the same trees
+      twice.
+    * **The location percentage is a native parameter.** ITM needed the right
+      variability mode to make its reliability quantile mean anything over an
+      area; P.1812 takes ``pL`` directly, so "the level exceeded at 95% of
+      locations" is the model's own statement rather than ours.
+
+    Cost is about 0.5 ms per sample, so a default 180x100 sweep is roughly
+    10 s - three to four times ITM and sixty times an empirical model. That
+    is the price of the reference implementation, and it is why large sweeps
+    on this engine belong on the queued (async) coverage path.
+
+    ``elev`` is (radials, steps) BARE ground elevation along each ray;
+    ``lats``/``lons`` the matching sample coordinates. Returns
+    (loss_db, warnings).
+    """
+    from .models import fspl_db
+
+    r, s = elev.shape
+    out = np.empty((r, s), dtype=np.float64)
+    warnings: list[str] = []
+    if not 30.0 <= freq_mhz <= 6000.0:
+        # The wrapper would raise; refusing the whole study for one preset is
+        # worse than saying plainly which limit was hit.
+        raise ValueError(
+            f"ITU-R P.1812 is defined for 30 MHz - 6 GHz; {freq_mhz:g} MHz is "
+            "outside it. Use ITM (20 MHz - 20 GHz) or an empirical model.")
+
+    near_field = False
+    d_ray = np.concatenate(([0.0], dist))
+    for i in range(r):
+        # Every profile starts AT the mast: the sweep's samples begin one step
+        # out, and the Recommendation needs the transmitter's own ground
+        # height and position to place its horizon.
+        ray_h = np.concatenate(([tx_elev_m], elev[i]))
+        ray_lat = np.concatenate(([tx_lat], lats[i]))
+        ray_lon = np.concatenate(([tx_lon], lons[i]))
+        ray_R = (np.concatenate(([0.0], clutter_heights[i]))
+                 if clutter_heights is not None else None)
+        for j in range(s):
+            if dist[j] < P1812_MIN_RANGE_M or j < 2:
+                out[i, j] = float(fspl_db(np.array([dist[j]]), freq_mhz)[0])
+                near_field = True
+                continue
+            res = p1812_loss(
+                d_ray[: j + 2], ray_h[: j + 2], ray_lat[: j + 2],
+                ray_lon[: j + 2], h_bs_m, h_ut_m, freq_mhz,
+                time_pct=time_pct, location_pct=location_pct,
+                clutter_heights_m=None if ray_R is None else ray_R[: j + 2],
+                polarization=polarization)
+            out[i, j] = res["path_loss_db"]
+        if progress_cb is not None:
+            progress_cb((i + 1) / r)
+
+    if near_field:
+        warnings.append(
+            f"Inside {P1812_MIN_RANGE_M:g} m the study falls back to free "
+            "space: ITU-R P.1812 is defined from 250 m outwards.")
+    if clutter_heights is not None:
+        warnings.append(
+            "Clutter was supplied to P.1812 as its own representative-height "
+            "input R (the Recommendation's mechanism), not added to the "
+            "terrain.")
+    return out, warnings

@@ -15,6 +15,15 @@ rasterio>=1.3
 itmlogic>=1.0
 # Runtime dependencies only -- test and tooling packages live in
 # requirements-dev.txt so the production image does not ship a test harness.
-# ITU-R P.1812 official reference engine (optional, exact):
-#   pip install git+https://github.com/eeveetza/Py1812
+# ITU-R official reference engines (optional, exact). Pinned by commit to
+# match .github/workflows/ci.yml and both installers -- these ARE the
+# implementations our accuracy claims are measured against, so an unpinned
+# branch install would let an upstream change move them silently:
+#   pip install \
+#     "Py1812 @ git+https://github.com/eeveetza/Py1812@a5205e6a65db27391a8ba79bd5a365e5391f9fdf" \
+#     "Py452  @ git+https://github.com/eeveetza/Py452@c047331990d35288300d0865802c98123aa21d3c" \
+#     "Py2001 @ git+https://github.com/eeveetza/Py2001@a4d61a056bad606d1147ff0c441511762ee9fb24"
 #   python -m tools.fetch_itu_maps   # installs the ITU digital maps
+# The maps are ITU integral products and are NOT redistributable, so P.1812
+# area studies answer 503 with this command until they are installed rather
+# than substituting a different model.

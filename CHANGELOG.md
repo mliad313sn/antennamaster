@@ -4,6 +4,43 @@ All notable changes to AntennaMaster are recorded here. Versions follow
 [semantic versioning](https://semver.org/); the version shown is the app /
 Windows-installer version (`dist/AntennaMaster-Setup-<version>.exe`).
 
+## 1.3.0 — 2026-08-27
+
+### Added — ITU-R P.1812 as an area-coverage engine
+
+- **The official ITU-R Study Group 3 reference implementation now runs over
+  the whole fan** (`model: "p1812"`), not only point-to-point. Alongside ITM
+  rather than instead of it, because they are checkable against different
+  things: ITM is what the incumbent planning tools run, so a reviewer can
+  reproduce a study in their own tool; P.1812 is what a European regulator's
+  own coordination is based on, so a study is checkable against the
+  Recommendation itself.
+- **Clutter goes in as the Recommendation's own input.** P.1812 takes
+  representative clutter height as a separate `R` array next to *bare*
+  ground. Our Deygout path legitimately raises the obstacle surface by the
+  canopy instead — doing both would apply the same trees twice, so the
+  P.1812 branch passes bare terrain and hands the WorldCover heights to `R`.
+- **Native time *and* location percentages.** ITM needed the right
+  variability mode before its reliability quantile meant anything over an
+  area; P.1812 takes `pT` and `pL` directly, so "the level exceeded at 95% of
+  locations, 50% of the time" — the form a coverage obligation is written in
+  — is the Recommendation's statement rather than ours.
+- **A deployment without the ITU digital maps answers 503 and names the
+  install command.** The maps are ITU integral products and are not
+  redistributable, so a self-hosted install may legitimately lack them.
+  Quietly substituting another model — on a study someone will file — would
+  be worse than refusing.
+- Below 250 m, outside P.1812's stated range, the study falls back to free
+  space and says so. Cost is ~0.5 ms per sample (≈10 s for a default
+  180×100 sweep); the benchmark gate measures it where the maps exist and
+  **prints a visible SKIP** where they do not, because a gate that silently
+  disappears reads exactly like one that passed.
+
+### Changed
+
+- The ITU reference engines are pinned by commit in `requirements.txt` too,
+  matching CI and both installers.
+
 ## 1.2.0 — 2026-08-27
 
 Driven by a deep review: an expert-and-user committee assessed the product

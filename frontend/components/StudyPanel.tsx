@@ -71,6 +71,11 @@ export default function StudyPanel(props: StudyPanelProps) {
   // a coverage commitment is written on 90-95, and with ITM that is a
   // real ~12 dB, not a rounding difference.
   const [itmReliability, setItmReliability] = useState(50);
+  // P.1812's own pair. Kept separate from ITM's single quantile rather than
+  // reused: they are different statements, and sharing one control would
+  // silently carry a number across two models that do not mean the same
+  // thing by it.
+  const [p1812Location, setP1812Location] = useState(50);
   const [radiusKm, setRadiusKm] = useState(8);
   const [sector, setSector] = useState(false);
   const [azimuth, setAzimuth] = useState(0);
@@ -367,6 +372,7 @@ export default function StudyPanel(props: StudyPanelProps) {
         calibration: props.calibration ?? undefined,
         hBsM: props.txHeight || undefined,
         itmReliabilityPct: activeModelKey === 'itm' ? itmReliability : undefined,
+        p1812LocationPct: activeModelKey === 'p1812' ? p1812Location : undefined,
         txPowerDbm: numOr(ovrPower), txGainDbi: numOr(ovrTxGain),
         rxGainDbi: numOr(ovrRxGain), lossesDb: numOr(ovrLosses),
         rxSensitivityDbm: numOr(ovrSens),
@@ -494,6 +500,20 @@ export default function StudyPanel(props: StudyPanelProps) {
                 <option value={50}>{t('study.itmRel50')}</option>
                 <option value={90}>{t('study.itmRel90')}</option>
                 <option value={95}>{t('study.itmRel95')}</option>
+              </select>
+            </div>
+          )}
+          {activeModelKey === 'p1812' && (
+            <div>
+              <label htmlFor={`${_uid}-p1812loc`}>
+                {t('study.p1812Location')}
+                <Help term="p1812Location" />
+              </label>
+              <select id={`${_uid}-p1812loc`} value={p1812Location}
+                onChange={(e) => setP1812Location(Number(e.target.value))}>
+                <option value={50}>{t('study.p1812Loc50')}</option>
+                <option value={90}>{t('study.p1812Loc90')}</option>
+                <option value={95}>{t('study.p1812Loc95')}</option>
               </select>
             </div>
           )}

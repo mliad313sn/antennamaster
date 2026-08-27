@@ -163,6 +163,11 @@ export interface CoverageParams {
   /** ITM only: the percentage of locations/time the predicted level is
    *  exceeded. 50 is the median; a coverage commitment is written on 90-95. */
   itmReliabilityPct?: number;
+  /** P.1812 only. Unlike ITM these are two native parameters: the percentage
+   *  of TIME and of LOCATIONS the level is not exceeded at — the pair a
+   *  coverage obligation is actually written in. */
+  p1812TimePct?: number;
+  p1812LocationPct?: number;
   // Drive-test calibration correction (apply-ready object from /calibrate):
   calibration?: object | null;
   // Real site link-budget overrides (the preset is only a starting point):
@@ -206,6 +211,8 @@ function coverageBody(params: CoverageParams): Record<string, unknown> {
       losses_db: params.lossesDb,
       rx_sensitivity_dbm: params.rxSensitivityDbm,
       itm_reliability_pct: params.itmReliabilityPct,
+      p1812_time_pct: params.p1812TimePct,
+      p1812_location_pct: params.p1812LocationPct,
   };
 }
 
